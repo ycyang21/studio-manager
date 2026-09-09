@@ -2,43 +2,133 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <!-- 這一行是讓手機版完美顯示的關鍵，沒有它字會變超小 -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Jess Music Studio 管理系統</title>
   <style>
-    /* 這裡是 CSS，負責管理「外觀與美感」 */
     body { 
       font-family: "Helvetica Neue", Arial, sans-serif; 
       text-align: center; 
       padding: 20px; 
-      background-color: #FDFBF7; /* 文青感的米白色背景 */
+      background-color: #FDFBF7; 
       color: #4A4A4A;
     }
     h1 { font-weight: 300; letter-spacing: 2px; margin-bottom: 5px; }
     p { font-size: 14px; color: #888; margin-bottom: 30px; }
     
+    /* 按鈕的設計 */
     .button {
       display: block; 
       width: 90%; 
       padding: 15px; 
       margin: 15px auto;
-      background-color: #8C9C8A; /* 帶有質感的莫蘭迪綠 */
+      background-color: #8C9C8A; 
       color: white; 
       text-decoration: none;
       border-radius: 8px; 
       font-size: 16px; 
       letter-spacing: 1px; 
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border: none;
+    }
+    .btn-secondary {
+      background-color: #D3D3D3;
+      color: #333;
+    }
+
+    /* 點名卡片的設計 */
+    .student-card {
+      background-color: white;
+      padding: 15px;
+      margin: 10px auto;
+      width: 90%;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      text-align: left;
+    }
+    .student-name {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: #333;
+    }
+    
+    /* 讓三個選項在手機上平均排列 */
+    .status-options {
+      display: flex;
+      justify-content: space-between;
+    }
+    .status-options label {
+      font-size: 16px;
+      padding: 5px;
     }
   </style>
 </head>
 <body>
-  <!-- 這裡是 HTML，負責管理「內容與文字」 -->
-  <h1>Jess Music Studio</h1>
-  <p>工作室管理系統</p>
+  
+  <!-- 這是第一頁：主選單畫面 -->
+  <div id="main-menu">
+    <h1>Jess Music Studio</h1>
+    <p>工作室管理系統</p>
+    <!-- 點擊這個按鈕時，會觸發 showPage 功能切換到點名畫面 -->
+    <button class="button" onclick="showPage('attendance-page')">📝 學生點名與排課</button>
+    <button class="button" onclick="calculateFee()">💰 師資鐘點費計算 (7成拆帳)</button>
+    <button class="button">📊 本月營收統計</button>
+  </div>
 
-  <a href="#" class="button">📝 學生點名與排課 (鋼琴/小提琴)</a>
-  <a href="#" class="button">💰 師資鐘點費計算 (7成拆帳)</a>
-  <a href="#" class="button">📊 本月營收統計</a>
+  <!-- 這是第二頁：點名畫面 (一開始先設定 display: none 隱藏起來) -->
+  <div id="attendance-page" style="display: none;">
+    <h2 style="font-weight: 300;">📝 今日點名總表</h2>
+    
+    <!-- 第一位學生 -->
+    <div class="student-card">
+      <div class="student-name">陳小明 (鋼琴)</div>
+      <div class="status-options">
+        <label><input type="radio" name="student1" value="出席"> 出席</label>
+        <label><input type="radio" name="student1" value="延期"> 延期</label>
+        <label><input type="radio" name="student1" value="補課"> 補課</label>
+      </div>
+    </div>
+
+    <!-- 第二位學生 -->
+    <div class="student-card">
+      <div class="student-name">林小華 (小提琴)</div>
+      <div class="status-options">
+        <label><input type="radio" name="student2" value="出席"> 出席</label>
+        <label><input type="radio" name="student2" value="延期"> 延期</label>
+        <label><input type="radio" name="student2" value="補課"> 補課</label>
+      </div>
+    </div>
+
+    <button class="button" onclick="saveAttendance()">✅ 儲存今日點名</button>
+    <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
+  </div>
+
+  <script>
+    // 1. 切換畫面的功能：把像 App 一樣換頁的魔法寫在這裡
+    function showPage(pageId) {
+      document.getElementById('main-menu').style.display = 'none';
+      document.getElementById('attendance-page').style.display = 'none';
+      document.getElementById(pageId).style.display = 'block';
+    }
+
+    // 2. 儲存點名的功能：目前先跳出提示，之後我們再把它連上資料庫
+    function saveAttendance() {
+      alert("太棒了！今日點名已經暫時紀錄。");
+      showPage('main-menu'); // 存檔後自動跳回首頁
+    }
+
+    // 3. 鐘點費計算功能 (保留你剛剛完成的功能)
+    function calculateFee() {
+      let tuitionString = prompt("請輸入學生的單堂學費（例如：1000）：");
+      let tuition = Number(tuitionString);
+      if (tuition > 0) {
+        let teacherPay = tuition * 0.7;
+        let studioIncome = tuition * 0.3;
+        alert("✅ 結算完成！\n\n給授課老師：" + teacherPay + " 元\n工作室營收：" + studioIncome + " 元");
+      } else {
+        alert("請輸入正確的數字喔！");
+      }
+    }
+  </script>
 </body>
 </html>
