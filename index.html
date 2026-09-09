@@ -5,38 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Jess Music Studio 管理系統</title>
   <style>
-    body { 
-      font-family: "Helvetica Neue", Arial, sans-serif; 
-      text-align: center; 
-      padding: 20px; 
-      background-color: #FDFBF7; 
-      color: #4A4A4A;
-    }
+    body { font-family: "Helvetica Neue", Arial, sans-serif; text-align: center; padding: 15px; background-color: #FDFBF7; color: #4A4A4A; }
     h1 { font-weight: 300; letter-spacing: 2px; margin-bottom: 5px; }
     p { font-size: 14px; color: #888; margin-bottom: 30px; }
     
-    .button {
-      display: block; width: 90%; padding: 15px; margin: 15px auto;
-      background-color: #8C9C8A; color: white; text-decoration: none;
-      border-radius: 8px; font-size: 16px; border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
+    .button { display: block; width: 90%; padding: 15px; margin: 15px auto; background-color: #8C9C8A; color: white; text-decoration: none; border-radius: 8px; font-size: 16px; border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     .btn-secondary { background-color: #D3D3D3; color: #333; }
+    .small-btn { padding: 5px 10px; border: none; border-radius: 5px; font-size: 14px; margin-left: 5px; }
+    .del-btn { background-color: #FFB6B9; color: white; }
     
-    .student-card {
-      background-color: white; padding: 15px; margin: 10px auto; width: 90%;
-      border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: left;
-    }
-    .student-name { font-size: 18px; font-weight: bold; margin-bottom: 12px; color: #333; }
+    .card { background-color: white; padding: 15px; margin: 10px auto; width: 90%; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: left; }
+    
+    /* 點名與名單的文字設計 */
+    .student-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #333; }
+    .student-detail { font-size: 13px; color: #666; margin-bottom: 12px; }
     
     .status-options { display: flex; justify-content: space-between; }
     .status-options label { font-size: 16px; padding: 5px; }
 
-    /* 管理名單專用的輸入框與小按鈕 */
-    .input-box { width: 60%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px;}
-    .add-btn { padding: 10px 15px; background-color: #8C9C8A; color: white; border: none; border-radius: 5px; font-size: 16px;}
-    .small-btn { padding: 5px 10px; border: none; border-radius: 5px; font-size: 14px; margin-left: 5px; }
-    .edit-btn { background-color: #E2E8DF; color: #333; }
-    .del-btn { background-color: #FFB6B9; color: white; }
+    /* 新增學生表單專用設計 */
+    .form-group { margin-bottom: 15px; text-align: left; }
+    .form-group label { display: block; font-size: 14px; margin-bottom: 5px; font-weight: bold; }
+    .form-control { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box; } /* box-sizing 避免欄位突出去 */
+    .radio-group { display: flex; gap: 15px; margin-top: 5px; }
   </style>
 </head>
 <body>
@@ -53,53 +44,83 @@
   <!-- 第二頁：點名畫面 -->
   <div id="attendance-page" style="display: none;">
     <h2 style="font-weight: 300;">📝 今日點名總表</h2>
-    
-    <!-- 這裡原本寫死的卡片清空了，交給 JavaScript 自動生成 -->
     <div id="attendance-list"></div>
-
     <button class="button" onclick="saveAttendance()">✅ 儲存今日點名</button>
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 第三頁：學生名單管理畫面 -->
+  <!-- 第三頁：學生名單管理 (包含新增表單與清單) -->
   <div id="manage-page" style="display: none;">
     <h2 style="font-weight: 300;">⚙️ 學生名單管理</h2>
     
-    <div style="margin-bottom: 20px;">
-      <input type="text" id="new-student-name" class="input-box" placeholder="例如: 王大花 (鋼琴)">
-      <button class="add-btn" onclick="addStudent()">新增</button>
+    <!-- 新增學生的詳細表單卡片 -->
+    <div class="card" style="background-color: #F4F6F3; border: 1px solid #8C9C8A;">
+      <h3 style="margin-top:0; font-size: 16px;">➕ 新增學生資料</h3>
+      
+      <div class="form-group">
+        <label>學生姓名</label>
+        <input type="text" id="add-name" class="form-control" placeholder="例如：王大花">
+      </div>
+      
+      <div class="form-group">
+        <label>學習樂器</label>
+        <div class="radio-group">
+          <label><input type="radio" name="add-instrument" value="鋼琴" checked> 鋼琴</label>
+          <label><input type="radio" name="add-instrument" value="小提琴"> 小提琴</label>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>上課時間</label>
+        <input type="text" id="add-time" class="form-control" placeholder="例如：週三 19:00">
+      </div>
+
+      <div class="form-group">
+        <label>單堂學費 (元)</label>
+        <input type="number" id="add-fee" class="form-control" placeholder="例如：1000">
+      </div>
+
+      <div class="form-group">
+        <label>聯絡電話</label>
+        <input type="tel" id="add-phone" class="form-control" placeholder="家長或學生電話">
+      </div>
+
+      <button class="button" style="width:100%; margin:0;" onclick="addStudent()">確認新增</button>
     </div>
 
-    <!-- 這裡會列出所有學生讓你修改或刪除 -->
+    <!-- 這裡會列出所有學生 -->
     <div id="manage-list"></div>
 
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
   <script>
-    // 1. 從手機瀏覽器記憶中讀取名單，如果沒有，就給兩個預設範例
-    let students = JSON.parse(localStorage.getItem('jess_students')) || ['陳小明 (鋼琴)', '林小華 (小提琴)'];
+    // 1. 讀取名單。現在資料格式變成了「物件」(Object)，包含詳細資訊。
+    let students = JSON.parse(localStorage.getItem('jess_students_v2')) || [];
 
-    // 2. 切換畫面的功能 (同時自動更新名單畫面)
+    // 2. 切換畫面
     function showPage(pageId) {
       document.getElementById('main-menu').style.display = 'none';
       document.getElementById('attendance-page').style.display = 'none';
       document.getElementById('manage-page').style.display = 'none';
       
-      // 如果切換到點名或管理頁面，先重新繪製最新的名單
       if(pageId === 'attendance-page') renderAttendanceList();
       if(pageId === 'manage-page') renderManageList();
       
       document.getElementById(pageId).style.display = 'block';
     }
 
-    // 3. 畫出點名總表
+    // 3. 畫出點名總表 (顯示姓名、樂器與上課時間)
     function renderAttendanceList() {
       let listHTML = '';
+      if(students.length === 0) listHTML = '<p>目前還沒有學生資料喔！請先去管理名單新增。</p>';
+      
       for (let i = 0; i < students.length; i++) {
+        let s = students[i];
         listHTML += `
-          <div class="student-card">
-            <div class="student-name">${students[i]}</div>
+          <div class="card">
+            <div class="student-title">${s.name} (${s.instrument})</div>
+            <div class="student-detail">🕒 ${s.time || '未設定時間'}</div>
             <div class="status-options">
               <label><input type="radio" name="student_${i}" value="出席"> 出席</label>
               <label><input type="radio" name="student_${i}" value="延期"> 延期</label>
@@ -110,15 +131,20 @@
       document.getElementById('attendance-list').innerHTML = listHTML;
     }
 
-    // 4. 畫出管理名單 (包含修改與刪除按鈕)
+    // 4. 畫出管理名單 (顯示所有詳細資訊)
     function renderManageList() {
       let listHTML = '';
       for (let i = 0; i < students.length; i++) {
+        let s = students[i];
         listHTML += `
-          <div class="student-card" style="display: flex; justify-content: space-between; align-items: center;">
-            <div class="student-name" style="margin: 0; font-size: 16px;">${students[i]}</div>
+          <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-              <button class="small-btn edit-btn" onclick="editStudent(${i})">修改</button>
+              <div class="student-title" style="font-size: 16px;">${s.name} (${s.instrument})</div>
+              <div class="student-detail" style="margin-bottom:0;">
+                🕒 ${s.time} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}
+              </div>
+            </div>
+            <div>
               <button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button>
             </div>
           </div>`;
@@ -126,49 +152,65 @@
       document.getElementById('manage-list').innerHTML = listHTML;
     }
 
-    // 5. 新增學生
+    // 5. 新增學生 (把表單資料打包起來存進去)
     function addStudent() {
-      let nameInput = document.getElementById('new-student-name');
-      let name = nameInput.value.trim(); // 抓取輸入的字，並去掉前後空白
+      let name = document.getElementById('add-name').value.trim();
+      let time = document.getElementById('add-time').value.trim();
+      let fee = document.getElementById('add-fee').value.trim();
+      let phone = document.getElementById('add-phone').value.trim();
+      
+      // 找出哪一個樂器選項被勾選了
+      let instrumentRadios = document.getElementsByName('add-instrument');
+      let instrument = '';
+      for(let i=0; i<instrumentRadios.length; i++){
+        if(instrumentRadios[i].checked) instrument = instrumentRadios[i].value;
+      }
+
       if (name !== '') {
-        students.push(name); // 把名字加進清單
-        saveToMemory();      // 存進記憶體
-        nameInput.value = '';// 清空輸入框
-        renderManageList();  // 重新顯示名單
+        // 建立一個詳細的「學生資料夾(物件)」
+        let newStudent = {
+          name: name,
+          instrument: instrument,
+          time: time,
+          fee: fee,
+          phone: phone
+        };
+        
+        students.push(newStudent);
+        saveToMemory();
+        
+        // 清空輸入框準備下次輸入
+        document.getElementById('add-name').value = '';
+        document.getElementById('add-time').value = '';
+        document.getElementById('add-fee').value = '';
+        document.getElementById('add-phone').value = '';
+        
+        renderManageList();
+        alert('新增成功！');
+      } else {
+        alert('學生姓名是一定要填寫的喔！');
       }
     }
 
     // 6. 刪除學生
     function deleteStudent(index) {
-      if (confirm("確定要刪除這位學生嗎？")) {
-        students.splice(index, 1); // 刪除該名學生
+      if (confirm("確定要刪除這位學生的資料嗎？")) {
+        students.splice(index, 1);
         saveToMemory();
         renderManageList();
       }
     }
 
-    // 7. 修改學生
-    function editStudent(index) {
-      let newName = prompt("請輸入修改後的名字：", students[index]);
-      if (newName !== null && newName.trim() !== '') {
-        students[index] = newName.trim();
-        saveToMemory();
-        renderManageList();
-      }
-    }
-
-    // 8. 把名單存進手機瀏覽器的記憶體
+    // 7. 把名單存進手機記憶體 (為了不跟舊資料打架，我改了名稱為 v2)
     function saveToMemory() {
-      localStorage.setItem('jess_students', JSON.stringify(students));
+      localStorage.setItem('jess_students_v2', JSON.stringify(students));
     }
 
-    // 9. 儲存點名 (目前先維持跳出提示)
     function saveAttendance() {
       alert("太棒了！今日點名已經暫時紀錄。");
       showPage('main-menu');
     }
 
-    // 10. 鐘點費計算
     function calculateFee() {
       let tuition = Number(prompt("請輸入學生的單堂學費（例如：1000）："));
       if (tuition > 0) {
