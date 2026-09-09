@@ -15,118 +15,164 @@
     h1 { font-weight: 300; letter-spacing: 2px; margin-bottom: 5px; }
     p { font-size: 14px; color: #888; margin-bottom: 30px; }
     
-    /* 按鈕的設計 */
     .button {
-      display: block; 
-      width: 90%; 
-      padding: 15px; 
-      margin: 15px auto;
-      background-color: #8C9C8A; 
-      color: white; 
-      text-decoration: none;
-      border-radius: 8px; 
-      font-size: 16px; 
-      letter-spacing: 1px; 
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      border: none;
+      display: block; width: 90%; padding: 15px; margin: 15px auto;
+      background-color: #8C9C8A; color: white; text-decoration: none;
+      border-radius: 8px; font-size: 16px; border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
-    .btn-secondary {
-      background-color: #D3D3D3;
-      color: #333;
-    }
-
-    /* 點名卡片的設計 */
-    .student-card {
-      background-color: white;
-      padding: 15px;
-      margin: 10px auto;
-      width: 90%;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-      text-align: left;
-    }
-    .student-name {
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 12px;
-      color: #333;
-    }
+    .btn-secondary { background-color: #D3D3D3; color: #333; }
     
-    /* 讓三個選項在手機上平均排列 */
-    .status-options {
-      display: flex;
-      justify-content: space-between;
+    .student-card {
+      background-color: white; padding: 15px; margin: 10px auto; width: 90%;
+      border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: left;
     }
-    .status-options label {
-      font-size: 16px;
-      padding: 5px;
-    }
+    .student-name { font-size: 18px; font-weight: bold; margin-bottom: 12px; color: #333; }
+    
+    .status-options { display: flex; justify-content: space-between; }
+    .status-options label { font-size: 16px; padding: 5px; }
+
+    /* 管理名單專用的輸入框與小按鈕 */
+    .input-box { width: 60%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px;}
+    .add-btn { padding: 10px 15px; background-color: #8C9C8A; color: white; border: none; border-radius: 5px; font-size: 16px;}
+    .small-btn { padding: 5px 10px; border: none; border-radius: 5px; font-size: 14px; margin-left: 5px; }
+    .edit-btn { background-color: #E2E8DF; color: #333; }
+    .del-btn { background-color: #FFB6B9; color: white; }
   </style>
 </head>
 <body>
   
-  <!-- 這是第一頁：主選單畫面 -->
+  <!-- 第一頁：主選單 -->
   <div id="main-menu">
     <h1>Jess Music Studio</h1>
     <p>工作室管理系統</p>
-    <!-- 點擊這個按鈕時，會觸發 showPage 功能切換到點名畫面 -->
     <button class="button" onclick="showPage('attendance-page')">📝 學生點名與排課</button>
-    <button class="button" onclick="calculateFee()">💰 師資鐘點費計算 (7成拆帳)</button>
-    <button class="button">📊 本月營收統計</button>
+    <button class="button" onclick="showPage('manage-page')">⚙️ 學生名單管理</button>
+    <button class="button" onclick="calculateFee()">💰 師資鐘點費計算</button>
   </div>
 
-  <!-- 這是第二頁：點名畫面 (一開始先設定 display: none 隱藏起來) -->
+  <!-- 第二頁：點名畫面 -->
   <div id="attendance-page" style="display: none;">
     <h2 style="font-weight: 300;">📝 今日點名總表</h2>
     
-    <!-- 第一位學生 -->
-    <div class="student-card">
-      <div class="student-name">陳小明 (鋼琴)</div>
-      <div class="status-options">
-        <label><input type="radio" name="student1" value="出席"> 出席</label>
-        <label><input type="radio" name="student1" value="延期"> 延期</label>
-        <label><input type="radio" name="student1" value="補課"> 補課</label>
-      </div>
-    </div>
-
-    <!-- 第二位學生 -->
-    <div class="student-card">
-      <div class="student-name">林小華 (小提琴)</div>
-      <div class="status-options">
-        <label><input type="radio" name="student2" value="出席"> 出席</label>
-        <label><input type="radio" name="student2" value="延期"> 延期</label>
-        <label><input type="radio" name="student2" value="補課"> 補課</label>
-      </div>
-    </div>
+    <!-- 這裡原本寫死的卡片清空了，交給 JavaScript 自動生成 -->
+    <div id="attendance-list"></div>
 
     <button class="button" onclick="saveAttendance()">✅ 儲存今日點名</button>
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
+  <!-- 第三頁：學生名單管理畫面 -->
+  <div id="manage-page" style="display: none;">
+    <h2 style="font-weight: 300;">⚙️ 學生名單管理</h2>
+    
+    <div style="margin-bottom: 20px;">
+      <input type="text" id="new-student-name" class="input-box" placeholder="例如: 王大花 (鋼琴)">
+      <button class="add-btn" onclick="addStudent()">新增</button>
+    </div>
+
+    <!-- 這裡會列出所有學生讓你修改或刪除 -->
+    <div id="manage-list"></div>
+
+    <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
+  </div>
+
   <script>
-    // 1. 切換畫面的功能：把像 App 一樣換頁的魔法寫在這裡
+    // 1. 從手機瀏覽器記憶中讀取名單，如果沒有，就給兩個預設範例
+    let students = JSON.parse(localStorage.getItem('jess_students')) || ['陳小明 (鋼琴)', '林小華 (小提琴)'];
+
+    // 2. 切換畫面的功能 (同時自動更新名單畫面)
     function showPage(pageId) {
       document.getElementById('main-menu').style.display = 'none';
       document.getElementById('attendance-page').style.display = 'none';
+      document.getElementById('manage-page').style.display = 'none';
+      
+      // 如果切換到點名或管理頁面，先重新繪製最新的名單
+      if(pageId === 'attendance-page') renderAttendanceList();
+      if(pageId === 'manage-page') renderManageList();
+      
       document.getElementById(pageId).style.display = 'block';
     }
 
-    // 2. 儲存點名的功能：目前先跳出提示，之後我們再把它連上資料庫
-    function saveAttendance() {
-      alert("太棒了！今日點名已經暫時紀錄。");
-      showPage('main-menu'); // 存檔後自動跳回首頁
+    // 3. 畫出點名總表
+    function renderAttendanceList() {
+      let listHTML = '';
+      for (let i = 0; i < students.length; i++) {
+        listHTML += `
+          <div class="student-card">
+            <div class="student-name">${students[i]}</div>
+            <div class="status-options">
+              <label><input type="radio" name="student_${i}" value="出席"> 出席</label>
+              <label><input type="radio" name="student_${i}" value="延期"> 延期</label>
+              <label><input type="radio" name="student_${i}" value="補課"> 補課</label>
+            </div>
+          </div>`;
+      }
+      document.getElementById('attendance-list').innerHTML = listHTML;
     }
 
-    // 3. 鐘點費計算功能 (保留你剛剛完成的功能)
+    // 4. 畫出管理名單 (包含修改與刪除按鈕)
+    function renderManageList() {
+      let listHTML = '';
+      for (let i = 0; i < students.length; i++) {
+        listHTML += `
+          <div class="student-card" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="student-name" style="margin: 0; font-size: 16px;">${students[i]}</div>
+            <div>
+              <button class="small-btn edit-btn" onclick="editStudent(${i})">修改</button>
+              <button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button>
+            </div>
+          </div>`;
+      }
+      document.getElementById('manage-list').innerHTML = listHTML;
+    }
+
+    // 5. 新增學生
+    function addStudent() {
+      let nameInput = document.getElementById('new-student-name');
+      let name = nameInput.value.trim(); // 抓取輸入的字，並去掉前後空白
+      if (name !== '') {
+        students.push(name); // 把名字加進清單
+        saveToMemory();      // 存進記憶體
+        nameInput.value = '';// 清空輸入框
+        renderManageList();  // 重新顯示名單
+      }
+    }
+
+    // 6. 刪除學生
+    function deleteStudent(index) {
+      if (confirm("確定要刪除這位學生嗎？")) {
+        students.splice(index, 1); // 刪除該名學生
+        saveToMemory();
+        renderManageList();
+      }
+    }
+
+    // 7. 修改學生
+    function editStudent(index) {
+      let newName = prompt("請輸入修改後的名字：", students[index]);
+      if (newName !== null && newName.trim() !== '') {
+        students[index] = newName.trim();
+        saveToMemory();
+        renderManageList();
+      }
+    }
+
+    // 8. 把名單存進手機瀏覽器的記憶體
+    function saveToMemory() {
+      localStorage.setItem('jess_students', JSON.stringify(students));
+    }
+
+    // 9. 儲存點名 (目前先維持跳出提示)
+    function saveAttendance() {
+      alert("太棒了！今日點名已經暫時紀錄。");
+      showPage('main-menu');
+    }
+
+    // 10. 鐘點費計算
     function calculateFee() {
-      let tuitionString = prompt("請輸入學生的單堂學費（例如：1000）：");
-      let tuition = Number(tuitionString);
+      let tuition = Number(prompt("請輸入學生的單堂學費（例如：1000）："));
       if (tuition > 0) {
-        let teacherPay = tuition * 0.7;
-        let studioIncome = tuition * 0.3;
-        alert("✅ 結算完成！\n\n給授課老師：" + teacherPay + " 元\n工作室營收：" + studioIncome + " 元");
-      } else {
-        alert("請輸入正確的數字喔！");
+        alert("✅ 結算完成！\n\n給授課老師：" + (tuition * 0.7) + " 元\n工作室營收：" + (tuition * 0.3) + " 元");
       }
     }
   </script>
