@@ -16,18 +16,22 @@
     
     .card { background-color: white; padding: 15px; margin: 10px auto; width: 90%; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: left; }
     
-    /* 點名與名單的文字設計 */
     .student-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #333; }
     .student-detail { font-size: 13px; color: #666; margin-bottom: 12px; }
     
     .status-options { display: flex; justify-content: space-between; }
     .status-options label { font-size: 16px; padding: 5px; }
 
-    /* 新增學生表單專用設計 */
     .form-group { margin-bottom: 15px; text-align: left; }
     .form-group label { display: block; font-size: 14px; margin-bottom: 5px; font-weight: bold; }
-    .form-control { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box; } /* box-sizing 避免欄位突出去 */
-    .radio-group { display: flex; gap: 15px; margin-top: 5px; }
+    /* 讓輸入框和下拉選單風格一致 */
+    .form-control, .form-select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box; background-color: white;} 
+    
+    /* 樂器選項排版 */
+    .radio-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; align-items: center; }
+    
+    /* 時間下拉選單並排 */
+    .time-select-group { display: flex; gap: 10px; }
   </style>
 </head>
 <body>
@@ -49,11 +53,10 @@
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 第三頁：學生名單管理 (包含新增表單與清單) -->
+  <!-- 第三頁：學生名單管理 -->
   <div id="manage-page" style="display: none;">
     <h2 style="font-weight: 300;">⚙️ 學生名單管理</h2>
     
-    <!-- 新增學生的詳細表單卡片 -->
     <div class="card" style="background-color: #F4F6F3; border: 1px solid #8C9C8A;">
       <h3 style="margin-top:0; font-size: 16px;">➕ 新增學生資料</h3>
       
@@ -65,14 +68,31 @@
       <div class="form-group">
         <label>學習樂器</label>
         <div class="radio-group">
-          <label><input type="radio" name="add-instrument" value="鋼琴" checked> 鋼琴</label>
-          <label><input type="radio" name="add-instrument" value="小提琴"> 小提琴</label>
+          <!-- 點擊不同選項時，觸發 checkInstrument() 來決定要不要顯示其他輸入框 -->
+          <label><input type="radio" name="add-instrument" value="鋼琴" onclick="checkInstrument()" checked> 鋼琴</label>
+          <label><input type="radio" name="add-instrument" value="小提琴" onclick="checkInstrument()"> 小提琴</label>
+          <label><input type="radio" name="add-instrument" value="其他" onclick="checkInstrument()"> 其他</label>
+          <!-- 隱藏的輸入框，只有選「其他」時才會顯示 -->
+          <input type="text" id="other-instrument" class="form-control" style="display: none; width: auto; flex-grow: 1; padding: 5px;" placeholder="請輸入樂器">
         </div>
       </div>
       
       <div class="form-group">
         <label>上課時間</label>
-        <input type="text" id="add-time" class="form-control" placeholder="例如：週三 19:00">
+        <div class="time-select-group">
+          <select id="add-day" class="form-select">
+            <option value="" disabled selected>選擇星期</option>
+            <option value="週一">週一</option>
+            <option value="週二">週二</option>
+            <option value="週三">週三</option>
+            <option value="週四">週四</option>
+            <option value="週五">週五</option>
+            <option value="週六">週六</option>
+            <option value="週日">週日</option>
+          </select>
+          <!-- 為了方便，使用 html5 內建的 time 輸入器，在手機上會跳出很棒的滾輪選時鐘 -->
+          <input type="time" id="add-time" class="form-control">
+        </div>
       </div>
 
       <div class="form-group">
@@ -88,17 +108,13 @@
       <button class="button" style="width:100%; margin:0;" onclick="addStudent()">確認新增</button>
     </div>
 
-    <!-- 這裡會列出所有學生 -->
     <div id="manage-list"></div>
-
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
   <script>
-    // 1. 讀取名單。現在資料格式變成了「物件」(Object)，包含詳細資訊。
     let students = JSON.parse(localStorage.getItem('jess_students_v2')) || [];
 
-    // 2. 切換畫面
     function showPage(pageId) {
       document.getElementById('main-menu').style.display = 'none';
       document.getElementById('attendance-page').style.display = 'none';
@@ -110,7 +126,6 @@
       document.getElementById(pageId).style.display = 'block';
     }
 
-    // 3. 畫出點名總表 (顯示姓名、樂器與上課時間)
     function renderAttendanceList() {
       let listHTML = '';
       if(students.length === 0) listHTML = '<p>目前還沒有學生資料喔！請先去管理名單新增。</p>';
@@ -131,7 +146,6 @@
       document.getElementById('attendance-list').innerHTML = listHTML;
     }
 
-    // 4. 畫出管理名單 (顯示所有詳細資訊)
     function renderManageList() {
       let listHTML = '';
       for (let i = 0; i < students.length; i++) {
@@ -152,26 +166,54 @@
       document.getElementById('manage-list').innerHTML = listHTML;
     }
 
-    // 5. 新增學生 (把表單資料打包起來存進去)
+    // 檢查樂器選項，如果選了「其他」，就顯示文字輸入框
+    function checkInstrument() {
+      let radios = document.getElementsByName('add-instrument');
+      let otherInput = document.getElementById('other-instrument');
+      for(let i=0; i<radios.length; i++) {
+        if(radios[i].checked && radios[i].value === '其他') {
+          otherInput.style.display = 'block';
+          otherInput.focus(); // 自動游標跳進去準備打字
+        } else if (radios[i].checked && radios[i].value !== '其他') {
+          otherInput.style.display = 'none';
+        }
+      }
+    }
+
     function addStudent() {
       let name = document.getElementById('add-name').value.trim();
-      let time = document.getElementById('add-time').value.trim();
       let fee = document.getElementById('add-fee').value.trim();
       let phone = document.getElementById('add-phone').value.trim();
       
-      // 找出哪一個樂器選項被勾選了
+      // 組合星期與時間
+      let day = document.getElementById('add-day').value;
+      let timeVal = document.getElementById('add-time').value;
+      let timeString = '';
+      if(day && timeVal) {
+        timeString = day + ' ' + timeVal;
+      } else {
+        timeString = '未設定完整時間';
+      }
+      
+      // 處理樂器：如果是「其他」，就抓取文字框裡輸入的內容
       let instrumentRadios = document.getElementsByName('add-instrument');
       let instrument = '';
       for(let i=0; i<instrumentRadios.length; i++){
-        if(instrumentRadios[i].checked) instrument = instrumentRadios[i].value;
+        if(instrumentRadios[i].checked) {
+          if(instrumentRadios[i].value === '其他') {
+            instrument = document.getElementById('other-instrument').value.trim();
+            if(instrument === '') instrument = '未指定樂器';
+          } else {
+            instrument = instrumentRadios[i].value;
+          }
+        }
       }
 
       if (name !== '') {
-        // 建立一個詳細的「學生資料夾(物件)」
         let newStudent = {
           name: name,
           instrument: instrument,
-          time: time,
+          time: timeString,
           fee: fee,
           phone: phone
         };
@@ -179,11 +221,17 @@
         students.push(newStudent);
         saveToMemory();
         
-        // 清空輸入框準備下次輸入
+        // 清空表單
         document.getElementById('add-name').value = '';
-        document.getElementById('add-time').value = '';
         document.getElementById('add-fee').value = '';
         document.getElementById('add-phone').value = '';
+        document.getElementById('add-day').selectedIndex = 0; // 下拉選單歸位
+        document.getElementById('add-time').value = '';
+        
+        // 樂器勾選回到鋼琴，隱藏其他輸入框
+        document.getElementsByName('add-instrument')[0].checked = true;
+        document.getElementById('other-instrument').style.display = 'none';
+        document.getElementById('other-instrument').value = '';
         
         renderManageList();
         alert('新增成功！');
@@ -192,7 +240,6 @@
       }
     }
 
-    // 6. 刪除學生
     function deleteStudent(index) {
       if (confirm("確定要刪除這位學生的資料嗎？")) {
         students.splice(index, 1);
@@ -201,7 +248,6 @@
       }
     }
 
-    // 7. 把名單存進手機記憶體 (為了不跟舊資料打架，我改了名稱為 v2)
     function saveToMemory() {
       localStorage.setItem('jess_students_v2', JSON.stringify(students));
     }
