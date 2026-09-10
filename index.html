@@ -61,7 +61,8 @@
   </div>
 
   <div id="attendance-page" style="display: none;">
-    <h2 style="font-weight: 300;">📝 今日點名總表</h2>
+    <!-- 標題加入 ID，讓程式碼可以自動替換裡面的文字 -->
+    <h2 id="attendance-title" style="font-weight: 300;">📝 今日點名總表</h2>
     <div id="attendance-list"></div>
     <button class="button" onclick="saveAttendance()">✅ 儲存今日點名</button>
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
@@ -82,7 +83,6 @@
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 修改為單純計算學費總額 -->
   <div id="salary-page" style="display: none;">
     <h2 style="font-weight: 300;">💰 上課費用統計</h2>
     <div style="width: 90%; margin: 0 auto;">
@@ -97,12 +97,7 @@
 
   <script>
     let students = JSON.parse(localStorage.getItem('jess_students_v3')) || [];
-    
-    // 將財務資料簡化為只記錄總額
-    let financeData = JSON.parse(localStorage.getItem('jess_finance_v2')) || {
-      totalRevenue: 0
-    };
-    
+    let financeData = JSON.parse(localStorage.getItem('jess_finance_v2')) || { totalRevenue: 0 };
     let calendar; 
 
     function showPage(pageId) {
@@ -156,14 +151,33 @@
       return days[index] || '';
     }
 
+    // 【修改核心邏輯】只顯示今天的學生
     function renderAttendanceList() {
       let listHTML = '';
-      if(students.length === 0) listHTML = '<p>目前還沒有學生資料喔！請先去管理名單新增。</p>';
+      let todayIndex = new Date().getDay().toString(); // 取得今天星期幾 (0~6)
+      let countToday = 0;
+      
+      // 動態更新標題
+      document.getElementById('attendance-title').innerText = '📝 今日 (' + getDayName(todayIndex) + ') 點名總表';
+
       for (let i = 0; i < students.length; i++) {
         let s = students[i];
-        let displayTime = (s.dayIndex !== "") ? getDayName(s.dayIndex) + ' ' + s.timeVal : '未設定完整時間';
-        listHTML += `<div class="card"><div class="student-title">${s.name} (${s.instrument})</div><div class="student-detail">🕒 ${displayTime} | 💰 學費: ${s.fee}元</div><div class="status-options"><label><input type="radio" name="student_${i}" value="出席"> 出席</label><label><input type="radio" name="student_${i}" value="延期"> 延期</label><label><input type="radio" name="student_${i}" value="補課"> 補課</label></div></div>`;
+        
+        // 只有「學生的上課星期」等於「今天星期幾」，才會畫出他的點名卡片
+        if (s.dayIndex === todayIndex) {
+          countToday++;
+          let displayTime = getDayName(s.dayIndex) + ' ' + s.timeVal;
+          listHTML += `<div class="card"><div class="student-title">${s.name} (${s.instrument})</div><div class="student-detail">🕒 ${displayTime} | 💰 學費: ${s.fee}元</div><div class="status-options"><label><input type="radio" name="student_${i}" value="出席"> 出席</label><label><input type="radio" name="student_${i}" value="延期"> 延期</label><label><input type="radio" name="student_${i}" value="補課"> 補課</label></div></div>`;
+        }
       }
+
+      if (students.length === 0) {
+        listHTML = '<p>目前還沒有學生資料喔！請先去管理名單新增。</p>';
+      } else if (countToday === 0) {
+        // 如果今天剛好沒人上課
+        listHTML = `<p style="padding: 20px;">太棒了！今天 (${getDayName(todayIndex)}) 沒有排課的學生，好好休息吧！</p>`;
+      }
+
       document.getElementById('attendance-list').innerHTML = listHTML;
     }
 
@@ -227,18 +241,17 @@
     }
     
     function saveToMemory() { localStorage.setItem('jess_students_v3', JSON.stringify(students)); }
-    
-    function saveFinanceToMemory() {
-      localStorage.setItem('jess_finance_v2', JSON.stringify(financeData));
-    }
+    function saveFinanceToMemory() { localStorage.setItem('jess_finance_v2', JSON.stringify(financeData)); }
 
-    // 修改邏輯，單純加總學費
     function saveAttendance() {
       let addedRevenue = 0;
       let countAttended = 0;
 
       for (let i = 0; i < students.length; i++) {
+        // 抓取畫面上存在的點名選項
         let radios = document.getElementsByName('student_' + i);
+        if(radios.length === 0) continue; // 今天的名單上沒有這個人，就直接跳過不計算
+
         let status = '';
         for(let j=0; j<radios.length; j++) {
           if(radios[j].checked) { status = radios[j].value; }
