@@ -61,8 +61,9 @@
   </div>
 
   <div id="attendance-page" style="display: none;">
-    <!-- 標題加入 ID，讓程式碼可以自動替換裡面的文字 -->
-    <h2 id="attendance-title" style="font-weight: 300;">📝 今日點名總表</h2>
+    <h2 id="attendance-title" style="font-weight: 300; font-size: 20px;">📝 今日點名總表</h2>
+    <!-- 我加了一個小標題來顯示日期 -->
+    <p id="attendance-date" style="margin-top: -10px; margin-bottom: 20px;"></p>
     <div id="attendance-list"></div>
     <button class="button" onclick="saveAttendance()">✅ 儲存今日點名</button>
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
@@ -151,19 +152,24 @@
       return days[index] || '';
     }
 
-    // 【修改核心邏輯】只顯示今天的學生
+    // 更新點名頁面標題，加入完整日期
     function renderAttendanceList() {
       let listHTML = '';
-      let todayIndex = new Date().getDay().toString(); // 取得今天星期幾 (0~6)
+      
+      // 抓取今天的所有時間資訊
+      let now = new Date();
+      let year = now.getFullYear();
+      let month = now.getMonth() + 1; // getMonth() 範圍是 0-11，所以要加 1
+      let date = now.getDate();
+      let todayIndex = now.getDay().toString(); 
+      
       let countToday = 0;
       
-      // 動態更新標題
-      document.getElementById('attendance-title').innerText = '📝 今日 (' + getDayName(todayIndex) + ') 點名總表';
+      // 動態更新日期小標題
+      document.getElementById('attendance-date').innerText = year + '年' + month + '月' + date + '日 (' + getDayName(todayIndex) + ')';
 
       for (let i = 0; i < students.length; i++) {
         let s = students[i];
-        
-        // 只有「學生的上課星期」等於「今天星期幾」，才會畫出他的點名卡片
         if (s.dayIndex === todayIndex) {
           countToday++;
           let displayTime = getDayName(s.dayIndex) + ' ' + s.timeVal;
@@ -174,8 +180,7 @@
       if (students.length === 0) {
         listHTML = '<p>目前還沒有學生資料喔！請先去管理名單新增。</p>';
       } else if (countToday === 0) {
-        // 如果今天剛好沒人上課
-        listHTML = `<p style="padding: 20px;">太棒了！今天 (${getDayName(todayIndex)}) 沒有排課的學生，好好休息吧！</p>`;
+        listHTML = `<p style="padding: 20px;">太棒了！今天沒有排課的學生，好好休息吧！</p>`;
       }
 
       document.getElementById('attendance-list').innerHTML = listHTML;
@@ -248,9 +253,8 @@
       let countAttended = 0;
 
       for (let i = 0; i < students.length; i++) {
-        // 抓取畫面上存在的點名選項
         let radios = document.getElementsByName('student_' + i);
-        if(radios.length === 0) continue; // 今天的名單上沒有這個人，就直接跳過不計算
+        if(radios.length === 0) continue;
 
         let status = '';
         for(let j=0; j<radios.length; j++) {
