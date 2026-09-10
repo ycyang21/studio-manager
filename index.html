@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Jess Music Studio 管理系統</title>
   
-  <!-- 這是解決月曆塌陷的關鍵：載入最新版的 FullCalendar 月曆套件 -->
   <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
   
   <style>
@@ -30,10 +29,16 @@
     .radio-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; align-items: center; }
     .time-select-group { display: flex; gap: 10px; }
 
-    /* 讓月曆在手機上更美觀的微調設計 */
     #calendar { margin-top: 15px; font-size: 14px; background-color: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .fc-toolbar-title { font-size: 18px !important; color: #4A4A4A; }
     .fc-button { background-color: #8C9C8A !important; border: none !important; }
+    
+    /* 讓月曆上的事件看起來像漂亮的標籤 */
+    .fc-event { border: none !important; padding: 2px 4px; border-radius: 4px; font-size: 12px; }
+    /* 鋼琴用預設綠色，小提琴用稍微不同的顏色，其他樂器用另一個顏色區分 */
+    .event-piano { background-color: #8C9C8A !important; }
+    .event-violin { background-color: #B5A886 !important; }
+    .event-other { background-color: #A39193 !important; }
   </style>
 </head>
 <body>
@@ -51,7 +56,6 @@
   <!-- 第二頁：月曆畫面 -->
   <div id="calendar-page" style="display: none;">
     <h2 style="font-weight: 300;">📅 月曆課表總覽</h2>
-    <!-- 這裡就是長出月曆的地方 -->
     <div id="calendar"></div>
     <button class="button btn-secondary" style="margin-top: 20px;" onclick="showPage('main-menu')">返回主選單</button>
   </div>
@@ -86,10 +90,11 @@
       <div class="form-group">
         <label>上課時間</label>
         <div class="time-select-group">
+          <!-- 這裡我把 value 改成了英文的數字，方便系統轉換成月曆懂的格式 (週日是0，週一是1) -->
           <select id="add-day" class="form-select">
             <option value="" disabled selected>選擇星期</option>
-            <option value="週一">週一</option><option value="週二">週二</option><option value="週三">週三</option>
-            <option value="週四">週四</option><option value="週五">週五</option><option value="週六">週六</option><option value="週日">週日</option>
+            <option value="1">週一</option><option value="2">週二</option><option value="3">週三</option>
+            <option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="0">週日</option>
           </select>
           <input type="time" id="add-time" class="form-control">
         </div>
@@ -110,8 +115,8 @@
   </div>
 
   <script>
-    let students = JSON.parse(localStorage.getItem('jess_students_v2')) || [];
-    let calendar; // 準備一個變數來裝月曆
+    let students = JSON.parse(localStorage.getItem('jess_students_v3')) || [];
+    let calendar; 
 
     function showPage(pageId) {
       document.getElementById('main-menu').style.display = 'none';
@@ -122,35 +127,65 @@
       if(pageId === 'attendance-page') renderAttendanceList();
       if(pageId === 'manage-page') renderManageList();
       
-      // 當切換到月曆頁面時，啟動月曆功能
       if(pageId === 'calendar-page') {
         document.getElementById(pageId).style.display = 'block';
-        if (!calendar) { // 確保月曆只被渲染一次
-          let calendarEl = document.getElementById('calendar');
-          calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            locale: 'zh-tw', // 設定為繁體中文
-            headerToolbar: {
-              left: 'prev,next',
-              center: 'title',
-              right: 'today'
-            },
-            height: 'auto' // 讓高度自動適應手機螢幕
-          });
-          calendar.render();
+        if (calendar) {
+          calendar.destroy(); // 每次打開月曆前，先把舊的清掉
         }
+        
+        // 核心魔法：把學生名單轉換成月曆事件
+        let eventsArray = generateCalendarEvents();
+
+        let calendarEl = document.getElementById('calendar');
+        calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: 'dayGridMonth',
+          locale: 'zh-tw',
+          headerToolbar: { left: 'prev,next', center: 'title', right: 'today' },
+          height: 'auto',
+          events: eventsArray // 把轉換好的事件塞進月曆
+        });
+        calendar.render();
       } else {
         document.getElementById(pageId).style.display = 'block';
       }
     }
 
-    // --- 以下是你原本已經完成的功能，原封不動保留 ---
+    // 這個函數負責把每位學生的資料，變成月曆上每週重複的事件
+    function generateCalendarEvents() {
+      let events = [];
+      for (let i = 0; i < students.length; i++) {
+        let s = students[i];
+        if (s.dayIndex !== "") { // 確保有設定星期幾
+          
+          // 決定顯示顏色
+          let eventClass = 'event-other';
+          if(s.instrument === '鋼琴') eventClass = 'event-piano';
+          if(s.instrument === '小提琴') eventClass = 'event-violin';
+
+          events.push({
+            title: s.name + ' (' + s.instrument + ')', // 月曆上顯示的字
+            startTime: s.timeVal + ':00',              // 幾點開始
+            daysOfWeek: [ parseInt(s.dayIndex) ],      // 星期幾重複 (0是週日, 1是週一)
+            className: eventClass                      // 套用顏色標籤
+          });
+        }
+      }
+      return events;
+    }
+
+    // 為了顯示中文字的輔助功能
+    function getDayName(index) {
+      const days = {'0':'週日', '1':'週一', '2':'週二', '3':'週三', '4':'週四', '5':'週五', '6':'週六'};
+      return days[index] || '';
+    }
+
     function renderAttendanceList() {
       let listHTML = '';
       if(students.length === 0) listHTML = '<p>目前還沒有學生資料喔！請先去管理名單新增。</p>';
       for (let i = 0; i < students.length; i++) {
         let s = students[i];
-        listHTML += `<div class="card"><div class="student-title">${s.name} (${s.instrument})</div><div class="student-detail">🕒 ${s.time || '未設定時間'}</div><div class="status-options"><label><input type="radio" name="student_${i}" value="出席"> 出席</label><label><input type="radio" name="student_${i}" value="延期"> 延期</label><label><input type="radio" name="student_${i}" value="補課"> 補課</label></div></div>`;
+        let displayTime = (s.dayIndex !== "") ? getDayName(s.dayIndex) + ' ' + s.timeVal : '未設定完整時間';
+        listHTML += `<div class="card"><div class="student-title">${s.name} (${s.instrument})</div><div class="student-detail">🕒 ${displayTime}</div><div class="status-options"><label><input type="radio" name="student_${i}" value="出席"> 出席</label><label><input type="radio" name="student_${i}" value="延期"> 延期</label><label><input type="radio" name="student_${i}" value="補課"> 補課</label></div></div>`;
       }
       document.getElementById('attendance-list').innerHTML = listHTML;
     }
@@ -159,7 +194,8 @@
       let listHTML = '';
       for (let i = 0; i < students.length; i++) {
         let s = students[i];
-        listHTML += `<div class="card" style="display: flex; justify-content: space-between; align-items: center;"><div><div class="student-title" style="font-size: 16px;">${s.name} (${s.instrument})</div><div class="student-detail" style="margin-bottom:0;">🕒 ${s.time} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div></div><div><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
+        let displayTime = (s.dayIndex !== "") ? getDayName(s.dayIndex) + ' ' + s.timeVal : '未設定完整時間';
+        listHTML += `<div class="card" style="display: flex; justify-content: space-between; align-items: center;"><div><div class="student-title" style="font-size: 16px;">${s.name} (${s.instrument})</div><div class="student-detail" style="margin-bottom:0;">🕒 ${displayTime} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div></div><div><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
       }
       document.getElementById('manage-list').innerHTML = listHTML;
     }
@@ -180,9 +216,8 @@
       let name = document.getElementById('add-name').value.trim();
       let fee = document.getElementById('add-fee').value.trim();
       let phone = document.getElementById('add-phone').value.trim();
-      let day = document.getElementById('add-day').value;
+      let dayIndex = document.getElementById('add-day').value;
       let timeVal = document.getElementById('add-time').value;
-      let timeString = (day && timeVal) ? day + ' ' + timeVal : '未設定完整時間';
       
       let instrumentRadios = document.getElementsByName('add-instrument');
       let instrument = '';
@@ -193,7 +228,8 @@
       }
 
       if (name !== '') {
-        students.push({ name: name, instrument: instrument, time: timeString, fee: fee, phone: phone });
+        // 這次我們把星期幾的「代碼」(dayIndex) 和時間(timeVal)分開存，這樣月曆才看得懂
+        students.push({ name: name, instrument: instrument, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone });
         saveToMemory();
         document.getElementById('add-name').value = ''; document.getElementById('add-fee').value = ''; document.getElementById('add-phone').value = ''; document.getElementById('add-day').selectedIndex = 0; document.getElementById('add-time').value = '';
         document.getElementsByName('add-instrument')[0].checked = true; document.getElementById('other-instrument').style.display = 'none'; document.getElementById('other-instrument').value = '';
@@ -202,9 +238,10 @@
     }
 
     function deleteStudent(index) {
-      if (confirm("確定要刪除這位學生的資料嗎？")) { students.splice(index, 1); saveToMemory(); renderManageList(); }
+      if (confirm("確定要刪除這位學生的資料嗎？(月曆上的課表也會一併刪除喔)")) { students.splice(index, 1); saveToMemory(); renderManageList(); }
     }
-    function saveToMemory() { localStorage.setItem('jess_students_v2', JSON.stringify(students)); }
+    // 為了配合新的時間儲存格式，我把記憶體名稱改成 v3，所以名單會清空一次
+    function saveToMemory() { localStorage.setItem('jess_students_v3', JSON.stringify(students)); }
     function saveAttendance() { alert("太棒了！今日點名已經暫時紀錄。"); showPage('main-menu'); }
     function calculateFee() {
       let tuition = Number(prompt("請輸入學生的單堂學費（例如：1000）："));
