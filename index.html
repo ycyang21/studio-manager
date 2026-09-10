@@ -33,9 +33,8 @@
     .fc-toolbar-title { font-size: 18px !important; color: #4A4A4A; }
     .fc-button { background-color: #8C9C8A !important; border: none !important; }
     
-    /* 讓月曆上的事件看起來像漂亮的標籤 */
-    .fc-event { border: none !important; padding: 2px 4px; border-radius: 4px; font-size: 12px; }
-    /* 鋼琴用預設綠色，小提琴用稍微不同的顏色，其他樂器用另一個顏色區分 */
+    /* 月曆標籤美化 */
+    .fc-event { border: none !important; padding: 3px 5px; border-radius: 4px; font-size: 12px; margin-bottom: 2px; }
     .event-piano { background-color: #8C9C8A !important; }
     .event-violin { background-color: #B5A886 !important; }
     .event-other { background-color: #A39193 !important; }
@@ -43,7 +42,6 @@
 </head>
 <body>
   
-  <!-- 第一頁：主選單 -->
   <div id="main-menu">
     <h1>Jess Music Studio</h1>
     <p>工作室管理系統</p>
@@ -53,14 +51,12 @@
     <button class="button" onclick="calculateFee()">💰 師資鐘點費計算</button>
   </div>
 
-  <!-- 第二頁：月曆畫面 -->
   <div id="calendar-page" style="display: none;">
     <h2 style="font-weight: 300;">📅 月曆課表總覽</h2>
     <div id="calendar"></div>
     <button class="button btn-secondary" style="margin-top: 20px;" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 第三頁：點名畫面 -->
   <div id="attendance-page" style="display: none;">
     <h2 style="font-weight: 300;">📝 今日點名總表</h2>
     <div id="attendance-list"></div>
@@ -68,7 +64,6 @@
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 第四頁：學生名單管理 -->
   <div id="manage-page" style="display: none;">
     <h2 style="font-weight: 300;">⚙️ 學生名單管理</h2>
     
@@ -88,9 +83,8 @@
         </div>
       </div>
       <div class="form-group">
-        <label>上課時間</label>
+        <label>上課時間 (必填)</label>
         <div class="time-select-group">
-          <!-- 這裡我把 value 改成了英文的數字，方便系統轉換成月曆懂的格式 (週日是0，週一是1) -->
           <select id="add-day" class="form-select">
             <option value="" disabled selected>選擇星期</option>
             <option value="1">週一</option><option value="2">週二</option><option value="3">週三</option>
@@ -127,53 +121,63 @@
       if(pageId === 'attendance-page') renderAttendanceList();
       if(pageId === 'manage-page') renderManageList();
       
+      // 先把畫面顯示出來
+      document.getElementById(pageId).style.display = 'block';
+      
       if(pageId === 'calendar-page') {
-        document.getElementById(pageId).style.display = 'block';
-        if (calendar) {
-          calendar.destroy(); // 每次打開月曆前，先把舊的清掉
-        }
-        
-        // 核心魔法：把學生名單轉換成月曆事件
         let eventsArray = generateCalendarEvents();
 
-        let calendarEl = document.getElementById('calendar');
-        calendar = new FullCalendar.Calendar(calendarEl, {
-          initialView: 'dayGridMonth',
-          locale: 'zh-tw',
-          headerToolbar: { left: 'prev,next', center: 'title', right: 'today' },
-          height: 'auto',
-          events: eventsArray // 把轉換好的事件塞進月曆
-        });
-        calendar.render();
-      } else {
-        document.getElementById(pageId).style.display = 'block';
+        if (!calendar) {
+          // 如果是第一次打開，就初始化月曆
+          let calendarEl = document.getElementById('calendar');
+          calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'zh-tw',
+            headerToolbar: { left: 'prev,next', center: 'title', right: 'today' },
+            height: 'auto',
+            displayEventTime: true,
+            events: eventsArray
+          });
+          calendar.render();
+        } else {
+          // 如果已經打開過，就清空舊資料，塞入新資料
+          calendar.removeAllEvents();
+          calendar.addEventSource(eventsArray);
+        }
+        
+        // 【最關鍵的修復】延遲 0.1 秒，讓瀏覽器確定畫面展開後，重新計算月曆大小
+        setTimeout(() => { calendar.updateSize(); }, 100);
       }
     }
 
-    // 這個函數負責把每位學生的資料，變成月曆上每週重複的事件
     function generateCalendarEvents() {
       let events = [];
       for (let i = 0; i < students.length; i++) {
         let s = students[i];
-        if (s.dayIndex !== "") { // 確保有設定星期幾
-          
-          // 決定顯示顏色
+        if (s.dayIndex !== "") { 
           let eventClass = 'event-other';
           if(s.instrument === '鋼琴') eventClass = 'event-piano';
           if(s.instrument === '小提琴') eventClass = 'event-violin';
 
-          events.push({
-            title: s.name + ' (' + s.instrument + ')', // 月曆上顯示的字
-            startTime: s.timeVal + ':00',              // 幾點開始
-            daysOfWeek: [ parseInt(s.dayIndex) ],      // 星期幾重複 (0是週日, 1是週一)
-            className: eventClass                      // 套用顏色標籤
-          });
+          let eventObj = {
+            title: s.name + ' (' + s.instrument + ')',
+            daysOfWeek: [ parseInt(s.dayIndex) ],
+            className: eventClass
+          };
+
+          // 判斷有沒有填寫具體時間
+          if (s.timeVal !== "") {
+            eventObj.startTime = s.timeVal; // 例如 "18:00"
+          } else {
+            eventObj.allDay = true;
+          }
+
+          events.push(eventObj);
         }
       }
       return events;
     }
 
-    // 為了顯示中文字的輔助功能
     function getDayName(index) {
       const days = {'0':'週日', '1':'週一', '2':'週二', '3':'週三', '4':'週四', '5':'週五', '6':'週六'};
       return days[index] || '';
@@ -227,20 +231,36 @@
         }
       }
 
-      if (name !== '') {
-        // 這次我們把星期幾的「代碼」(dayIndex) 和時間(timeVal)分開存，這樣月曆才看得懂
-        students.push({ name: name, instrument: instrument, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone });
-        saveToMemory();
-        document.getElementById('add-name').value = ''; document.getElementById('add-fee').value = ''; document.getElementById('add-phone').value = ''; document.getElementById('add-day').selectedIndex = 0; document.getElementById('add-time').value = '';
-        document.getElementsByName('add-instrument')[0].checked = true; document.getElementById('other-instrument').style.display = 'none'; document.getElementById('other-instrument').value = '';
-        renderManageList(); alert('新增成功！');
-      } else { alert('學生姓名是一定要填寫的喔！'); }
+      if (name === '') {
+        alert('📝 學生姓名是一定要填寫的喔！');
+        return;
+      }
+      
+      if (dayIndex === '') {
+        alert('📅 請記得選擇「上課星期」，這樣系統才能幫你自動排進月曆喔！');
+        return;
+      }
+
+      students.push({ name: name, instrument: instrument, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone });
+      saveToMemory();
+      
+      document.getElementById('add-name').value = ''; 
+      document.getElementById('add-fee').value = ''; 
+      document.getElementById('add-phone').value = ''; 
+      document.getElementById('add-day').value = ''; 
+      document.getElementById('add-time').value = '';
+      document.getElementsByName('add-instrument')[0].checked = true; 
+      document.getElementById('other-instrument').style.display = 'none'; 
+      document.getElementById('other-instrument').value = '';
+      
+      renderManageList(); 
+      alert('✅ 新增成功！請去月曆看看，課表已經自動排好囉！');
     }
 
     function deleteStudent(index) {
       if (confirm("確定要刪除這位學生的資料嗎？(月曆上的課表也會一併刪除喔)")) { students.splice(index, 1); saveToMemory(); renderManageList(); }
     }
-    // 為了配合新的時間儲存格式，我把記憶體名稱改成 v3，所以名單會清空一次
+    
     function saveToMemory() { localStorage.setItem('jess_students_v3', JSON.stringify(students)); }
     function saveAttendance() { alert("太棒了！今日點名已經暫時紀錄。"); showPage('main-menu'); }
     function calculateFee() {
