@@ -18,20 +18,24 @@
     
     .student-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #333; }
     .student-detail { font-size: 13px; color: #666; margin-bottom: 12px; }
-    
     .status-options { display: flex; justify-content: space-between; }
     .status-options label { font-size: 16px; padding: 5px; }
 
     .form-group { margin-bottom: 15px; text-align: left; }
     .form-group label { display: block; font-size: 14px; margin-bottom: 5px; font-weight: bold; }
-    /* 讓輸入框和下拉選單風格一致 */
     .form-control, .form-select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box; background-color: white;} 
-    
-    /* 樂器選項排版 */
     .radio-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; align-items: center; }
-    
-    /* 時間下拉選單並排 */
     .time-select-group { display: flex; gap: 10px; }
+
+    /* 行事曆(課表)專屬設計 */
+    .schedule-day { background-color: white; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; text-align: left;}
+    .schedule-header { background-color: #E2E8DF; color: #333; padding: 10px 15px; font-weight: bold; font-size: 16px; }
+    .schedule-list { padding: 10px 15px; }
+    .schedule-item { border-bottom: 1px solid #eee; padding: 8px 0; display: flex; justify-content: space-between; }
+    .schedule-item:last-child { border-bottom: none; }
+    .time-slot { color: #8C9C8A; font-weight: bold; width: 60px; }
+    .student-info { flex-grow: 1; padding-left: 10px; }
+    .empty-msg { color: #aaa; font-size: 14px; font-style: italic; text-align: center; padding: 10px; }
   </style>
 </head>
 <body>
@@ -40,7 +44,8 @@
   <div id="main-menu">
     <h1>Jess Music Studio</h1>
     <p>工作室管理系統</p>
-    <button class="button" onclick="showPage('attendance-page')">📝 學生點名與排課</button>
+    <button class="button" onclick="showPage('attendance-page')">📝 學生點名</button>
+    <button class="button" onclick="showPage('schedule-page')">📅 每週課表總覽</button>
     <button class="button" onclick="showPage('manage-page')">⚙️ 學生名單管理</button>
     <button class="button" onclick="calculateFee()">💰 師資鐘點費計算</button>
   </div>
@@ -68,11 +73,9 @@
       <div class="form-group">
         <label>學習樂器</label>
         <div class="radio-group">
-          <!-- 點擊不同選項時，觸發 checkInstrument() 來決定要不要顯示其他輸入框 -->
           <label><input type="radio" name="add-instrument" value="鋼琴" onclick="checkInstrument()" checked> 鋼琴</label>
           <label><input type="radio" name="add-instrument" value="小提琴" onclick="checkInstrument()"> 小提琴</label>
           <label><input type="radio" name="add-instrument" value="其他" onclick="checkInstrument()"> 其他</label>
-          <!-- 隱藏的輸入框，只有選「其他」時才會顯示 -->
           <input type="text" id="other-instrument" class="form-control" style="display: none; width: auto; flex-grow: 1; padding: 5px;" placeholder="請輸入樂器">
         </div>
       </div>
@@ -80,6 +83,7 @@
       <div class="form-group">
         <label>上課時間</label>
         <div class="time-select-group">
+          <!-- 把 id 改為 add-day，方便我們後續抓取 -->
           <select id="add-day" class="form-select">
             <option value="" disabled selected>選擇星期</option>
             <option value="週一">週一</option>
@@ -90,7 +94,6 @@
             <option value="週六">週六</option>
             <option value="週日">週日</option>
           </select>
-          <!-- 為了方便，使用 html5 內建的 time 輸入器，在手機上會跳出很棒的滾輪選時鐘 -->
           <input type="time" id="add-time" class="form-control">
         </div>
       </div>
@@ -112,6 +115,14 @@
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
+  <!-- 第四頁：每週課表行事曆 -->
+  <div id="schedule-page" style="display: none;">
+    <h2 style="font-weight: 300;">📅 每週課表總覽</h2>
+    <!-- 這裡會由 JavaScript 自動生成一到日的課表 -->
+    <div id="schedule-container" style="width: 90%; margin: 0 auto;"></div>
+    <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
+  </div>
+
   <script>
     let students = JSON.parse(localStorage.getItem('jess_students_v2')) || [];
 
@@ -119,9 +130,11 @@
       document.getElementById('main-menu').style.display = 'none';
       document.getElementById('attendance-page').style.display = 'none';
       document.getElementById('manage-page').style.display = 'none';
+      document.getElementById('schedule-page').style.display = 'none';
       
       if(pageId === 'attendance-page') renderAttendanceList();
       if(pageId === 'manage-page') renderManageList();
+      if(pageId === 'schedule-page') renderSchedule(); // 切換到課表時，重新繪製課表
       
       document.getElementById(pageId).style.display = 'block';
     }
@@ -132,10 +145,13 @@
       
       for (let i = 0; i < students.length; i++) {
         let s = students[i];
+        // 為了讓點名表好看，我們把 day 和 time 組合起來顯示
+        let displayTime = (s.day && s.timeVal) ? `${s.day} ${s.timeVal}` : '未設定時間';
+
         listHTML += `
           <div class="card">
             <div class="student-title">${s.name} (${s.instrument})</div>
-            <div class="student-detail">🕒 ${s.time || '未設定時間'}</div>
+            <div class="student-detail">🕒 ${displayTime}</div>
             <div class="status-options">
               <label><input type="radio" name="student_${i}" value="出席"> 出席</label>
               <label><input type="radio" name="student_${i}" value="延期"> 延期</label>
@@ -150,12 +166,13 @@
       let listHTML = '';
       for (let i = 0; i < students.length; i++) {
         let s = students[i];
+        let displayTime = (s.day && s.timeVal) ? `${s.day} ${s.timeVal}` : '未設定時間';
         listHTML += `
           <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
             <div>
               <div class="student-title" style="font-size: 16px;">${s.name} (${s.instrument})</div>
               <div class="student-detail" style="margin-bottom:0;">
-                🕒 ${s.time} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}
+                🕒 ${displayTime} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}
               </div>
             </div>
             <div>
@@ -166,14 +183,64 @@
       document.getElementById('manage-list').innerHTML = listHTML;
     }
 
-    // 檢查樂器選項，如果選了「其他」，就顯示文字輸入框
+    // 畫出每週課表的核心功能
+    function renderSchedule() {
+      const daysOfWeek = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
+      let scheduleHTML = '';
+
+      // 針對每一天（週一到週日）跑一次迴圈
+      for (let i = 0; i < daysOfWeek.length; i++) {
+        let currentDay = daysOfWeek[i];
+        
+        // 找出今天有課的所有學生，並按照時間排序
+        let studentsToday = students.filter(s => s.day === currentDay);
+        
+        // 將今天的學生依照時間先後排序 (例如 18:00 會排在 19:00 前面)
+        studentsToday.sort((a, b) => {
+          if (a.timeVal < b.timeVal) return -1;
+          if (a.timeVal > b.timeVal) return 1;
+          return 0;
+        });
+
+        // 開始畫這一天的區塊
+        scheduleHTML += `
+          <div class="schedule-day">
+            <div class="schedule-header">${currentDay}</div>
+            <div class="schedule-list">
+        `;
+
+        if (studentsToday.length === 0) {
+          scheduleHTML += `<div class="empty-msg">這天目前沒有安排課程</div>`;
+        } else {
+          // 把今天有課的學生一個個列出來
+          for (let j = 0; j < studentsToday.length; j++) {
+            let s = studentsToday[j];
+            scheduleHTML += `
+              <div class="schedule-item">
+                <div class="time-slot">${s.timeVal}</div>
+                <div class="student-info">${s.name} <span style="color:#888; font-size:12px;">(${s.instrument})</span></div>
+              </div>
+            `;
+          }
+        }
+        
+        // 結束這一天的區塊
+        scheduleHTML += `
+            </div>
+          </div>
+        `;
+      }
+
+      document.getElementById('schedule-container').innerHTML = scheduleHTML;
+    }
+
     function checkInstrument() {
       let radios = document.getElementsByName('add-instrument');
       let otherInput = document.getElementById('other-instrument');
       for(let i=0; i<radios.length; i++) {
         if(radios[i].checked && radios[i].value === '其他') {
           otherInput.style.display = 'block';
-          otherInput.focus(); // 自動游標跳進去準備打字
+          otherInput.focus();
         } else if (radios[i].checked && radios[i].value !== '其他') {
           otherInput.style.display = 'none';
         }
@@ -184,18 +251,9 @@
       let name = document.getElementById('add-name').value.trim();
       let fee = document.getElementById('add-fee').value.trim();
       let phone = document.getElementById('add-phone').value.trim();
-      
-      // 組合星期與時間
       let day = document.getElementById('add-day').value;
       let timeVal = document.getElementById('add-time').value;
-      let timeString = '';
-      if(day && timeVal) {
-        timeString = day + ' ' + timeVal;
-      } else {
-        timeString = '未設定完整時間';
-      }
       
-      // 處理樂器：如果是「其他」，就抓取文字框裡輸入的內容
       let instrumentRadios = document.getElementsByName('add-instrument');
       let instrument = '';
       for(let i=0; i<instrumentRadios.length; i++){
@@ -209,11 +267,12 @@
         }
       }
 
-      if (name !== '') {
+      if (name !== '' && day !== '' && timeVal !== '') {
         let newStudent = {
           name: name,
           instrument: instrument,
-          time: timeString,
+          day: day,          // 為了課表排序，把星期和時間分開存
+          timeVal: timeVal,  
           fee: fee,
           phone: phone
         };
@@ -221,27 +280,24 @@
         students.push(newStudent);
         saveToMemory();
         
-        // 清空表單
         document.getElementById('add-name').value = '';
         document.getElementById('add-fee').value = '';
         document.getElementById('add-phone').value = '';
-        document.getElementById('add-day').selectedIndex = 0; // 下拉選單歸位
+        document.getElementById('add-day').selectedIndex = 0; 
         document.getElementById('add-time').value = '';
-        
-        // 樂器勾選回到鋼琴，隱藏其他輸入框
         document.getElementsByName('add-instrument')[0].checked = true;
         document.getElementById('other-instrument').style.display = 'none';
         document.getElementById('other-instrument').value = '';
         
         renderManageList();
-        alert('新增成功！');
+        alert('新增成功！已自動加入課表。');
       } else {
-        alert('學生姓名是一定要填寫的喔！');
+        alert('學生姓名、星期、上課時間是一定要填寫的喔！');
       }
     }
 
     function deleteStudent(index) {
-      if (confirm("確定要刪除這位學生的資料嗎？")) {
+      if (confirm("確定要刪除這位學生的資料嗎？這也會將他從課表上移除喔。")) {
         students.splice(index, 1);
         saveToMemory();
         renderManageList();
