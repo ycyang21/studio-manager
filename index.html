@@ -16,6 +16,7 @@
     .btn-secondary { background-color: #D3D3D3; color: #333; }
     .small-btn { padding: 5px 10px; border: none; border-radius: 5px; font-size: 14px; margin-left: 5px; }
     .del-btn { background-color: #FFB6B9; color: white; }
+    .reset-btn { background-color: #E2E8DF; color: #333; width: 100%; padding: 10px; margin-top: 15px; border-radius: 5px; border: none; }
     
     .card { background-color: white; padding: 15px; margin: 10px auto; width: 90%; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: left; }
     
@@ -32,12 +33,14 @@
     #calendar { margin-top: 15px; font-size: 14px; background-color: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .fc-toolbar-title { font-size: 18px !important; color: #4A4A4A; }
     .fc-button { background-color: #8C9C8A !important; border: none !important; }
-    
-    /* 月曆標籤美化 */
     .fc-event { border: none !important; padding: 3px 5px; border-radius: 4px; font-size: 12px; margin-bottom: 2px; }
     .event-piano { background-color: #8C9C8A !important; }
     .event-violin { background-color: #B5A886 !important; }
     .event-other { background-color: #A39193 !important; }
+    
+    .money-box { background-color: white; border-left: 5px solid #8C9C8A; padding: 15px; margin-bottom: 15px; border-radius: 0 8px 8px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: left;}
+    .money-title { font-size: 14px; color: #666; margin-bottom: 5px; }
+    .money-amount { font-size: 28px; font-weight: bold; color: #333; }
   </style>
 </head>
 <body>
@@ -48,7 +51,7 @@
     <button class="button" onclick="showPage('calendar-page')">📅 月曆課表總覽</button>
     <button class="button" onclick="showPage('attendance-page')">📝 學生點名與排課</button>
     <button class="button" onclick="showPage('manage-page')">⚙️ 學生名單管理</button>
-    <button class="button" onclick="calculateFee()">💰 師資鐘點費計算</button>
+    <button class="button" onclick="showPage('salary-page')">💰 本月上課費用統計</button>
   </div>
 
   <div id="calendar-page" style="display: none;">
@@ -66,50 +69,40 @@
 
   <div id="manage-page" style="display: none;">
     <h2 style="font-weight: 300;">⚙️ 學生名單管理</h2>
-    
     <div class="card" style="background-color: #F4F6F3; border: 1px solid #8C9C8A;">
       <h3 style="margin-top:0; font-size: 16px;">➕ 新增學生資料</h3>
-      <div class="form-group">
-        <label>學生姓名</label>
-        <input type="text" id="add-name" class="form-control" placeholder="例如：王大花">
-      </div>
-      <div class="form-group">
-        <label>學習樂器</label>
-        <div class="radio-group">
-          <label><input type="radio" name="add-instrument" value="鋼琴" onclick="checkInstrument()" checked> 鋼琴</label>
-          <label><input type="radio" name="add-instrument" value="小提琴" onclick="checkInstrument()"> 小提琴</label>
-          <label><input type="radio" name="add-instrument" value="其他" onclick="checkInstrument()"> 其他</label>
-          <input type="text" id="other-instrument" class="form-control" style="display: none; width: auto; flex-grow: 1; padding: 5px;" placeholder="請輸入樂器">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>上課時間 (必填)</label>
-        <div class="time-select-group">
-          <select id="add-day" class="form-select">
-            <option value="" disabled selected>選擇星期</option>
-            <option value="1">週一</option><option value="2">週二</option><option value="3">週三</option>
-            <option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="0">週日</option>
-          </select>
-          <input type="time" id="add-time" class="form-control">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>單堂學費 (元)</label>
-        <input type="number" id="add-fee" class="form-control" placeholder="例如：1000">
-      </div>
-      <div class="form-group">
-        <label>聯絡電話</label>
-        <input type="tel" id="add-phone" class="form-control" placeholder="家長或學生電話">
-      </div>
+      <div class="form-group"><label>學生姓名</label><input type="text" id="add-name" class="form-control" placeholder="例如：王大花"></div>
+      <div class="form-group"><label>學習樂器</label><div class="radio-group"><label><input type="radio" name="add-instrument" value="鋼琴" onclick="checkInstrument()" checked> 鋼琴</label><label><input type="radio" name="add-instrument" value="小提琴" onclick="checkInstrument()"> 小提琴</label><label><input type="radio" name="add-instrument" value="其他" onclick="checkInstrument()"> 其他</label><input type="text" id="other-instrument" class="form-control" style="display: none; width: auto; flex-grow: 1; padding: 5px;" placeholder="請輸入樂器"></div></div>
+      <div class="form-group"><label>上課時間 (必填)</label><div class="time-select-group"><select id="add-day" class="form-select"><option value="" disabled selected>選擇星期</option><option value="1">週一</option><option value="2">週二</option><option value="3">週三</option><option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="0">週日</option></select><input type="time" id="add-time" class="form-control"></div></div>
+      <div class="form-group"><label>單堂學費 (元)</label><input type="number" id="add-fee" class="form-control" placeholder="例如：1000"></div>
+      <div class="form-group"><label>聯絡電話</label><input type="tel" id="add-phone" class="form-control" placeholder="家長或學生電話"></div>
       <button class="button" style="width:100%; margin:0;" onclick="addStudent()">確認新增</button>
     </div>
-
     <div id="manage-list"></div>
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
+  <!-- 修改為單純計算學費總額 -->
+  <div id="salary-page" style="display: none;">
+    <h2 style="font-weight: 300;">💰 上課費用統計</h2>
+    <div style="width: 90%; margin: 0 auto;">
+      <div class="money-box">
+        <div class="money-title">本月已上課學費總額</div>
+        <div class="money-amount" id="total-revenue">NT$ 0</div>
+      </div>
+      <button class="reset-btn" onclick="resetSalary()">⚠️ 結算並清空歸零 (下個月重新計算)</button>
+    </div>
+    <button class="button btn-secondary" style="margin-top: 20px;" onclick="showPage('main-menu')">返回主選單</button>
+  </div>
+
   <script>
     let students = JSON.parse(localStorage.getItem('jess_students_v3')) || [];
+    
+    // 將財務資料簡化為只記錄總額
+    let financeData = JSON.parse(localStorage.getItem('jess_finance_v2')) || {
+      totalRevenue: 0
+    };
+    
     let calendar; 
 
     function showPage(pageId) {
@@ -117,35 +110,27 @@
       document.getElementById('calendar-page').style.display = 'none';
       document.getElementById('attendance-page').style.display = 'none';
       document.getElementById('manage-page').style.display = 'none';
+      document.getElementById('salary-page').style.display = 'none';
       
       if(pageId === 'attendance-page') renderAttendanceList();
       if(pageId === 'manage-page') renderManageList();
+      if(pageId === 'salary-page') renderSalaryPage(); 
       
-      // 先把畫面顯示出來
       document.getElementById(pageId).style.display = 'block';
       
       if(pageId === 'calendar-page') {
         let eventsArray = generateCalendarEvents();
-
         if (!calendar) {
-          // 如果是第一次打開，就初始化月曆
           let calendarEl = document.getElementById('calendar');
           calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            locale: 'zh-tw',
+            initialView: 'dayGridMonth', locale: 'zh-tw',
             headerToolbar: { left: 'prev,next', center: 'title', right: 'today' },
-            height: 'auto',
-            displayEventTime: true,
-            events: eventsArray
+            height: 'auto', displayEventTime: true, events: eventsArray
           });
           calendar.render();
         } else {
-          // 如果已經打開過，就清空舊資料，塞入新資料
-          calendar.removeAllEvents();
-          calendar.addEventSource(eventsArray);
+          calendar.removeAllEvents(); calendar.addEventSource(eventsArray);
         }
-        
-        // 【最關鍵的修復】延遲 0.1 秒，讓瀏覽器確定畫面展開後，重新計算月曆大小
         setTimeout(() => { calendar.updateSize(); }, 100);
       }
     }
@@ -158,20 +143,8 @@
           let eventClass = 'event-other';
           if(s.instrument === '鋼琴') eventClass = 'event-piano';
           if(s.instrument === '小提琴') eventClass = 'event-violin';
-
-          let eventObj = {
-            title: s.name + ' (' + s.instrument + ')',
-            daysOfWeek: [ parseInt(s.dayIndex) ],
-            className: eventClass
-          };
-
-          // 判斷有沒有填寫具體時間
-          if (s.timeVal !== "") {
-            eventObj.startTime = s.timeVal; // 例如 "18:00"
-          } else {
-            eventObj.allDay = true;
-          }
-
+          let eventObj = { title: s.name + ' (' + s.instrument + ')', daysOfWeek: [ parseInt(s.dayIndex) ], className: eventClass };
+          if (s.timeVal !== "") { eventObj.startTime = s.timeVal; } else { eventObj.allDay = true; }
           events.push(eventObj);
         }
       }
@@ -189,7 +162,7 @@
       for (let i = 0; i < students.length; i++) {
         let s = students[i];
         let displayTime = (s.dayIndex !== "") ? getDayName(s.dayIndex) + ' ' + s.timeVal : '未設定完整時間';
-        listHTML += `<div class="card"><div class="student-title">${s.name} (${s.instrument})</div><div class="student-detail">🕒 ${displayTime}</div><div class="status-options"><label><input type="radio" name="student_${i}" value="出席"> 出席</label><label><input type="radio" name="student_${i}" value="延期"> 延期</label><label><input type="radio" name="student_${i}" value="補課"> 補課</label></div></div>`;
+        listHTML += `<div class="card"><div class="student-title">${s.name} (${s.instrument})</div><div class="student-detail">🕒 ${displayTime} | 💰 學費: ${s.fee}元</div><div class="status-options"><label><input type="radio" name="student_${i}" value="出席"> 出席</label><label><input type="radio" name="student_${i}" value="延期"> 延期</label><label><input type="radio" name="student_${i}" value="補課"> 補課</label></div></div>`;
       }
       document.getElementById('attendance-list').innerHTML = listHTML;
     }
@@ -202,6 +175,10 @@
         listHTML += `<div class="card" style="display: flex; justify-content: space-between; align-items: center;"><div><div class="student-title" style="font-size: 16px;">${s.name} (${s.instrument})</div><div class="student-detail" style="margin-bottom:0;">🕒 ${displayTime} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div></div><div><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
       }
       document.getElementById('manage-list').innerHTML = listHTML;
+    }
+
+    function renderSalaryPage() {
+      document.getElementById('total-revenue').innerText = 'NT$ ' + financeData.totalRevenue.toLocaleString();
     }
 
     function checkInstrument() {
@@ -231,41 +208,71 @@
         }
       }
 
-      if (name === '') {
-        alert('📝 學生姓名是一定要填寫的喔！');
-        return;
-      }
-      
-      if (dayIndex === '') {
-        alert('📅 請記得選擇「上課星期」，這樣系統才能幫你自動排進月曆喔！');
-        return;
-      }
+      if (name === '') { alert('📝 學生姓名是一定要填寫的喔！'); return; }
+      if (dayIndex === '') { alert('📅 請記得選擇「上課星期」，這樣系統才能幫你自動排進月曆喔！'); return; }
+      if (fee === '' || fee <= 0) { alert('💰 請記得填寫「單堂學費」，這樣點名時系統才能幫你算費用喔！'); return; }
 
       students.push({ name: name, instrument: instrument, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone });
       saveToMemory();
       
-      document.getElementById('add-name').value = ''; 
-      document.getElementById('add-fee').value = ''; 
-      document.getElementById('add-phone').value = ''; 
-      document.getElementById('add-day').value = ''; 
-      document.getElementById('add-time').value = '';
-      document.getElementsByName('add-instrument')[0].checked = true; 
-      document.getElementById('other-instrument').style.display = 'none'; 
-      document.getElementById('other-instrument').value = '';
+      document.getElementById('add-name').value = ''; document.getElementById('add-fee').value = ''; document.getElementById('add-phone').value = ''; document.getElementById('add-day').value = ''; document.getElementById('add-time').value = '';
+      document.getElementsByName('add-instrument')[0].checked = true; document.getElementById('other-instrument').style.display = 'none'; document.getElementById('other-instrument').value = '';
       
       renderManageList(); 
       alert('✅ 新增成功！請去月曆看看，課表已經自動排好囉！');
     }
 
     function deleteStudent(index) {
-      if (confirm("確定要刪除這位學生的資料嗎？(月曆上的課表也會一併刪除喔)")) { students.splice(index, 1); saveToMemory(); renderManageList(); }
+      if (confirm("確定要刪除這位學生的資料嗎？")) { students.splice(index, 1); saveToMemory(); renderManageList(); }
     }
     
     function saveToMemory() { localStorage.setItem('jess_students_v3', JSON.stringify(students)); }
-    function saveAttendance() { alert("太棒了！今日點名已經暫時紀錄。"); showPage('main-menu'); }
-    function calculateFee() {
-      let tuition = Number(prompt("請輸入學生的單堂學費（例如：1000）："));
-      if (tuition > 0) alert("✅ 結算完成！\n\n給授課老師：" + (tuition * 0.7) + " 元\n工作室營收：" + (tuition * 0.3) + " 元");
+    
+    function saveFinanceToMemory() {
+      localStorage.setItem('jess_finance_v2', JSON.stringify(financeData));
+    }
+
+    // 修改邏輯，單純加總學費
+    function saveAttendance() {
+      let addedRevenue = 0;
+      let countAttended = 0;
+
+      for (let i = 0; i < students.length; i++) {
+        let radios = document.getElementsByName('student_' + i);
+        let status = '';
+        for(let j=0; j<radios.length; j++) {
+          if(radios[j].checked) { status = radios[j].value; }
+        }
+
+        if (status === '出席') {
+          let fee = Number(students[i].fee);
+          if (fee > 0) {
+            addedRevenue += fee;
+            countAttended++;
+          }
+        }
+        
+        for(let j=0; j<radios.length; j++) { radios[j].checked = false; }
+      }
+
+      if (countAttended > 0) {
+        financeData.totalRevenue += addedRevenue;
+        saveFinanceToMemory();
+        alert("✅ 今日點名儲存完畢！\n\n共 " + countAttended + " 位學生出席。\n本次產生上課費用總計：$" + addedRevenue);
+      } else {
+        alert("目前沒有勾選任何出席的學生喔！");
+      }
+      
+      showPage('main-menu');
+    }
+
+    function resetSalary() {
+      if(confirm("⚠️ 確定要將本月的費用總額「歸零」嗎？\n通常在月底結算後才執行此動作喔！")) {
+        financeData.totalRevenue = 0;
+        saveFinanceToMemory();
+        renderSalaryPage();
+        alert("資料已歸零，下個月重新開始計算！");
+      }
     }
   </script>
 </body>
