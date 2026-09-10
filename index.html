@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Jess Music Studio 管理系統</title>
+  
+  <!-- 🌟 這裡是關鍵！匯入 FullCalendar 的「月曆大腦」 -->
+  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
+  
   <style>
     body { font-family: "Helvetica Neue", Arial, sans-serif; text-align: center; padding: 15px; background-color: #FDFBF7; color: #4A4A4A; }
     h1 { font-weight: 300; letter-spacing: 2px; margin-bottom: 5px; }
@@ -27,30 +31,30 @@
     .radio-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; align-items: center; }
     .time-select-group { display: flex; gap: 10px; }
 
-    /* 行事曆(課表)專屬設計 */
-    .schedule-day { background-color: white; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; text-align: left;}
-    .schedule-header { background-color: #E2E8DF; color: #333; padding: 10px 15px; font-weight: bold; font-size: 16px; }
-    .schedule-list { padding: 10px 15px; }
-    .schedule-item { border-bottom: 1px solid #eee; padding: 8px 0; display: flex; justify-content: space-between; }
-    .schedule-item:last-child { border-bottom: none; }
-    .time-slot { color: #8C9C8A; font-weight: bold; width: 60px; }
-    .student-info { flex-grow: 1; padding-left: 10px; }
-    .empty-msg { color: #aaa; font-size: 14px; font-style: italic; text-align: center; padding: 10px; }
+    /* 月曆專屬設定，讓它在手機上好看 */
+    #calendar {
+      background-color: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      font-size: 12px; /* 把月曆字體稍微縮小以適應手機 */
+    }
+    /* 讓月曆的藍色按鈕變成我們工作室的文青色 */
+    .fc .fc-button-primary { background-color: #8C9C8A !important; border-color: #8C9C8A !important; }
+    .fc .fc-button-primary:not(:disabled):active, .fc .fc-button-primary:not(:disabled).fc-button-active { background-color: #728070 !important; border-color: #728070 !important; }
   </style>
 </head>
 <body>
   
-  <!-- 第一頁：主選單 -->
   <div id="main-menu">
     <h1>Jess Music Studio</h1>
     <p>工作室管理系統</p>
     <button class="button" onclick="showPage('attendance-page')">📝 學生點名</button>
-    <button class="button" onclick="showPage('schedule-page')">📅 每週課表總覽</button>
+    <button class="button" onclick="showPage('schedule-page')">📅 月曆課表總覽</button>
     <button class="button" onclick="showPage('manage-page')">⚙️ 學生名單管理</button>
     <button class="button" onclick="calculateFee()">💰 師資鐘點費計算</button>
   </div>
 
-  <!-- 第二頁：點名畫面 -->
   <div id="attendance-page" style="display: none;">
     <h2 style="font-weight: 300;">📝 今日點名總表</h2>
     <div id="attendance-list"></div>
@@ -58,18 +62,15 @@
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 第三頁：學生名單管理 -->
   <div id="manage-page" style="display: none;">
     <h2 style="font-weight: 300;">⚙️ 學生名單管理</h2>
     
     <div class="card" style="background-color: #F4F6F3; border: 1px solid #8C9C8A;">
       <h3 style="margin-top:0; font-size: 16px;">➕ 新增學生資料</h3>
-      
       <div class="form-group">
         <label>學生姓名</label>
         <input type="text" id="add-name" class="form-control" placeholder="例如：王大花">
       </div>
-      
       <div class="form-group">
         <label>學習樂器</label>
         <div class="radio-group">
@@ -79,11 +80,9 @@
           <input type="text" id="other-instrument" class="form-control" style="display: none; width: auto; flex-grow: 1; padding: 5px;" placeholder="請輸入樂器">
         </div>
       </div>
-      
       <div class="form-group">
         <label>上課時間</label>
         <div class="time-select-group">
-          <!-- 把 id 改為 add-day，方便我們後續抓取 -->
           <select id="add-day" class="form-select">
             <option value="" disabled selected>選擇星期</option>
             <option value="週一">週一</option>
@@ -97,17 +96,14 @@
           <input type="time" id="add-time" class="form-control">
         </div>
       </div>
-
       <div class="form-group">
         <label>單堂學費 (元)</label>
         <input type="number" id="add-fee" class="form-control" placeholder="例如：1000">
       </div>
-
       <div class="form-group">
         <label>聯絡電話</label>
         <input type="tel" id="add-phone" class="form-control" placeholder="家長或學生電話">
       </div>
-
       <button class="button" style="width:100%; margin:0;" onclick="addStudent()">確認新增</button>
     </div>
 
@@ -115,16 +111,17 @@
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 第四頁：每週課表行事曆 -->
+  <!-- 第四頁：互動式月曆畫面 -->
   <div id="schedule-page" style="display: none;">
-    <h2 style="font-weight: 300;">📅 每週課表總覽</h2>
-    <!-- 這裡會由 JavaScript 自動生成一到日的課表 -->
-    <div id="schedule-container" style="width: 90%; margin: 0 auto;"></div>
+    <h2 style="font-weight: 300;">📅 月曆課表總覽</h2>
+    <!-- 這裡預留給月曆套件生成畫面 -->
+    <div id="calendar" style="width: 95%; margin: 0 auto;"></div>
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
   <script>
     let students = JSON.parse(localStorage.getItem('jess_students_v2')) || [];
+    let calendar; // 宣告一個變數來裝月曆
 
     function showPage(pageId) {
       document.getElementById('main-menu').style.display = 'none';
@@ -134,7 +131,7 @@
       
       if(pageId === 'attendance-page') renderAttendanceList();
       if(pageId === 'manage-page') renderManageList();
-      if(pageId === 'schedule-page') renderSchedule(); // 切換到課表時，重新繪製課表
+      if(pageId === 'schedule-page') renderCalendar(); // 切換到課表時，啟動月曆
       
       document.getElementById(pageId).style.display = 'block';
     }
@@ -145,9 +142,7 @@
       
       for (let i = 0; i < students.length; i++) {
         let s = students[i];
-        // 為了讓點名表好看，我們把 day 和 time 組合起來顯示
         let displayTime = (s.day && s.timeVal) ? `${s.day} ${s.timeVal}` : '未設定時間';
-
         listHTML += `
           <div class="card">
             <div class="student-title">${s.name} (${s.instrument})</div>
@@ -183,55 +178,51 @@
       document.getElementById('manage-list').innerHTML = listHTML;
     }
 
-    // 畫出每週課表的核心功能
-    function renderSchedule() {
-      const daysOfWeek = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
-      let scheduleHTML = '';
+    // 🌟 啟動並設定 FullCalendar 的核心功能
+    function renderCalendar() {
+      let calendarEl = document.getElementById('calendar');
 
-      // 針對每一天（週一到週日）跑一次迴圈
-      for (let i = 0; i < daysOfWeek.length; i++) {
-        let currentDay = daysOfWeek[i];
-        
-        // 找出今天有課的所有學生，並按照時間排序
-        let studentsToday = students.filter(s => s.day === currentDay);
-        
-        // 將今天的學生依照時間先後排序 (例如 18:00 會排在 19:00 前面)
-        studentsToday.sort((a, b) => {
-          if (a.timeVal < b.timeVal) return -1;
-          if (a.timeVal > b.timeVal) return 1;
-          return 0;
-        });
-
-        // 開始畫這一天的區塊
-        scheduleHTML += `
-          <div class="schedule-day">
-            <div class="schedule-header">${currentDay}</div>
-            <div class="schedule-list">
-        `;
-
-        if (studentsToday.length === 0) {
-          scheduleHTML += `<div class="empty-msg">這天目前沒有安排課程</div>`;
-        } else {
-          // 把今天有課的學生一個個列出來
-          for (let j = 0; j < studentsToday.length; j++) {
-            let s = studentsToday[j];
-            scheduleHTML += `
-              <div class="schedule-item">
-                <div class="time-slot">${s.timeVal}</div>
-                <div class="student-info">${s.name} <span style="color:#888; font-size:12px;">(${s.instrument})</span></div>
-              </div>
-            `;
-          }
+      // 1. 把中文星期轉成系統看得懂的數字 (0=週日, 1=週一)
+      const dayMap = { '週日': 0, '週一': 1, '週二': 2, '週三': 3, '週四': 4, '週五': 5, '週六': 6 };
+      
+      // 2. 把你的學生名單，轉換成月曆的「事件格式」
+      let calendarEvents = [];
+      for (let i = 0; i < students.length; i++) {
+        let s = students[i];
+        if (s.day && s.timeVal) {
+          calendarEvents.push({
+            // 標題顯示時間與名字，例如 "19:00 王大花"
+            title: s.timeVal + ' ' + s.name,
+            // 讓這個事件在每個禮拜的這一天自動重複出現 (完美達成你的需求！)
+            daysOfWeek: [dayMap[s.day]],
+            // 設定上課時間
+            startTime: s.timeVal,
+            // 統一用工作室的綠色
+            color: '#8C9C8A'
+          });
         }
-        
-        // 結束這一天的區塊
-        scheduleHTML += `
-            </div>
-          </div>
-        `;
       }
 
-      document.getElementById('schedule-container').innerHTML = scheduleHTML;
+      // 如果之前已經畫過月曆，先清掉，避免重複出現
+      if (calendar) {
+        calendar.destroy();
+      }
+
+      // 3. 正式把月曆畫出來
+      calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth', // 預設看整個月
+        locale: 'zh-tw', // 變成繁體中文
+        headerToolbar: {
+          left: 'prev,next', // 左右換月按鈕
+          center: 'title',   // 中間顯示年月
+          right: 'today'     // 右邊顯示「今天」
+        },
+        events: calendarEvents, // 把剛剛整理好的學生資料倒進去
+        height: 'auto', // 自動適應手機高度
+        displayEventTime: false // 因為標題已經有時間了，隱藏預設時間讓手機畫面更乾淨
+      });
+
+      calendar.render();
     }
 
     function checkInstrument() {
@@ -271,7 +262,7 @@
         let newStudent = {
           name: name,
           instrument: instrument,
-          day: day,          // 為了課表排序，把星期和時間分開存
+          day: day,          
           timeVal: timeVal,  
           fee: fee,
           phone: phone
@@ -297,7 +288,7 @@
     }
 
     function deleteStudent(index) {
-      if (confirm("確定要刪除這位學生的資料嗎？這也會將他從課表上移除喔。")) {
+      if (confirm("確定要刪除這位學生的資料嗎？這也會將他從月曆上完全移除喔。")) {
         students.splice(index, 1);
         saveToMemory();
         renderManageList();
