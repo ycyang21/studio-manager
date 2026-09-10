@@ -62,7 +62,6 @@
 
   <div id="attendance-page" style="display: none;">
     <h2 id="attendance-title" style="font-weight: 300; font-size: 20px;">📝 今日點名總表</h2>
-    <!-- 我加了一個小標題來顯示日期 -->
     <p id="attendance-date" style="margin-top: -10px; margin-bottom: 20px;"></p>
     <div id="attendance-list"></div>
     <button class="button" onclick="saveAttendance()">✅ 儲存今日點名</button>
@@ -101,6 +100,14 @@
     let financeData = JSON.parse(localStorage.getItem('jess_finance_v2')) || { totalRevenue: 0 };
     let calendar; 
 
+    // 小幫手：將日期轉換成 2026-09-11 這種標準格式，方便系統記憶
+    function formatDate(dateObj) {
+      let y = dateObj.getFullYear();
+      let m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      let d = String(dateObj.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + d;
+    }
+
     function showPage(pageId) {
       document.getElementById('main-menu').style.display = 'none';
       document.getElementById('calendar-page').style.display = 'none';
@@ -115,36 +122,56 @@
       document.getElementById(pageId).style.display = 'block';
       
       if(pageId === 'calendar-page') {
-        let eventsArray = generateCalendarEvents();
         if (!calendar) {
           let calendarEl = document.getElementById('calendar');
           calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth', locale: 'zh-tw',
             headerToolbar: { left: 'prev,next', center: 'title', right: 'today' },
-            height: 'auto', displayEventTime: true, events: eventsArray
+            height: 'auto', displayEventTime: true,
+            // 這次我們改用動態生成月曆的方式，這樣才能精準排除請假的那一天
+            events: function(info, successCallback, failureCallback) {
+              let events = [];
+              let d = new Date(info.start.valueOf()); // 抓取月曆上顯示的第一天
+              
+              // 一天一天往後檢查，直到月曆顯示的最後一天
+              while(d < info.end) {
+                let dayOfWeek = d.getDay().toString();
+                let dateStr = formatDate(d);
+
+                for (let i = 0; i < students.length; i++) {
+                  let s = students[i];
+                  // 如果這天是該學生的上課星期
+                  if (s.dayIndex === dayOfWeek) {
+                    
+                    // 【關鍵邏輯】檢查今天是不是被記錄為「延期 (取消)」的日子，如果是，就跳過不畫上去
+                    if (s.canceledDates && s.canceledDates.includes(dateStr)) {
+                      continue; 
+                    }
+
+                    let eventClass = 'event-other';
+                    if(s.instrument === '鋼琴') eventClass = 'event-piano';
+                    if(s.instrument === '小提琴') eventClass = 'event-violin';
+                    
+                    let eventObj = {
+                      title: s.name + ' (' + s.instrument + ')',
+                      className: eventClass,
+                      start: dateStr + (s.timeVal ? 'T' + s.timeVal : '')
+                    };
+                    if (!s.timeVal) eventObj.allDay = true;
+                    events.push(eventObj);
+                  }
+                }
+                d.setDate(d.getDate() + 1); // 檢查下一天
+              }
+              successCallback(events); // 把檢查完的事件交給月曆顯示
+            }
           });
           calendar.render();
         } else {
-          calendar.removeAllEvents(); calendar.addEventSource(eventsArray);
+          calendar.refetchEvents(); // 如果月曆已經開過了，就叫它重新檢查一次有沒有人請假
         }
         setTimeout(() => { calendar.updateSize(); }, 100);
       }
-    }
-
-    function generateCalendarEvents() {
-      let events = [];
-      for (let i = 0; i < students.length; i++) {
-        let s = students[i];
-        if (s.dayIndex !== "") { 
-          let eventClass = 'event-other';
-          if(s.instrument === '鋼琴') eventClass = 'event-piano';
-          if(s.instrument === '小提琴') eventClass = 'event-violin';
-          let eventObj = { title: s.name + ' (' + s.instrument + ')', daysOfWeek: [ parseInt(s.dayIndex) ], className: eventClass };
-          if (s.timeVal !== "") { eventObj.startTime = s.timeVal; } else { eventObj.allDay = true; }
-          events.push(eventObj);
-        }
-      }
-      return events;
     }
 
     function getDayName(index) {
@@ -152,20 +179,15 @@
       return days[index] || '';
     }
 
-    // 更新點名頁面標題，加入完整日期
     function renderAttendanceList() {
       let listHTML = '';
-      
-      // 抓取今天的所有時間資訊
       let now = new Date();
       let year = now.getFullYear();
-      let month = now.getMonth() + 1; // getMonth() 範圍是 0-11，所以要加 1
+      let month = now.getMonth() + 1; 
       let date = now.getDate();
       let todayIndex = now.getDay().toString(); 
-      
       let countToday = 0;
       
-      // 動態更新日期小標題
       document.getElementById('attendance-date').innerText = year + '年' + month + '月' + date + '日 (' + getDayName(todayIndex) + ')';
 
       for (let i = 0; i < students.length; i++) {
@@ -177,11 +199,8 @@
         }
       }
 
-      if (students.length === 0) {
-        listHTML = '<p>目前還沒有學生資料喔！請先去管理名單新增。</p>';
-      } else if (countToday === 0) {
-        listHTML = `<p style="padding: 20px;">太棒了！今天沒有排課的學生，好好休息吧！</p>`;
-      }
+      if (students.length === 0) { listHTML = '<p>目前還沒有學生資料喔！請先去管理名單新增。</p>'; } 
+      else if (countToday === 0) { listHTML = `<p style="padding: 20px;">太棒了！今天沒有排課的學生，好好休息吧！</p>`; }
 
       document.getElementById('attendance-list').innerHTML = listHTML;
     }
@@ -204,11 +223,8 @@
       let radios = document.getElementsByName('add-instrument');
       let otherInput = document.getElementById('other-instrument');
       for(let i=0; i<radios.length; i++) {
-        if(radios[i].checked && radios[i].value === '其他') {
-          otherInput.style.display = 'block'; otherInput.focus();
-        } else if (radios[i].checked && radios[i].value !== '其他') {
-          otherInput.style.display = 'none';
-        }
+        if(radios[i].checked && radios[i].value === '其他') { otherInput.style.display = 'block'; otherInput.focus(); } 
+        else if (radios[i].checked && radios[i].value !== '其他') { otherInput.style.display = 'none'; }
       }
     }
 
@@ -218,20 +234,18 @@
       let phone = document.getElementById('add-phone').value.trim();
       let dayIndex = document.getElementById('add-day').value;
       let timeVal = document.getElementById('add-time').value;
-      
       let instrumentRadios = document.getElementsByName('add-instrument');
       let instrument = '';
       for(let i=0; i<instrumentRadios.length; i++){
-        if(instrumentRadios[i].checked) {
-          instrument = (instrumentRadios[i].value === '其他') ? (document.getElementById('other-instrument').value.trim() || '未指定樂器') : instrumentRadios[i].value;
-        }
+        if(instrumentRadios[i].checked) { instrument = (instrumentRadios[i].value === '其他') ? (document.getElementById('other-instrument').value.trim() || '未指定樂器') : instrumentRadios[i].value; }
       }
 
       if (name === '') { alert('📝 學生姓名是一定要填寫的喔！'); return; }
       if (dayIndex === '') { alert('📅 請記得選擇「上課星期」，這樣系統才能幫你自動排進月曆喔！'); return; }
       if (fee === '' || fee <= 0) { alert('💰 請記得填寫「單堂學費」，這樣點名時系統才能幫你算費用喔！'); return; }
 
-      students.push({ name: name, instrument: instrument, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone });
+      // 新增學生時，給他一個準備記錄請假的「空白記事本」(canceledDates)
+      students.push({ name: name, instrument: instrument, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, canceledDates: [] });
       saveToMemory();
       
       document.getElementById('add-name').value = ''; document.getElementById('add-fee').value = ''; document.getElementById('add-phone').value = ''; document.getElementById('add-day').value = ''; document.getElementById('add-time').value = '';
@@ -251,6 +265,8 @@
     function saveAttendance() {
       let addedRevenue = 0;
       let countAttended = 0;
+      let countDelayed = 0;
+      let todayStr = formatDate(new Date()); // 抓取今天日期，準備紀錄延期
 
       for (let i = 0; i < students.length; i++) {
         let radios = document.getElementsByName('student_' + i);
@@ -261,34 +277,46 @@
           if(radios[j].checked) { status = radios[j].value; }
         }
 
+        // 確保每位學生的請假記事本存在
+        if (!students[i].canceledDates) { students[i].canceledDates = []; }
+
         if (status === '出席') {
           let fee = Number(students[i].fee);
-          if (fee > 0) {
-            addedRevenue += fee;
-            countAttended++;
+          if (fee > 0) { addedRevenue += fee; countAttended++; }
+          
+          // 如果他之前按錯按成延期，現在改為出席，就從請假名單中刪除
+          let idx = students[i].canceledDates.indexOf(todayStr);
+          if (idx !== -1) { students[i].canceledDates.splice(idx, 1); }
+          
+        } else if (status === '延期') {
+          // 將今天的日期寫進這位學生的請假記事本中
+          if (!students[i].canceledDates.includes(todayStr)) {
+            students[i].canceledDates.push(todayStr);
+            countDelayed++;
           }
         }
         
         for(let j=0; j<radios.length; j++) { radios[j].checked = false; }
       }
 
-      if (countAttended > 0) {
-        financeData.totalRevenue += addedRevenue;
-        saveFinanceToMemory();
-        alert("✅ 今日點名儲存完畢！\n\n共 " + countAttended + " 位學生出席。\n本次產生上課費用總計：$" + addedRevenue);
-      } else {
-        alert("目前沒有勾選任何出席的學生喔！");
-      }
+      // 如果有收入就存入帳本
+      if (countAttended > 0) { financeData.totalRevenue += addedRevenue; }
       
+      saveToMemory(); // 儲存請假紀錄
+      saveFinanceToMemory(); // 儲存收入紀錄
+
+      let msg = "✅ 今日點名儲存完畢！\n";
+      if(countAttended > 0) msg += "\n共 " + countAttended + " 位學生出席，產生費用：$" + addedRevenue;
+      if(countDelayed > 0) msg += "\n共 " + countDelayed + " 位學生延期，已從今日月曆中移除課表。";
+      if(countAttended === 0 && countDelayed === 0) msg = "目前沒有勾選任何狀態喔！";
+      
+      alert(msg);
       showPage('main-menu');
     }
 
     function resetSalary() {
       if(confirm("⚠️ 確定要將本月的費用總額「歸零」嗎？\n通常在月底結算後才執行此動作喔！")) {
-        financeData.totalRevenue = 0;
-        saveFinanceToMemory();
-        renderSalaryPage();
-        alert("資料已歸零，下個月重新開始計算！");
+        financeData.totalRevenue = 0; saveFinanceToMemory(); renderSalaryPage(); alert("資料已歸零，下個月重新開始計算！");
       }
     }
   </script>
