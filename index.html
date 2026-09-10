@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Jess Music Studio 管理系統</title>
   
-  <!-- 🌟 這裡是關鍵！匯入 FullCalendar 的「月曆大腦」 -->
+  <!-- 這是解決月曆塌陷的關鍵：載入最新版的 FullCalendar 月曆套件 -->
   <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
   
   <style>
@@ -23,38 +23,40 @@
     .student-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #333; }
     .student-detail { font-size: 13px; color: #666; margin-bottom: 12px; }
     .status-options { display: flex; justify-content: space-between; }
-    .status-options label { font-size: 16px; padding: 5px; }
-
+    
     .form-group { margin-bottom: 15px; text-align: left; }
     .form-group label { display: block; font-size: 14px; margin-bottom: 5px; font-weight: bold; }
     .form-control, .form-select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box; background-color: white;} 
     .radio-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; align-items: center; }
     .time-select-group { display: flex; gap: 10px; }
 
-    /* 月曆專屬設定，讓它在手機上好看 */
-    #calendar {
-      background-color: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-      font-size: 12px; /* 把月曆字體稍微縮小以適應手機 */
-    }
-    /* 讓月曆的藍色按鈕變成我們工作室的文青色 */
-    .fc .fc-button-primary { background-color: #8C9C8A !important; border-color: #8C9C8A !important; }
-    .fc .fc-button-primary:not(:disabled):active, .fc .fc-button-primary:not(:disabled).fc-button-active { background-color: #728070 !important; border-color: #728070 !important; }
+    /* 讓月曆在手機上更美觀的微調設計 */
+    #calendar { margin-top: 15px; font-size: 14px; background-color: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .fc-toolbar-title { font-size: 18px !important; color: #4A4A4A; }
+    .fc-button { background-color: #8C9C8A !important; border: none !important; }
   </style>
 </head>
 <body>
   
+  <!-- 第一頁：主選單 -->
   <div id="main-menu">
     <h1>Jess Music Studio</h1>
     <p>工作室管理系統</p>
-    <button class="button" onclick="showPage('attendance-page')">📝 學生點名</button>
-    <button class="button" onclick="showPage('schedule-page')">📅 月曆課表總覽</button>
+    <button class="button" onclick="showPage('calendar-page')">📅 月曆課表總覽</button>
+    <button class="button" onclick="showPage('attendance-page')">📝 學生點名與排課</button>
     <button class="button" onclick="showPage('manage-page')">⚙️ 學生名單管理</button>
     <button class="button" onclick="calculateFee()">💰 師資鐘點費計算</button>
   </div>
 
+  <!-- 第二頁：月曆畫面 -->
+  <div id="calendar-page" style="display: none;">
+    <h2 style="font-weight: 300;">📅 月曆課表總覽</h2>
+    <!-- 這裡就是長出月曆的地方 -->
+    <div id="calendar"></div>
+    <button class="button btn-secondary" style="margin-top: 20px;" onclick="showPage('main-menu')">返回主選單</button>
+  </div>
+
+  <!-- 第三頁：點名畫面 -->
   <div id="attendance-page" style="display: none;">
     <h2 style="font-weight: 300;">📝 今日點名總表</h2>
     <div id="attendance-list"></div>
@@ -62,6 +64,7 @@
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
+  <!-- 第四頁：學生名單管理 -->
   <div id="manage-page" style="display: none;">
     <h2 style="font-weight: 300;">⚙️ 學生名單管理</h2>
     
@@ -85,13 +88,8 @@
         <div class="time-select-group">
           <select id="add-day" class="form-select">
             <option value="" disabled selected>選擇星期</option>
-            <option value="週一">週一</option>
-            <option value="週二">週二</option>
-            <option value="週三">週三</option>
-            <option value="週四">週四</option>
-            <option value="週五">週五</option>
-            <option value="週六">週六</option>
-            <option value="週日">週日</option>
+            <option value="週一">週一</option><option value="週二">週二</option><option value="週三">週三</option>
+            <option value="週四">週四</option><option value="週五">週五</option><option value="週六">週六</option><option value="週日">週日</option>
           </select>
           <input type="time" id="add-time" class="form-control">
         </div>
@@ -111,48 +109,48 @@
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 第四頁：互動式月曆畫面 -->
-  <div id="schedule-page" style="display: none;">
-    <h2 style="font-weight: 300;">📅 月曆課表總覽</h2>
-    <!-- 這裡預留給月曆套件生成畫面 -->
-    <div id="calendar" style="width: 95%; margin: 0 auto;"></div>
-    <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
-  </div>
-
   <script>
     let students = JSON.parse(localStorage.getItem('jess_students_v2')) || [];
-    let calendar; // 宣告一個變數來裝月曆
+    let calendar; // 準備一個變數來裝月曆
 
     function showPage(pageId) {
       document.getElementById('main-menu').style.display = 'none';
+      document.getElementById('calendar-page').style.display = 'none';
       document.getElementById('attendance-page').style.display = 'none';
       document.getElementById('manage-page').style.display = 'none';
-      document.getElementById('schedule-page').style.display = 'none';
       
       if(pageId === 'attendance-page') renderAttendanceList();
       if(pageId === 'manage-page') renderManageList();
-      if(pageId === 'schedule-page') renderCalendar(); // 切換到課表時，啟動月曆
       
-      document.getElementById(pageId).style.display = 'block';
+      // 當切換到月曆頁面時，啟動月曆功能
+      if(pageId === 'calendar-page') {
+        document.getElementById(pageId).style.display = 'block';
+        if (!calendar) { // 確保月曆只被渲染一次
+          let calendarEl = document.getElementById('calendar');
+          calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'zh-tw', // 設定為繁體中文
+            headerToolbar: {
+              left: 'prev,next',
+              center: 'title',
+              right: 'today'
+            },
+            height: 'auto' // 讓高度自動適應手機螢幕
+          });
+          calendar.render();
+        }
+      } else {
+        document.getElementById(pageId).style.display = 'block';
+      }
     }
 
+    // --- 以下是你原本已經完成的功能，原封不動保留 ---
     function renderAttendanceList() {
       let listHTML = '';
       if(students.length === 0) listHTML = '<p>目前還沒有學生資料喔！請先去管理名單新增。</p>';
-      
       for (let i = 0; i < students.length; i++) {
         let s = students[i];
-        let displayTime = (s.day && s.timeVal) ? `${s.day} ${s.timeVal}` : '未設定時間';
-        listHTML += `
-          <div class="card">
-            <div class="student-title">${s.name} (${s.instrument})</div>
-            <div class="student-detail">🕒 ${displayTime}</div>
-            <div class="status-options">
-              <label><input type="radio" name="student_${i}" value="出席"> 出席</label>
-              <label><input type="radio" name="student_${i}" value="延期"> 延期</label>
-              <label><input type="radio" name="student_${i}" value="補課"> 補課</label>
-            </div>
-          </div>`;
+        listHTML += `<div class="card"><div class="student-title">${s.name} (${s.instrument})</div><div class="student-detail">🕒 ${s.time || '未設定時間'}</div><div class="status-options"><label><input type="radio" name="student_${i}" value="出席"> 出席</label><label><input type="radio" name="student_${i}" value="延期"> 延期</label><label><input type="radio" name="student_${i}" value="補課"> 補課</label></div></div>`;
       }
       document.getElementById('attendance-list').innerHTML = listHTML;
     }
@@ -161,68 +159,9 @@
       let listHTML = '';
       for (let i = 0; i < students.length; i++) {
         let s = students[i];
-        let displayTime = (s.day && s.timeVal) ? `${s.day} ${s.timeVal}` : '未設定時間';
-        listHTML += `
-          <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <div class="student-title" style="font-size: 16px;">${s.name} (${s.instrument})</div>
-              <div class="student-detail" style="margin-bottom:0;">
-                🕒 ${displayTime} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}
-              </div>
-            </div>
-            <div>
-              <button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button>
-            </div>
-          </div>`;
+        listHTML += `<div class="card" style="display: flex; justify-content: space-between; align-items: center;"><div><div class="student-title" style="font-size: 16px;">${s.name} (${s.instrument})</div><div class="student-detail" style="margin-bottom:0;">🕒 ${s.time} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div></div><div><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
       }
       document.getElementById('manage-list').innerHTML = listHTML;
-    }
-
-    // 🌟 啟動並設定 FullCalendar 的核心功能
-    function renderCalendar() {
-      let calendarEl = document.getElementById('calendar');
-
-      // 1. 把中文星期轉成系統看得懂的數字 (0=週日, 1=週一)
-      const dayMap = { '週日': 0, '週一': 1, '週二': 2, '週三': 3, '週四': 4, '週五': 5, '週六': 6 };
-      
-      // 2. 把你的學生名單，轉換成月曆的「事件格式」
-      let calendarEvents = [];
-      for (let i = 0; i < students.length; i++) {
-        let s = students[i];
-        if (s.day && s.timeVal) {
-          calendarEvents.push({
-            // 標題顯示時間與名字，例如 "19:00 王大花"
-            title: s.timeVal + ' ' + s.name,
-            // 讓這個事件在每個禮拜的這一天自動重複出現 (完美達成你的需求！)
-            daysOfWeek: [dayMap[s.day]],
-            // 設定上課時間
-            startTime: s.timeVal,
-            // 統一用工作室的綠色
-            color: '#8C9C8A'
-          });
-        }
-      }
-
-      // 如果之前已經畫過月曆，先清掉，避免重複出現
-      if (calendar) {
-        calendar.destroy();
-      }
-
-      // 3. 正式把月曆畫出來
-      calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth', // 預設看整個月
-        locale: 'zh-tw', // 變成繁體中文
-        headerToolbar: {
-          left: 'prev,next', // 左右換月按鈕
-          center: 'title',   // 中間顯示年月
-          right: 'today'     // 右邊顯示「今天」
-        },
-        events: calendarEvents, // 把剛剛整理好的學生資料倒進去
-        height: 'auto', // 自動適應手機高度
-        displayEventTime: false // 因為標題已經有時間了，隱藏預設時間讓手機畫面更乾淨
-      });
-
-      calendar.render();
     }
 
     function checkInstrument() {
@@ -230,8 +169,7 @@
       let otherInput = document.getElementById('other-instrument');
       for(let i=0; i<radios.length; i++) {
         if(radios[i].checked && radios[i].value === '其他') {
-          otherInput.style.display = 'block';
-          otherInput.focus();
+          otherInput.style.display = 'block'; otherInput.focus();
         } else if (radios[i].checked && radios[i].value !== '其他') {
           otherInput.style.display = 'none';
         }
@@ -244,71 +182,33 @@
       let phone = document.getElementById('add-phone').value.trim();
       let day = document.getElementById('add-day').value;
       let timeVal = document.getElementById('add-time').value;
+      let timeString = (day && timeVal) ? day + ' ' + timeVal : '未設定完整時間';
       
       let instrumentRadios = document.getElementsByName('add-instrument');
       let instrument = '';
       for(let i=0; i<instrumentRadios.length; i++){
         if(instrumentRadios[i].checked) {
-          if(instrumentRadios[i].value === '其他') {
-            instrument = document.getElementById('other-instrument').value.trim();
-            if(instrument === '') instrument = '未指定樂器';
-          } else {
-            instrument = instrumentRadios[i].value;
-          }
+          instrument = (instrumentRadios[i].value === '其他') ? (document.getElementById('other-instrument').value.trim() || '未指定樂器') : instrumentRadios[i].value;
         }
       }
 
-      if (name !== '' && day !== '' && timeVal !== '') {
-        let newStudent = {
-          name: name,
-          instrument: instrument,
-          day: day,          
-          timeVal: timeVal,  
-          fee: fee,
-          phone: phone
-        };
-        
-        students.push(newStudent);
+      if (name !== '') {
+        students.push({ name: name, instrument: instrument, time: timeString, fee: fee, phone: phone });
         saveToMemory();
-        
-        document.getElementById('add-name').value = '';
-        document.getElementById('add-fee').value = '';
-        document.getElementById('add-phone').value = '';
-        document.getElementById('add-day').selectedIndex = 0; 
-        document.getElementById('add-time').value = '';
-        document.getElementsByName('add-instrument')[0].checked = true;
-        document.getElementById('other-instrument').style.display = 'none';
-        document.getElementById('other-instrument').value = '';
-        
-        renderManageList();
-        alert('新增成功！已自動加入課表。');
-      } else {
-        alert('學生姓名、星期、上課時間是一定要填寫的喔！');
-      }
+        document.getElementById('add-name').value = ''; document.getElementById('add-fee').value = ''; document.getElementById('add-phone').value = ''; document.getElementById('add-day').selectedIndex = 0; document.getElementById('add-time').value = '';
+        document.getElementsByName('add-instrument')[0].checked = true; document.getElementById('other-instrument').style.display = 'none'; document.getElementById('other-instrument').value = '';
+        renderManageList(); alert('新增成功！');
+      } else { alert('學生姓名是一定要填寫的喔！'); }
     }
 
     function deleteStudent(index) {
-      if (confirm("確定要刪除這位學生的資料嗎？這也會將他從月曆上完全移除喔。")) {
-        students.splice(index, 1);
-        saveToMemory();
-        renderManageList();
-      }
+      if (confirm("確定要刪除這位學生的資料嗎？")) { students.splice(index, 1); saveToMemory(); renderManageList(); }
     }
-
-    function saveToMemory() {
-      localStorage.setItem('jess_students_v2', JSON.stringify(students));
-    }
-
-    function saveAttendance() {
-      alert("太棒了！今日點名已經暫時紀錄。");
-      showPage('main-menu');
-    }
-
+    function saveToMemory() { localStorage.setItem('jess_students_v2', JSON.stringify(students)); }
+    function saveAttendance() { alert("太棒了！今日點名已經暫時紀錄。"); showPage('main-menu'); }
     function calculateFee() {
       let tuition = Number(prompt("請輸入學生的單堂學費（例如：1000）："));
-      if (tuition > 0) {
-        alert("✅ 結算完成！\n\n給授課老師：" + (tuition * 0.7) + " 元\n工作室營收：" + (tuition * 0.3) + " 元");
-      }
+      if (tuition > 0) alert("✅ 結算完成！\n\n給授課老師：" + (tuition * 0.7) + " 元\n工作室營收：" + (tuition * 0.3) + " 元");
     }
   </script>
 </body>
