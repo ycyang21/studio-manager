@@ -20,7 +20,7 @@
     .reset-btn { background-color: #E2E8DF; color: #333; width: 100%; padding: 10px; margin-top: 15px; border-radius: 5px; border: none; }
     
     .card { background-color: white; padding: 15px; margin: 10px auto; width: 90%; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: left; }
-    .makeup-card { border-left: 4px solid #E08E79; } /* 補課專屬橘色邊框 */
+    .makeup-card { border-left: 4px solid #E08E79; } 
     .history-card { border-left: 4px solid #ccc; opacity: 0.7; }
     
     .student-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #333; }
@@ -40,7 +40,7 @@
     .event-piano { background-color: #8C9C8A !important; }
     .event-violin { background-color: #B5A886 !important; }
     .event-other { background-color: #A39193 !important; }
-    .event-makeup { background-color: #E08E79 !important; color: white !important; } /* 補課日曆事件專屬橘色 */
+    .event-makeup { background-color: #E08E79 !important; color: white !important; } 
     
     .money-box { background-color: white; border-left: 5px solid #8C9C8A; padding: 15px; margin-bottom: 15px; border-radius: 0 8px 8px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: left;}
     .money-title { font-size: 14px; color: #666; margin-bottom: 5px; }
@@ -54,19 +54,17 @@
     <p>工作室管理系統</p>
     <button class="button" onclick="showPage('calendar-page')">📅 月曆課表總覽</button>
     <button class="button" onclick="showPage('attendance-page')">📝 今日點名總表</button>
-    <button class="button" onclick="showPage('makeup-page')">🔄 補課管理系統</button>
+    <button class="button" onclick="showPage('makeup-page')">🔄 補課存摺管理</button>
     <button class="button" onclick="showPage('manage-page')">⚙️ 學生名單管理</button>
     <button class="button" onclick="showPage('salary-page')">💰 本月上課費用統計</button>
   </div>
 
-  <!-- 1. 月曆頁面 -->
   <div id="calendar-page" style="display: none;">
     <h2 style="font-weight: 300;">📅 月曆課表總覽</h2>
     <div id="calendar"></div>
     <button class="button btn-secondary" style="margin-top: 20px;" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 2. 點名頁面 -->
   <div id="attendance-page" style="display: none;">
     <h2 id="attendance-title" style="font-weight: 300; font-size: 20px;">📝 今日點名總表</h2>
     <p id="attendance-date" style="margin-top: -10px; margin-bottom: 20px;"></p>
@@ -75,11 +73,9 @@
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 3. 全新的補課管理頁面 -->
   <div id="makeup-page" style="display: none;">
     <h2 style="font-weight: 300;">🔄 補課存摺管理</h2>
     
-    <!-- 手動新增預先補課 -->
     <div class="card" style="background-color: #FFF9F5; border: 1px solid #E08E79;">
       <h3 style="margin-top:0; font-size: 16px; color:#E08E79;">➕ 手動新增 (先補課/請假)</h3>
       <div class="form-group">
@@ -99,7 +95,6 @@
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 4. 學生名單管理 -->
   <div id="manage-page" style="display: none;">
     <h2 style="font-weight: 300;">⚙️ 學生名單管理</h2>
     <div class="card" style="background-color: #F4F6F3; border: 1px solid #8C9C8A;">
@@ -115,7 +110,6 @@
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 5. 薪資頁面 -->
   <div id="salary-page" style="display: none;">
     <h2 style="font-weight: 300;">💰 上課費用統計</h2>
     <div style="width: 90%; margin: 0 auto;">
@@ -129,18 +123,11 @@
   </div>
 
   <script>
-    // --- 資料結構定義 ---
     let students = JSON.parse(localStorage.getItem('jess_students_v3')) || [];
     let financeData = JSON.parse(localStorage.getItem('jess_finance_v2')) || { totalRevenue: 0 };
-    
-    // 【新資料庫】儲存所有補課紀錄的存摺
     let makeupBank = JSON.parse(localStorage.getItem('jess_makeup_v1')) || [];
-    // makeupBank 格式: { id: 唯一碼, studentName: '王大花', dateGen: '2026-09-11', totalOwed: 1, remaining: 1, status: 'active/history', schedules: [] }
-    // schedules 格式: { date: '2026-09-15', time: '18:00', amount: 0.5, attended: false }
-
     let calendar; 
 
-    // --- 工具函數 ---
     function formatDate(dateObj) {
       let y = dateObj.getFullYear();
       let m = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -155,7 +142,6 @@
 
     function generateId() { return Math.random().toString(36).substr(2, 9); }
 
-    // --- 頁面切換控制 ---
     function showPage(pageId) {
       const pages = ['main-menu', 'calendar-page', 'attendance-page', 'manage-page', 'salary-page', 'makeup-page'];
       pages.forEach(p => document.getElementById(p).style.display = 'none');
@@ -170,7 +156,6 @@
       if(pageId === 'calendar-page') { renderCalendar(); }
     }
 
-    // --- 月曆邏輯 ---
     function renderCalendar() {
       if (!calendar) {
         let calendarEl = document.getElementById('calendar');
@@ -186,11 +171,14 @@
               let dayOfWeek = d.getDay().toString();
               let dateStr = formatDate(d);
 
-              // 1. 畫常態課 (排除延期與轉補課的日子)
               students.forEach(s => {
                 if (s.dayIndex === dayOfWeek) {
-                  if (s.canceledDates && s.canceledDates.includes(dateStr)) return; // 延期跳過
-                  if (s.makeupConvertedDates && s.makeupConvertedDates.includes(dateStr)) return; // 已轉為補課跳過
+                  // 防呆保護：如果舊資料沒有陣列，就當作空陣列處理
+                  let canceled = s.canceledDates || [];
+                  let makeupConverted = s.makeupConvertedDates || [];
+                  
+                  if (canceled.includes(dateStr)) return; 
+                  if (makeupConverted.includes(dateStr)) return; 
 
                   let eventClass = s.instrument === '鋼琴' ? 'event-piano' : (s.instrument === '小提琴' ? 'event-violin' : 'event-other');
                   let eventObj = { title: s.name + ' (' + s.instrument + ')', className: eventClass, start: dateStr + (s.timeVal ? 'T' + s.timeVal : '') };
@@ -199,7 +187,6 @@
                 }
               });
 
-              // 2. 畫排定的補課事件 (橘色)
               makeupBank.forEach(record => {
                 if(record.status === 'active') {
                   record.schedules.forEach(sch => {
@@ -226,23 +213,27 @@
       setTimeout(() => { calendar.updateSize(); }, 100);
     }
 
-    // --- 點名邏輯 (含補課雙軌) ---
     function renderAttendanceList() {
       let listHTML = '';
       let now = new Date();
       let todayStr = formatDate(now);
+      let year = now.getFullYear();
+      let month = now.getMonth() + 1; 
+      let date = now.getDate();
       let todayIndex = now.getDay().toString(); 
       let countToday = 0;
       
       document.getElementById('attendance-date').innerText = year + '年' + month + '月' + date + '日 (' + getDayName(todayIndex) + ')';
 
-      // 1. 列出今天的常態課
       for (let i = 0; i < students.length; i++) {
         let s = students[i];
         if (s.dayIndex === todayIndex) {
-          // 如果這堂課今天已經被標記為取消或轉補課，就不列出
-          if ((s.canceledDates && s.canceledDates.includes(todayStr)) || 
-              (s.makeupConvertedDates && s.makeupConvertedDates.includes(todayStr))) {
+          
+          // 防呆保護：如果舊資料沒有陣列，就當作空陣列處理
+          let canceled = s.canceledDates || [];
+          let makeupConverted = s.makeupConvertedDates || [];
+
+          if (canceled.includes(todayStr) || makeupConverted.includes(todayStr)) {
             continue;
           }
           
@@ -261,13 +252,11 @@
         }
       }
 
-      // 2. 列出排在今天的補課
       makeupBank.forEach(record => {
         if (record.status === 'active') {
           record.schedules.forEach((sch, schIdx) => {
             if (sch.date === todayStr && !sch.attended) {
               countToday++;
-              // 尋找這個學生的基本資料來抓學費
               let stuData = students.find(s => s.name === record.studentName);
               let feeText = stuData ? (Number(stuData.fee) * sch.amount) + '元' : '未知';
 
@@ -276,9 +265,8 @@
                   <div class="student-title" style="color:#E08E79;">${record.studentName} <span style="font-size:12px; font-weight:normal;">[今日來補課]</span></div>
                   <div class="student-detail">🕒 ${sch.time || '未定'} | 補 ${sch.amount} 堂 | 💰 本次費用: ${feeText}</div>
                   <div class="status-options" style="justify-content: flex-start; gap: 20px;">
-                    <!-- 補課紀錄的點名 name 帶有特殊標記 -->
                     <label><input type="radio" name="makeup_rec_${record.id}_${schIdx}" value="出席"> ✅ 確認出席</label>
-                    <label><input type="radio" name="makeup_rec_${record.id}_${schIdx}" value="延期"> ❌ 取消(退回存摺)</label>
+                    <label><input type="radio" name="makeup_rec_${record.id}_${schIdx}" value="延期"> ❌ 取消(退回)</label>
                   </div>
                 </div>`;
             }
@@ -299,7 +287,6 @@
       let msg = "✅ 今日點名儲存完畢！\n";
       let todayStr = formatDate(new Date()); 
 
-      // 處理 1: 常態課的點名
       for (let i = 0; i < students.length; i++) {
         let radios = document.getElementsByName('normal_stu_' + i);
         if(radios.length === 0) continue;
@@ -321,11 +308,8 @@
             msg += `\n- ${students[i].name} 已延期 (日曆移除)`;
           }
         } else if (status === '補課') {
-          // 轉為補課: 日曆移除，並且存入時數銀行
           if (!students[i].makeupConvertedDates.includes(todayStr)) {
             students[i].makeupConvertedDates.push(todayStr);
-            
-            // 建立一筆新的補課存摺紀錄 (預設 1 堂)
             makeupBank.push({
               id: generateId(),
               studentName: students[i].name,
@@ -341,7 +325,6 @@
         for(let j=0; j<radios.length; j++) radios[j].checked = false;
       }
 
-      // 處理 2: 補課的點名
       makeupBank.forEach(record => {
         if(record.status !== 'active') return;
         
@@ -354,7 +337,6 @@
             for(let j=0; j<radios.length; j++) { if(radios[j].checked) status = radios[j].value; }
 
             if (status === '出席') {
-              // 補課出席，計算部分薪資
               sch.attended = true;
               let stuData = students.find(s => s.name === record.studentName);
               if (stuData && Number(stuData.fee) > 0) {
@@ -364,17 +346,14 @@
                 msg += `\n- [補] ${record.studentName} 出席，費用 +$${partialFee}`;
               }
               
-              // 檢查存摺是否歸零
               if (record.remaining === 0) {
-                // 確定排出去的課都上完了，移至歷史
                 let allAttended = record.schedules.every(s => s.attended);
                 if (allAttended) record.status = 'history';
               }
 
             } else if (status === '延期') {
-              // 取消排好的補課，把時數退回存摺
               record.remaining += sch.amount;
-              record.schedules.splice(schIdx, 1); // 刪除這筆排程
+              record.schedules.splice(schIdx, 1); 
               msg += `\n- [補] ${record.studentName} 取消，時數已退回存摺`;
             }
             
@@ -396,7 +375,6 @@
       showPage('main-menu');
     }
 
-    // --- 補課管理邏輯 ---
     function populateMakeupStudentSelect() {
       let select = document.getElementById('manual-makeup-student');
       select.innerHTML = '<option value="" disabled selected>選擇學生</option>';
@@ -431,14 +409,12 @@
       let activeCount = 0;
       let historyCount = 0;
 
-      // 反轉陣列，讓新的在上面
       let reversedBank = [...makeupBank].reverse();
 
       reversedBank.forEach(record => {
         if (record.status === 'active') {
           activeCount++;
           
-          // 顯示已經排下去的日期
           let schList = record.schedules.map(sch => {
             let statusIcon = sch.attended ? '✅已上' : '⏳待上';
             return `<div style="font-size:12px; color:#E08E79; margin-top:5px;">↳ ${statusIcon} ${sch.date} ${sch.time} (扣 ${sch.amount} 堂)</div>`;
@@ -471,7 +447,7 @@
               </div>
               ${schList}
               ${formHTML}
-              <button class="small-btn" style="margin-top:10px; color:#888; background:transparent; text-decoration:underline;" onclick="cancelMakeupRecord('${record.id}')">延期(取消這筆補課)</button>
+              <button class="small-btn" style="margin-top:10px; color:#888; background:transparent; text-decoration:underline;" onclick="cancelMakeupRecord('${record.id}')">取消這筆紀錄</button>
             </div>
           `;
         } else {
@@ -516,14 +492,13 @@
         return;
       }
 
-      // 排入紀錄，並扣除尚欠時數
       record.schedules.push({
         date: dateInput,
         time: timeInput,
         amount: amount,
         attended: false
       });
-      record.remaining = Number((record.remaining - amount).toFixed(2)); // 避免浮點數誤差
+      record.remaining = Number((record.remaining - amount).toFixed(2)); 
 
       saveMakeupToMemory();
       renderMakeupList();
@@ -552,7 +527,6 @@
     
     function saveMakeupToMemory() { localStorage.setItem('jess_makeup_v1', JSON.stringify(makeupBank)); }
     
-    // --- 原有保留邏輯 ---
     function renderManageList() {
       let listHTML = '';
       for (let i = 0; i < students.length; i++) {
