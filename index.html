@@ -29,20 +29,18 @@
     .form-group label { display: block; font-size: 14px; margin-bottom: 5px; font-weight: bold; }
     .form-control, .form-select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box; background-color: white;} 
     .radio-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; align-items: center; }
-    .time-select-group { display: flex; gap: 10px; }
+    .time-select-group { display: flex; gap: 5px; align-items: center; }
 
     #calendar { margin-top: 15px; font-size: 14px; background-color: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .fc-toolbar-title { font-size: 18px !important; color: #4A4A4A; }
     .fc-button { background-color: #8C9C8A !important; border: none !important; }
     .fc-event { border: none !important; padding: 4px 6px; border-radius: 4px; font-size: 13px; margin-bottom: 3px; cursor: pointer; }
     
-    /* 月曆事件的動態美化 */
     .event-piano { background-color: #8C9C8A !important; color: white !important; }
     .event-violin { background-color: #B5A886 !important; color: white !important; }
     .event-other { background-color: #A39193 !important; color: white !important; }
     .event-makeup { background-color: #E08E79 !important; color: white !important; } 
     
-    /* 點名後的狀態變化 */
     .event-attended { background-color: #5d705b !important; color: white !important; border-left: 4px solid #333 !important;}
     .event-canceled { background-color: #f0f0f0 !important; color: #aaa !important; text-decoration: line-through !important; opacity: 0.6; }
     .event-makeup-conv { background-color: #FFF9F5 !important; color: #E08E79 !important; border: 1px dashed #E08E79 !important; opacity: 0.8; }
@@ -51,7 +49,6 @@
     .money-title { font-size: 14px; color: #666; margin-bottom: 5px; }
     .money-amount { font-size: 28px; font-weight: bold; color: #333; }
     
-    /* 彈出視窗設計 */
     #attendance-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; }
     .modal-content { background: white; width: 85%; max-width: 350px; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
     .modal-btn { display: block; width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 8px; font-size: 16px; color: white; cursor: pointer; }
@@ -68,20 +65,17 @@
     <button class="button" onclick="showPage('salary-page')">💰 每月學費自動結算</button>
   </div>
 
-  <!-- 1. 全新的月曆即點名系統 -->
   <div id="calendar-page" style="display: none;">
     <h2 style="font-weight: 300;">📅 點擊課表即可點名</h2>
     <div id="calendar"></div>
     <button class="button btn-secondary" style="margin-top: 20px;" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 點名專用彈出視窗 -->
   <div id="attendance-modal">
     <div class="modal-content">
       <h3 id="modal-title" style="margin-top: 0; font-size: 20px; color: #333;">學生姓名</h3>
       <p id="modal-date" style="color: #666; font-size: 14px; margin-bottom: 20px;">2026-09-11 18:00</p>
       
-      <!-- 常態課的按鈕 -->
       <div id="modal-normal-actions">
         <button class="modal-btn" style="background-color: #8C9C8A;" onclick="markStatus('attended')">✅ 出席 (紀錄學費)</button>
         <button class="modal-btn" style="background-color: #E2E8DF; color: #333;" onclick="markStatus('canceled')">❌ 延期 (不收費/留存紀錄)</button>
@@ -89,17 +83,14 @@
         <button class="modal-btn" style="background-color: #fff; color: #888; border: 1px solid #ddd;" onclick="markStatus('reset')">↩️ 恢復為「未點名」</button>
       </div>
 
-      <!-- 排定補課的專屬按鈕 -->
       <div id="modal-makeup-actions" style="display: none;">
         <button class="modal-btn" style="background-color: #8C9C8A;" onclick="markMakeupStatus('attended')">✅ 補課出席 (紀錄學費)</button>
         <button class="modal-btn" style="background-color: #FFB6B9;" onclick="markMakeupStatus('canceled')">❌ 取消排課 (退回存摺)</button>
       </div>
-      
       <button class="button btn-secondary" style="margin-top: 25px; padding: 10px;" onclick="closeModal()">取消關閉</button>
     </div>
   </div>
 
-  <!-- 2. 補課系統 -->
   <div id="makeup-page" style="display: none;">
     <h2 style="font-weight: 300;">🔄 補課存摺管理</h2>
     <div class="card" style="background-color: #FFF9F5; border: 1px solid #E08E79;">
@@ -116,14 +107,41 @@
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 3. 名單管理 -->
   <div id="manage-page" style="display: none;">
     <h2 style="font-weight: 300;">⚙️ 學生名單管理</h2>
     <div class="card" style="background-color: #F4F6F3; border: 1px solid #8C9C8A;">
       <h3 style="margin-top:0; font-size: 16px;">➕ 新增學生資料</h3>
       <div class="form-group"><label>學生姓名</label><input type="text" id="add-name" class="form-control" placeholder="例如：王大花"></div>
       <div class="form-group"><label>學習樂器</label><div class="radio-group"><label><input type="radio" name="add-instrument" value="鋼琴" onclick="checkInstrument()" checked> 鋼琴</label><label><input type="radio" name="add-instrument" value="小提琴" onclick="checkInstrument()"> 小提琴</label><label><input type="radio" name="add-instrument" value="其他" onclick="checkInstrument()"> 其他</label><input type="text" id="other-instrument" class="form-control" style="display: none; width: auto; flex-grow: 1; padding: 5px;" placeholder="請輸入樂器"></div></div>
-      <div class="form-group"><label>上課時間 (必填)</label><div class="time-select-group"><select id="add-day" class="form-select"><option value="" disabled selected>選擇星期</option><option value="1">週一</option><option value="2">週二</option><option value="3">週三</option><option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="0">週日</option></select><input type="time" id="add-time" class="form-control"></div></div>
+      
+      <!-- 強制 24 小時制的下拉選單 -->
+      <div class="form-group">
+        <label>上課時間 (必填)</label>
+        <div class="time-select-group">
+          <select id="add-day" class="form-select" style="flex: 2;">
+            <option value="" disabled selected>星期</option>
+            <option value="1">週一</option><option value="2">週二</option><option value="3">週三</option>
+            <option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="0">週日</option>
+          </select>
+          <select id="add-time-hour" class="form-select" style="flex: 1;">
+            <option value="" disabled selected>時</option>
+            <option value="08">08</option><option value="09">09</option><option value="10">10</option>
+            <option value="11">11</option><option value="12">12</option><option value="13">13</option>
+            <option value="14">14</option><option value="15">15</option><option value="16">16</option>
+            <option value="17">17</option><option value="18">18</option><option value="19">19</option>
+            <option value="20">20</option><option value="21">21</option><option value="22">22</option>
+          </select>
+          <span style="font-weight:bold;">:</span>
+          <select id="add-time-minute" class="form-select" style="flex: 1;">
+            <option value="" disabled selected>分</option>
+            <option value="00">00</option>
+            <option value="15">15</option>
+            <option value="30">30</option>
+            <option value="45">45</option>
+          </select>
+        </div>
+      </div>
+      
       <div class="form-group"><label>單堂學費 (元)</label><input type="number" id="add-fee" class="form-control" placeholder="例如：1000"></div>
       <div class="form-group"><label>聯絡電話</label><input type="tel" id="add-phone" class="form-control" placeholder="家長或學生電話"></div>
       <button class="button" style="width:100%; margin:0;" onclick="addStudent()">確認新增</button>
@@ -132,7 +150,6 @@
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
-  <!-- 4. 超聰明薪資頁面 -->
   <div id="salary-page" style="display: none;">
     <h2 style="font-weight: 300;">💰 自動結算系統</h2>
     <div style="width: 90%; margin: 0 auto;">
@@ -150,11 +167,10 @@
   </div>
 
   <script>
-    // 升級記憶體區塊版本 v4，確保資料庫有乾淨的陣列
     let students = JSON.parse(localStorage.getItem('jess_students_v4')) || [];
     let makeupBank = JSON.parse(localStorage.getItem('jess_makeup_v2')) || [];
     let calendar; 
-    let currentModalEvent = null; // 用來記憶現在點擊了哪一堂課
+    let currentModalEvent = null; 
 
     function formatDate(dateObj) {
       let y = dateObj.getFullYear();
@@ -163,7 +179,6 @@
       return y + '-' + m + '-' + d;
     }
     
-    function formatTime24h(timeStr) { return timeStr || ''; }
     function generateId() { return Math.random().toString(36).substr(2, 9); }
 
     function showPage(pageId) {
@@ -172,7 +187,6 @@
       
       if(pageId === 'manage-page') renderManageList();
       if(pageId === 'salary-page') {
-        // 自動帶入這個月
         let now = new Date();
         document.getElementById('salary-month-picker').value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
         calculateDynamicRevenue();
@@ -184,7 +198,6 @@
       if(pageId === 'calendar-page') { renderCalendar(); }
     }
 
-    // --- 月曆即點名簿 核心邏輯 ---
     function renderCalendar() {
       if (!calendar) {
         let calendarEl = document.getElementById('calendar');
@@ -201,7 +214,6 @@
               let dayOfWeek = d.getDay().toString();
               let dateStr = formatDate(d);
 
-              // 1. 畫出常態課與狀態
               students.forEach((s, stuIdx) => {
                 if (s.dayIndex === dayOfWeek) {
                   let attended = s.attendedDates || [];
@@ -211,7 +223,6 @@
                   let eventClass = s.instrument === '鋼琴' ? 'event-piano' : (s.instrument === '小提琴' ? 'event-violin' : 'event-other');
                   let displayTitle = s.name + ' (' + s.instrument + ')';
 
-                  // 根據陣列來決定外觀
                   if (attended.includes(dateStr)) {
                     eventClass = 'event-attended'; displayTitle = '✅ ' + s.name;
                   } else if (canceled.includes(dateStr)) {
@@ -230,18 +241,13 @@
                 }
               });
 
-              // 2. 畫出排定的補課事件
               makeupBank.forEach(record => {
                 if(record.status === 'active') {
                   record.schedules.forEach((sch, schIdx) => {
                     if (sch.date === dateStr) {
                       let displayTitle = '[補課] ' + record.studentName;
                       let eventClass = 'event-makeup';
-                      
-                      if (sch.attended) {
-                        displayTitle = '✅ [補] ' + record.studentName;
-                        eventClass = 'event-attended';
-                      }
+                      if (sch.attended) { displayTitle = '✅ [補] ' + record.studentName; eventClass = 'event-attended'; }
 
                       events.push({
                         title: displayTitle,
@@ -258,12 +264,10 @@
             }
             successCallback(events);
           },
-          // 點擊事件彈出視窗
           eventClick: function(info) {
             let props = info.event.extendedProps;
             currentModalEvent = props;
             
-            // 清理標題上的 icon 以利顯示
             let cleanTitle = info.event.title.replace(/✅ |❌ |🔄 |\[補課\] |\[補\] /g, '');
             document.getElementById('modal-title').innerText = cleanTitle;
             
@@ -277,7 +281,6 @@
               document.getElementById('modal-normal-actions').style.display = 'none';
               document.getElementById('modal-makeup-actions').style.display = 'block';
             }
-
             document.getElementById('attendance-modal').style.display = 'flex';
           }
         });
@@ -290,7 +293,6 @@
 
     function closeModal() { document.getElementById('attendance-modal').style.display = 'none'; }
 
-    // --- 儲存點名狀態 (常態課) ---
     function markStatus(status) {
       let stuIdx = currentModalEvent.stuIdx;
       let dateStr = currentModalEvent.dateStr;
@@ -300,18 +302,15 @@
       if(!s.canceledDates) s.canceledDates = [];
       if(!s.makeupConvertedDates) s.makeupConvertedDates = [];
 
-      // 防呆：如果他本來是轉補課，現在要取消，必須把存摺裡的紀錄刪掉避免重複
       if (s.makeupConvertedDates.includes(dateStr)) {
          makeupBank = makeupBank.filter(r => !(r.studentName === s.name && r.dateGen === dateStr));
          saveMakeupToMemory();
       }
 
-      // 先把這一天的紀錄從所有陣列中拔除（等於重置）
       s.attendedDates = s.attendedDates.filter(d => d !== dateStr);
       s.canceledDates = s.canceledDates.filter(d => d !== dateStr);
       s.makeupConvertedDates = s.makeupConvertedDates.filter(d => d !== dateStr);
 
-      // 再依照按鈕加入對應陣列
       if (status === 'attended') s.attendedDates.push(dateStr);
       if (status === 'canceled') s.canceledDates.push(dateStr);
       if (status === 'makeup') {
@@ -322,13 +321,9 @@
         });
         saveMakeupToMemory();
       }
-      
-      saveToMemory();
-      calendar.refetchEvents();
-      closeModal();
+      saveToMemory(); calendar.refetchEvents(); closeModal();
     }
 
-    // --- 儲存點名狀態 (排定的補課) ---
     function markMakeupStatus(status) {
       let recordId = currentModalEvent.recordId;
       let schIdx = currentModalEvent.schIdx;
@@ -338,58 +333,40 @@
         let sch = record.schedules[schIdx];
         if (status === 'attended') {
           sch.attended = true;
-          // 檢查是否所有補課都上完了，移入歷史
-          if (record.remaining === 0 && record.schedules.every(s => s.attended)) {
-            record.status = 'history';
-          }
+          if (record.remaining === 0 && record.schedules.every(s => s.attended)) { record.status = 'history'; }
         } else if (status === 'canceled') {
-          // 取消這堂補課，把時數還給存摺
           if(confirm("確定要取消這堂補課嗎？時數將退回給學生。")) {
             record.remaining = Number((record.remaining + sch.amount).toFixed(2));
             record.schedules.splice(schIdx, 1);
-            record.status = 'active'; // 確保狀態活躍
-          } else {
-            return;
-          }
+            record.status = 'active'; 
+          } else { return; }
         }
-        saveMakeupToMemory();
-        calendar.refetchEvents();
+        saveMakeupToMemory(); calendar.refetchEvents();
       }
       closeModal();
     }
 
-    // --- 超智慧月底掃描算帳法 ---
     function calculateDynamicRevenue() {
-      let monthStr = document.getElementById('salary-month-picker').value; // 格式: "YYYY-MM"
+      let monthStr = document.getElementById('salary-month-picker').value; 
       if (!monthStr) return;
-
       let total = 0;
 
-      // 掃描 1: 常態課出席
       students.forEach(s => {
         let fee = Number(s.fee) || 0;
         let attended = s.attendedDates || [];
-        attended.forEach(d => {
-          if (d.startsWith(monthStr)) total += fee;
-        });
+        attended.forEach(d => { if (d.startsWith(monthStr)) total += fee; });
       });
 
-      // 掃描 2: 補課出席
       makeupBank.forEach(record => {
         let stuData = students.find(s => s.name === record.studentName);
         let fee = stuData ? (Number(stuData.fee) || 0) : 0;
-        
         record.schedules.forEach(sch => {
-          if (sch.attended && sch.date.startsWith(monthStr)) {
-            total += (fee * sch.amount);
-          }
+          if (sch.attended && sch.date.startsWith(monthStr)) { total += (fee * sch.amount); }
         });
       });
-
       document.getElementById('dynamic-total-revenue').innerText = 'NT$ ' + total.toLocaleString();
     }
 
-    // --- 以下為原本保留的邏輯 ---
     function populateMakeupStudentSelect() {
       let select = document.getElementById('manual-makeup-student');
       select.innerHTML = '<option value="" disabled selected>選擇學生</option>';
@@ -408,13 +385,17 @@
     function renderMakeupList() {
       let activeHTML = ''; let historyHTML = ''; let activeCount = 0; let historyCount = 0;
       let reversedBank = [...makeupBank].reverse();
+      
+      // 24小時制的小幫手：建立供 JavaScript 渲染的 HTML 內容
+      let hrOpts = `<option value="" disabled selected>時</option>` + [8,9,10,11,12,13,14,15,16,17,18,19,20,21,22].map(h => `<option value="${String(h).padStart(2,'0')}">${String(h).padStart(2,'0')}</option>`).join('');
+      let minOpts = `<option value="" disabled selected>分</option><option value="00">00</option><option value="15">15</option><option value="30">30</option><option value="45">45</option>`;
 
       reversedBank.forEach(record => {
         if (record.status === 'active') {
           activeCount++;
           let schList = record.schedules.map(sch => {
             let statusIcon = sch.attended ? '✅已上' : '⏳待上';
-            return `<div style="font-size:12px; color:#E08E79; margin-top:5px;">↳ ${statusIcon} ${sch.date} ${formatTime24h(sch.time)} (扣 ${sch.amount} 堂)</div>`;
+            return `<div style="font-size:12px; color:#E08E79; margin-top:5px;">↳ ${statusIcon} ${sch.date} ${sch.time} (扣 ${sch.amount} 堂)</div>`;
           }).join('');
 
           let formHTML = '';
@@ -425,9 +406,11 @@
                   <input type="number" id="amt_${record.id}" class="form-control" style="padding:5px; width:40%;" placeholder="補幾堂 (如0.5)" step="0.1" min="0.1" max="${record.remaining}">
                   <input type="date" id="date_${record.id}" class="form-control" style="padding:5px; width:60%;">
                 </div>
-                <div style="display:flex; gap:10px;">
-                  <input type="time" id="time_${record.id}" class="form-control" style="padding:5px; width:50%;">
-                  <button class="small-btn" style="width:50%; background-color:#8C9C8A; color:white;" onclick="scheduleMakeup('${record.id}')">排課</button>
+                <div style="display:flex; gap:5px; align-items:center;">
+                  <select id="time_hr_${record.id}" class="form-select" style="padding:5px; width:40%;">${hrOpts}</select>
+                  <span style="font-weight:bold;">:</span>
+                  <select id="time_min_${record.id}" class="form-select" style="padding:5px; width:40%;">${minOpts}</select>
+                  <button class="small-btn" style="width:40%; background-color:#8C9C8A; color:white;" onclick="scheduleMakeup('${record.id}')">確定排課</button>
                 </div>
               </div>`;
           }
@@ -445,12 +428,14 @@
       let record = makeupBank.find(r => r.id === recordId);
       let amt = Number(document.getElementById('amt_' + recordId).value);
       let date = document.getElementById('date_' + recordId).value;
-      let time = document.getElementById('time_' + recordId).value;
+      let hr = document.getElementById('time_hr_' + recordId).value;
+      let min = document.getElementById('time_min_' + recordId).value;
+      let timeInput = (hr && min) ? hr + ':' + min : '';
       
       if (!amt || amt <= 0 || amt > record.remaining) { alert(`❌ 輸入錯誤！最多只能補 ${record.remaining} 堂`); return; }
-      if (!date) { alert('❌ 請選擇日期！'); return; }
+      if (!date || !timeInput) { alert('❌ 請完整選擇補課的日期與時間！'); return; }
 
-      record.schedules.push({ date: date, time: time, amount: amt, attended: false });
+      record.schedules.push({ date: date, time: timeInput, amount: amt, attended: false });
       record.remaining = Number((record.remaining - amt).toFixed(2)); 
       saveMakeupToMemory(); renderMakeupList(); alert(`✅ 排定成功！`);
     }
@@ -465,10 +450,15 @@
     }
     
     function saveMakeupToMemory() { localStorage.setItem('jess_makeup_v2', JSON.stringify(makeupBank)); }
+    function getDayName(index) {
+      const days = {'0':'週日', '1':'週一', '2':'週二', '3':'週三', '4':'週四', '5':'週五', '6':'週六'};
+      return days[index] || '';
+    }
+
     function renderManageList() {
       let listHTML = '';
       students.forEach((s, i) => {
-        let displayTime = (s.dayIndex !== "") ? getDayName(s.dayIndex) + ' ' + formatTime24h(s.timeVal) : '未設定完整時間';
+        let displayTime = (s.dayIndex !== "") ? getDayName(s.dayIndex) + ' ' + s.timeVal : '未設定完整時間';
         listHTML += `<div class="card" style="display: flex; justify-content: space-between; align-items: center;"><div><div class="student-title" style="font-size: 16px;">${s.name} (${s.instrument})</div><div class="student-detail" style="margin-bottom:0;">🕒 ${displayTime} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div></div><div><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
       });
       document.getElementById('manage-list').innerHTML = listHTML;
@@ -480,13 +470,25 @@
     }
     
     function addStudent() {
-      let name = document.getElementById('add-name').value.trim(); let fee = document.getElementById('add-fee').value.trim(); let phone = document.getElementById('add-phone').value.trim(); let dayIndex = document.getElementById('add-day').value; let timeVal = document.getElementById('add-time').value;
+      let name = document.getElementById('add-name').value.trim(); 
+      let fee = document.getElementById('add-fee').value.trim(); 
+      let phone = document.getElementById('add-phone').value.trim(); 
+      let dayIndex = document.getElementById('add-day').value; 
+      
+      let hr = document.getElementById('add-time-hour').value;
+      let min = document.getElementById('add-time-minute').value;
+      let timeVal = (hr && min) ? hr + ':' + min : '';
+      
       let instrumentRadios = document.getElementsByName('add-instrument'); let instrument = '';
       instrumentRadios.forEach(r => { if(r.checked) instrument = (r.value === '其他') ? (document.getElementById('other-instrument').value.trim() || '未指定') : r.value; });
-      if (name === '' || dayIndex === '' || fee === '' || fee <= 0) { alert('請填寫完整姓名、上課星期與單堂學費！'); return; }
+      if (name === '' || dayIndex === '' || fee === '' || fee <= 0 || timeVal === '') { alert('請填寫完整姓名、上課星期、精準時間與單堂學費！'); return; }
       students.push({ name: name, instrument: instrument, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
-      saveToMemory(); document.getElementById('add-name').value = ''; document.getElementById('add-fee').value = ''; document.getElementById('add-phone').value = ''; document.getElementById('add-day').value = ''; document.getElementById('add-time').value = '';
-      document.getElementsByName('add-instrument')[0].checked = true; document.getElementById('other-instrument').style.display = 'none'; document.getElementById('other-instrument').value = ''; renderManageList(); alert('✅ 新增成功！');
+      saveToMemory(); 
+      
+      document.getElementById('add-name').value = ''; document.getElementById('add-fee').value = ''; document.getElementById('add-phone').value = ''; document.getElementById('add-day').value = ''; 
+      document.getElementById('add-time-hour').value = ''; document.getElementById('add-time-minute').value = '';
+      document.getElementsByName('add-instrument')[0].checked = true; document.getElementById('other-instrument').style.display = 'none'; document.getElementById('other-instrument').value = ''; 
+      renderManageList(); alert('✅ 新增成功！');
     }
     
     function deleteStudent(index) { if (confirm("確定要刪除這位學生的資料嗎？")) { students.splice(index, 1); saveToMemory(); renderManageList(); } }
