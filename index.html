@@ -29,7 +29,9 @@
     .form-group label { display: block; font-size: 14px; margin-bottom: 5px; font-weight: bold; }
     .form-control, .form-select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box; background-color: white;} 
     .radio-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; align-items: center; }
-    .time-select-group { display: flex; gap: 5px; align-items: center; }
+    
+    /* 讓星期與時間完美並排在同一個 bar 內 */
+    .time-select-group { display: flex; gap: 8px; align-items: center; }
 
     #calendar { margin-top: 15px; font-size: 14px; background-color: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .fc-toolbar-title { font-size: 18px !important; color: #4A4A4A; }
@@ -114,31 +116,16 @@
       <div class="form-group"><label>學生姓名</label><input type="text" id="add-name" class="form-control" placeholder="例如：王大花"></div>
       <div class="form-group"><label>學習樂器</label><div class="radio-group"><label><input type="radio" name="add-instrument" value="鋼琴" onclick="checkInstrument()" checked> 鋼琴</label><label><input type="radio" name="add-instrument" value="小提琴" onclick="checkInstrument()"> 小提琴</label><label><input type="radio" name="add-instrument" value="其他" onclick="checkInstrument()"> 其他</label><input type="text" id="other-instrument" class="form-control" style="display: none; width: auto; flex-grow: 1; padding: 5px;" placeholder="請輸入樂器"></div></div>
       
-      <!-- 強制 24 小時制的下拉選單 -->
+      <!-- 完美收納在同一個 bar 的星期與時間選擇 -->
       <div class="form-group">
         <label>上課時間 (必填)</label>
         <div class="time-select-group">
-          <select id="add-day" class="form-select" style="flex: 2;">
-            <option value="" disabled selected>星期</option>
+          <select id="add-day" class="form-select" style="flex: 1.2;">
+            <option value="" disabled selected>選擇星期</option>
             <option value="1">週一</option><option value="2">週二</option><option value="3">週三</option>
             <option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="0">週日</option>
           </select>
-          <select id="add-time-hour" class="form-select" style="flex: 1;">
-            <option value="" disabled selected>時</option>
-            <option value="08">08</option><option value="09">09</option><option value="10">10</option>
-            <option value="11">11</option><option value="12">12</option><option value="13">13</option>
-            <option value="14">14</option><option value="15">15</option><option value="16">16</option>
-            <option value="17">17</option><option value="18">18</option><option value="19">19</option>
-            <option value="20">20</option><option value="21">21</option><option value="22">22</option>
-          </select>
-          <span style="font-weight:bold;">:</span>
-          <select id="add-time-minute" class="form-select" style="flex: 1;">
-            <option value="" disabled selected>分</option>
-            <option value="00">00</option>
-            <option value="15">15</option>
-            <option value="30">30</option>
-            <option value="45">45</option>
-          </select>
+          <input type="time" id="add-time" class="form-control" style="flex: 1.5;" step="60">
         </div>
       </div>
       
@@ -385,10 +372,6 @@
     function renderMakeupList() {
       let activeHTML = ''; let historyHTML = ''; let activeCount = 0; let historyCount = 0;
       let reversedBank = [...makeupBank].reverse();
-      
-      // 24小時制的小幫手：建立供 JavaScript 渲染的 HTML 內容
-      let hrOpts = `<option value="" disabled selected>時</option>` + [8,9,10,11,12,13,14,15,16,17,18,19,20,21,22].map(h => `<option value="${String(h).padStart(2,'0')}">${String(h).padStart(2,'0')}</option>`).join('');
-      let minOpts = `<option value="" disabled selected>分</option><option value="00">00</option><option value="15">15</option><option value="30">30</option><option value="45">45</option>`;
 
       reversedBank.forEach(record => {
         if (record.status === 'active') {
@@ -406,11 +389,9 @@
                   <input type="number" id="amt_${record.id}" class="form-control" style="padding:5px; width:40%;" placeholder="補幾堂 (如0.5)" step="0.1" min="0.1" max="${record.remaining}">
                   <input type="date" id="date_${record.id}" class="form-control" style="padding:5px; width:60%;">
                 </div>
-                <div style="display:flex; gap:5px; align-items:center;">
-                  <select id="time_hr_${record.id}" class="form-select" style="padding:5px; width:40%;">${hrOpts}</select>
-                  <span style="font-weight:bold;">:</span>
-                  <select id="time_min_${record.id}" class="form-select" style="padding:5px; width:40%;">${minOpts}</select>
-                  <button class="small-btn" style="width:40%; background-color:#8C9C8A; color:white;" onclick="scheduleMakeup('${record.id}')">確定排課</button>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <input type="time" id="time_${record.id}" class="form-control" style="padding:5px; flex:1;" step="60">
+                  <button class="small-btn" style="padding: 10px 15px; background-color:#8C9C8A; color:white;" onclick="scheduleMakeup('${record.id}')">確定排課</button>
                 </div>
               </div>`;
           }
@@ -428,9 +409,7 @@
       let record = makeupBank.find(r => r.id === recordId);
       let amt = Number(document.getElementById('amt_' + recordId).value);
       let date = document.getElementById('date_' + recordId).value;
-      let hr = document.getElementById('time_hr_' + recordId).value;
-      let min = document.getElementById('time_min_' + recordId).value;
-      let timeInput = (hr && min) ? hr + ':' + min : '';
+      let timeInput = document.getElementById('time_' + recordId).value;
       
       if (!amt || amt <= 0 || amt > record.remaining) { alert(`❌ 輸入錯誤！最多只能補 ${record.remaining} 堂`); return; }
       if (!date || !timeInput) { alert('❌ 請完整選擇補課的日期與時間！'); return; }
@@ -474,19 +453,17 @@
       let fee = document.getElementById('add-fee').value.trim(); 
       let phone = document.getElementById('add-phone').value.trim(); 
       let dayIndex = document.getElementById('add-day').value; 
-      
-      let hr = document.getElementById('add-time-hour').value;
-      let min = document.getElementById('add-time-minute').value;
-      let timeVal = (hr && min) ? hr + ':' + min : '';
+      let timeVal = document.getElementById('add-time').value; // 取得 24 小時制的完整時間字串
       
       let instrumentRadios = document.getElementsByName('add-instrument'); let instrument = '';
       instrumentRadios.forEach(r => { if(r.checked) instrument = (r.value === '其他') ? (document.getElementById('other-instrument').value.trim() || '未指定') : r.value; });
-      if (name === '' || dayIndex === '' || fee === '' || fee <= 0 || timeVal === '') { alert('請填寫完整姓名、上課星期、精準時間與單堂學費！'); return; }
+      if (name === '' || dayIndex === '' || fee === '' || fee <= 0 || timeVal === '') { alert('請填寫完整姓名、上課星期、時間與單堂學費！'); return; }
+      
       students.push({ name: name, instrument: instrument, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
       saveToMemory(); 
       
       document.getElementById('add-name').value = ''; document.getElementById('add-fee').value = ''; document.getElementById('add-phone').value = ''; document.getElementById('add-day').value = ''; 
-      document.getElementById('add-time-hour').value = ''; document.getElementById('add-time-minute').value = '';
+      document.getElementById('add-time').value = '';
       document.getElementsByName('add-instrument')[0].checked = true; document.getElementById('other-instrument').style.display = 'none'; document.getElementById('other-instrument').value = ''; 
       renderManageList(); alert('✅ 新增成功！');
     }
