@@ -140,6 +140,14 @@
       return days[index] || '';
     }
 
+    // 格式化時間為 24 小時制 (例如: "09:30" 或 "18:00")，用於顯示
+    function formatTime24h(timeStr) {
+      if (!timeStr) return '';
+      // HTML input type="time" 回傳的值通常已經是 "HH:mm" 格式 (24小時制)
+      // 例如 "09:00", "14:30"。我們只需要確保顯示出來的字串不要被轉換。
+      return timeStr; 
+    }
+
     function generateId() { return Math.random().toString(36).substr(2, 9); }
 
     function showPage(pageId) {
@@ -163,6 +171,12 @@
           initialView: 'dayGridMonth', locale: 'zh-tw',
           headerToolbar: { left: 'prev,next', center: 'title', right: 'today' },
           height: 'auto', displayEventTime: true,
+          // 強制 FullCalendar 使用 24 小時制顯示時間 (例如 18:30 而不是 6:30 PM)
+          eventTimeFormat: {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          },
           events: function(info, successCallback, failureCallback) {
             let events = [];
             let d = new Date(info.start.valueOf());
@@ -173,7 +187,6 @@
 
               students.forEach(s => {
                 if (s.dayIndex === dayOfWeek) {
-                  // 防呆保護：如果舊資料沒有陣列，就當作空陣列處理
                   let canceled = s.canceledDates || [];
                   let makeupConverted = s.makeupConvertedDates || [];
                   
@@ -229,7 +242,6 @@
         let s = students[i];
         if (s.dayIndex === todayIndex) {
           
-          // 防呆保護：如果舊資料沒有陣列，就當作空陣列處理
           let canceled = s.canceledDates || [];
           let makeupConverted = s.makeupConvertedDates || [];
 
@@ -238,7 +250,7 @@
           }
           
           countToday++;
-          let displayTime = getDayName(s.dayIndex) + ' ' + s.timeVal;
+          let displayTime = getDayName(s.dayIndex) + ' ' + formatTime24h(s.timeVal);
           listHTML += `
             <div class="card">
               <div class="student-title">${s.name} <span style="font-size:12px; font-weight:normal; color:#888;">[常態課]</span></div>
@@ -263,7 +275,7 @@
               listHTML += `
                 <div class="card makeup-card">
                   <div class="student-title" style="color:#E08E79;">${record.studentName} <span style="font-size:12px; font-weight:normal;">[今日來補課]</span></div>
-                  <div class="student-detail">🕒 ${sch.time || '未定'} | 補 ${sch.amount} 堂 | 💰 本次費用: ${feeText}</div>
+                  <div class="student-detail">🕒 ${formatTime24h(sch.time) || '未定'} | 補 ${sch.amount} 堂 | 💰 本次費用: ${feeText}</div>
                   <div class="status-options" style="justify-content: flex-start; gap: 20px;">
                     <label><input type="radio" name="makeup_rec_${record.id}_${schIdx}" value="出席"> ✅ 確認出席</label>
                     <label><input type="radio" name="makeup_rec_${record.id}_${schIdx}" value="延期"> ❌ 取消(退回)</label>
@@ -417,7 +429,7 @@
           
           let schList = record.schedules.map(sch => {
             let statusIcon = sch.attended ? '✅已上' : '⏳待上';
-            return `<div style="font-size:12px; color:#E08E79; margin-top:5px;">↳ ${statusIcon} ${sch.date} ${sch.time} (扣 ${sch.amount} 堂)</div>`;
+            return `<div style="font-size:12px; color:#E08E79; margin-top:5px;">↳ ${statusIcon} ${sch.date} ${formatTime24h(sch.time)} (扣 ${sch.amount} 堂)</div>`;
           }).join('');
 
           let formHTML = '';
@@ -531,16 +543,19 @@
       let listHTML = '';
       for (let i = 0; i < students.length; i++) {
         let s = students[i];
-        let displayTime = (s.dayIndex !== "") ? getDayName(s.dayIndex) + ' ' + s.timeVal : '未設定完整時間';
+        let displayTime = (s.dayIndex !== "") ? getDayName(s.dayIndex) + ' ' + formatTime24h(s.timeVal) : '未設定完整時間';
         listHTML += `<div class="card" style="display: flex; justify-content: space-between; align-items: center;"><div><div class="student-title" style="font-size: 16px;">${s.name} (${s.instrument})</div><div class="student-detail" style="margin-bottom:0;">🕒 ${displayTime} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div></div><div><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
       }
       document.getElementById('manage-list').innerHTML = listHTML;
     }
+    
     function renderSalaryPage() { document.getElementById('total-revenue').innerText = 'NT$ ' + financeData.totalRevenue.toLocaleString(); }
+    
     function checkInstrument() {
       let radios = document.getElementsByName('add-instrument'); let otherInput = document.getElementById('other-instrument');
       for(let i=0; i<radios.length; i++) { if(radios[i].checked && radios[i].value === '其他') { otherInput.style.display = 'block'; otherInput.focus(); } else if (radios[i].checked && radios[i].value !== '其他') { otherInput.style.display = 'none'; } }
     }
+    
     function addStudent() {
       let name = document.getElementById('add-name').value.trim(); let fee = document.getElementById('add-fee').value.trim(); let phone = document.getElementById('add-phone').value.trim(); let dayIndex = document.getElementById('add-day').value; let timeVal = document.getElementById('add-time').value;
       let instrumentRadios = document.getElementsByName('add-instrument'); let instrument = '';
@@ -550,6 +565,7 @@
       saveToMemory(); document.getElementById('add-name').value = ''; document.getElementById('add-fee').value = ''; document.getElementById('add-phone').value = ''; document.getElementById('add-day').value = ''; document.getElementById('add-time').value = '';
       document.getElementsByName('add-instrument')[0].checked = true; document.getElementById('other-instrument').style.display = 'none'; document.getElementById('other-instrument').value = ''; renderManageList(); alert('✅ 新增成功！請去月曆看看，課表已經自動排好囉！');
     }
+    
     function deleteStudent(index) { if (confirm("確定要刪除這位學生的資料嗎？")) { students.splice(index, 1); saveToMemory(); renderManageList(); } }
     function saveToMemory() { localStorage.setItem('jess_students_v3', JSON.stringify(students)); }
     function saveFinanceToMemory() { localStorage.setItem('jess_finance_v2', JSON.stringify(financeData)); }
