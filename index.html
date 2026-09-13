@@ -62,10 +62,28 @@
     #attendance-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; }
     .modal-content { background: white; width: 85%; max-width: 350px; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
     .modal-btn { display: block; width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 8px; font-size: 16px; color: white; cursor: pointer; }
+
+    #login-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #FDFBF7; z-index: 10000; align-items: center; justify-content: center; }
+    .login-box { width: 85%; max-width: 340px; text-align: left; }
+    .login-box h1 { text-align: center; }
+    .login-box > p { text-align: center; }
+    #login-error { display: none; color: #E08E79; font-size: 13px; margin: -8px 0 12px 0; }
   </style>
 </head>
 <body>
-  
+
+  <div id="login-screen">
+    <div class="login-box">
+      <h1>Jess Music Studio</h1>
+      <p>登入後，資料會自動同步到你所有的裝置</p>
+      <div class="form-group"><label>Email</label><input type="email" id="login-email" class="form-control" autocomplete="username"></div>
+      <div class="form-group"><label>密碼</label><input type="password" id="login-password" class="form-control" autocomplete="current-password"></div>
+      <p id="login-error"></p>
+      <button class="button" onclick="doLogin()">登入</button>
+    </div>
+  </div>
+
+  <div id="app-root">
   <div id="main-menu">
     <h1>Jess Music Studio</h1>
     <p>工作室管理系統</p>
@@ -73,6 +91,7 @@
     <button class="button" onclick="showPage('makeup-page')">🔄 補課存摺管理</button>
     <button class="button" onclick="showPage('manage-page')">⚙️ 學生名單管理</button>
     <button class="button" onclick="showPage('salary-page')">💰 每月學費自動結算</button>
+    <button class="button btn-secondary" id="logout-btn" style="display:none; font-size:13px; padding:8px; margin-top:5px;" onclick="doLogout()">登出</button>
   </div>
 
   <div id="calendar-page" style="display: none;">
@@ -183,6 +202,15 @@
       <button class="button" style="width:100%; margin:0;" onclick="addStudent()">確認新增</button>
     </div>
     <div id="manage-list"></div>
+
+    <div class="card" style="background-color: #F4F6F3; border: 1px solid #ccc;">
+      <h3 style="margin-top:0; font-size: 16px;">💾 資料備份（防止資料遺失）</h3>
+      <p style="font-size:12px; color:#888; margin-top:-8px; margin-bottom:12px; line-height:1.5;">這份資料目前只存在「這台裝置的這個瀏覽器」裡，換裝置、換瀏覽器、或清除瀏覽器資料都會遺失。建議更新完學生資料後，匯出一份備份存起來（例如傳到雲端硬碟或 LINE 給自己）；要換裝置或救回資料時，用「匯入備份」還原即可。</p>
+      <button class="button" style="width:100%; margin:0 0 10px 0; background-color:#8C9C8A;" onclick="exportBackup()">📤 匯出備份 (JSON 檔案)</button>
+      <input type="file" id="import-file-input" accept="application/json" style="display:none;" onchange="importBackup(event)">
+      <button class="button btn-secondary" style="width:100%; margin:0;" onclick="document.getElementById('import-file-input').click()">📥 匯入備份</button>
+    </div>
+
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
 
@@ -201,6 +229,7 @@
     </div>
     <button class="button btn-secondary" style="margin-top: 20px;" onclick="showPage('main-menu')">返回主選單</button>
   </div>
+  </div>
 
   <script>
     let students = JSON.parse(localStorage.getItem('jess_students_v4')) || [];
@@ -208,6 +237,7 @@
     let calendar; 
     let currentModalEvent = null; 
     let editingIndex = null; // 目前正在編輯的學生索引（null = 沒有開啟編輯視窗）
+    let cloudDb = null, cloudAuth = null, cloudFns = null, unsubscribeCloud = null; // Firebase 雲端同步用
 
     // 資料遷移：確保每位學生都有唯一 id，補課存摺改用 id 對應學生（避免同名學生互相干擾、改名後也不會對不到人）
     (function migrateData() {
@@ -331,6 +361,89 @@
     }
     
     function generateId() { return Math.random().toString(36).substr(2, 9); }
+
+    // ============ Firebase 雲端同步 ============
+    // 這個函式會被檔案最下面的 <script type="module"> 呼叫（前提是已經填入真正的 firebaseConfig）。
+    // 沒有設定 Firebase 的話，這個函式永遠不會被呼叫，整個 app 會維持原本「只存這台裝置」的行為，不受影響。
+    function initCloudSync(db, auth, fns) {
+      cloudDb = db; cloudAuth = auth; cloudFns = fns;
+      cloudFns.onAuthStateChanged(cloudAuth, function(user) {
+        if (user) {
+          document.getElementById('login-screen').style.display = 'none';
+          document.getElementById('app-root').style.display = 'block';
+          document.getElementById('logout-btn').style.display = 'block';
+          document.getElementById('login-error').style.display = 'none';
+          startCloudListener();
+        } else {
+          if (unsubscribeCloud) { unsubscribeCloud(); unsubscribeCloud = null; }
+          document.getElementById('app-root').style.display = 'none';
+          document.getElementById('login-screen').style.display = 'flex';
+        }
+      });
+    }
+
+    function doLogin() {
+      let email = document.getElementById('login-email').value.trim();
+      let pw = document.getElementById('login-password').value;
+      let errEl = document.getElementById('login-error');
+      errEl.style.display = 'none';
+      if (!cloudAuth) { alert('雲端服務尚未設定完成，請稍後再試一次！'); return; }
+      if (!email || !pw) { errEl.innerText = '請輸入 Email 和密碼'; errEl.style.display = 'block'; return; }
+      cloudFns.signInWithEmailAndPassword(cloudAuth, email, pw).catch(function() {
+        errEl.innerText = '登入失敗，請確認帳號密碼是否正確';
+        errEl.style.display = 'block';
+      });
+    }
+
+    function doLogout() {
+      if (!cloudAuth) return;
+      if (confirm('確定要登出嗎？')) { cloudFns.signOut(cloudAuth); }
+    }
+
+    // 監聽雲端資料庫的即時變化：只要有任何裝置更新過資料，這裡就會自動收到最新版本
+    function startCloudListener() {
+      if (!cloudDb) return;
+      if (unsubscribeCloud) unsubscribeCloud();
+
+      let ref = cloudFns.doc(cloudDb, 'studioData', 'main');
+      unsubscribeCloud = cloudFns.onSnapshot(ref, function(snap) {
+        if (snap.exists()) {
+          let data = snap.data();
+          students = data.students ? JSON.parse(data.students) : [];
+          makeupBank = data.makeupBank ? JSON.parse(data.makeupBank) : [];
+          localStorage.setItem('jess_students_v4', JSON.stringify(students));
+          localStorage.setItem('jess_makeup_v2', JSON.stringify(makeupBank));
+          refreshCurrentView();
+        } else {
+          // 雲端還沒有資料：把這台裝置現有的資料（例如你原本存在這台裝置的學生名單）當作起點推上雲端
+          pushToCloud();
+        }
+      }, function(err) {
+        console.error('雲端同步發生錯誤，暫時使用本機資料繼續運作：', err);
+      });
+    }
+
+    // 把目前的學生名單／補課存摺推上雲端。saveToMemory() 和 saveMakeupToMemory() 會自動呼叫這個函式。
+    function pushToCloud() {
+      if (!cloudDb || !cloudAuth || !cloudAuth.currentUser) return; // 還沒登入雲端服務時，只存本機，不報錯
+      let ref = cloudFns.doc(cloudDb, 'studioData', 'main');
+      cloudFns.setDoc(ref, {
+        students: JSON.stringify(students),
+        makeupBank: JSON.stringify(makeupBank),
+        updatedAt: new Date().toISOString()
+      }).catch(function(err) {
+        console.error('雲端儲存失敗，資料仍保留在本機，網路恢復後再試一次即可：', err);
+      });
+    }
+
+    // 收到雲端更新後，重新整理目前畫面上看得到的內容
+    function refreshCurrentView() {
+      if (document.getElementById('manage-page').style.display === 'block') renderManageList();
+      if (document.getElementById('makeup-page').style.display === 'block') { populateMakeupStudentSelect(); renderMakeupList(); }
+      if (document.getElementById('salary-page').style.display === 'block') calculateDynamicRevenue();
+      if (calendar) calendar.refetchEvents();
+    }
+    // ============ Firebase 雲端同步結束 ============
 
     function showPage(pageId) {
       const pages = ['main-menu', 'calendar-page', 'manage-page', 'salary-page', 'makeup-page'];
@@ -611,7 +724,7 @@
       if (el.style.display === 'none') { el.style.display = 'block'; btn.innerText = '🔺 隱藏歷史紀錄'; } else { el.style.display = 'none'; btn.innerText = '👁️ 顯示已完成的歷史紀錄'; }
     }
     
-    function saveMakeupToMemory() { localStorage.setItem('jess_makeup_v2', JSON.stringify(makeupBank)); }
+    function saveMakeupToMemory() { localStorage.setItem('jess_makeup_v2', JSON.stringify(makeupBank)); pushToCloud(); }
     function getDayName(index) {
       const days = {'0':'週日', '1':'週一', '2':'週二', '3':'週三', '4':'週四', '5':'週五', '6':'週六'};
       return days[index] || '';
@@ -721,7 +834,110 @@
         renderManageList();
       }
     }
-    function saveToMemory() { localStorage.setItem('jess_students_v4', JSON.stringify(students)); }
+    function saveToMemory() { localStorage.setItem('jess_students_v4', JSON.stringify(students)); pushToCloud(); }
+
+    // ============ 手動備份／還原 ============
+    function exportBackup() {
+      let backup = {
+        type: 'jess-music-studio-backup',
+        exportedAt: new Date().toISOString(),
+        students: students,
+        makeupBank: makeupBank
+      };
+      let blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      let url = URL.createObjectURL(blob);
+      let a = document.createElement('a');
+      a.href = url;
+      a.download = 'jess-music-studio-backup-' + formatDate(new Date()) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function importBackup(event) {
+      let file = event.target.files[0];
+      if (!file) return;
+
+      let reader = new FileReader();
+      reader.onload = function(e) {
+        let data;
+        try {
+          data = JSON.parse(e.target.result);
+        } catch (err) {
+          alert('❌ 這個檔案不是有效的備份檔（JSON 格式錯誤）！');
+          event.target.value = '';
+          return;
+        }
+        if (!data || !Array.isArray(data.students) || !Array.isArray(data.makeupBank)) {
+          alert('❌ 這個檔案的格式不是本系統的備份檔！');
+          event.target.value = '';
+          return;
+        }
+        let confirmMsg = '即將匯入備份（匯出時間：' + (data.exportedAt || '未知') + '，共 ' + data.students.length + ' 位學生）。\n\n⚠️ 這會完全覆蓋目前這台裝置上的所有資料，此動作無法復原，確定要匯入嗎？';
+        if (!confirm(confirmMsg)) { event.target.value = ''; return; }
+
+        students = data.students;
+        makeupBank = data.makeupBank;
+        saveToMemory();
+        saveMakeupToMemory();
+        renderManageList();
+        if (calendar) calendar.refetchEvents();
+        event.target.value = '';
+        alert('✅ 匯入成功！資料已還原。');
+      };
+      reader.onerror = function() {
+        alert('❌ 讀取檔案失敗，請再試一次！');
+        event.target.value = '';
+      };
+      reader.readAsText(file);
+    }
+    // ============ 手動備份／還原結束 ============
+  </script>
+
+  <!-- ============ Firebase 雲端同步設定 ============ -->
+  <!-- 把下面 firebaseConfig 裡的值換成你自己在 Firebase 主控台「專案設定」取得的那一段。
+       在填入真正的值之前，這段程式碼會自動偵測到還是預留字，直接跳過，
+       app 會維持原本「只存在這台裝置」的行為，不會因此壞掉。 -->
+  <script type="module">
+    (async function() {
+      const firebaseConfig = {
+        apiKey: "AIzaSyDeDcqikUOOwkChQjouhCNghFM_CZmOTHI",
+        authDomain: "jess-music-studio.firebaseapp.com",
+        projectId: "jess-music-studio",
+        storageBucket: "jess-music-studio.firebasestorage.app",
+        messagingSenderId: "624824059287",
+        appId: "1:624824059287:web:8ec9d1687ee2aabc48f0d2"
+      };
+
+      if (firebaseConfig.apiKey === "PASTE_YOUR_API_KEY_HERE") {
+        console.log('尚未設定 Firebase，目前僅使用本機儲存（只有這台裝置看得到資料）。');
+        return;
+      }
+
+      try {
+        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js');
+        const firestoreMod = await import('https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js');
+        const authMod = await import('https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js');
+
+        const app = initializeApp(firebaseConfig);
+        const db = firestoreMod.getFirestore(app);
+        const auth = authMod.getAuth(app);
+
+        if (window.initCloudSync) {
+          window.initCloudSync(db, auth, {
+            doc: firestoreMod.doc,
+            setDoc: firestoreMod.setDoc,
+            onSnapshot: firestoreMod.onSnapshot,
+            onAuthStateChanged: authMod.onAuthStateChanged,
+            signInWithEmailAndPassword: authMod.signInWithEmailAndPassword,
+            signOut: authMod.signOut
+          });
+        }
+      } catch (err) {
+        console.error('Firebase 連線失敗，暫時只使用本機儲存：', err);
+      }
+    })();
   </script>
 </body>
 </html>
