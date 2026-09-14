@@ -92,6 +92,13 @@
     <button class="button" onclick="showPage('manage-page')">⚙️ 學生名單管理</button>
     <button class="button" onclick="showPage('salary-page')">💰 每月學費自動結算</button>
     <button class="button btn-secondary" id="logout-btn" style="display:none; font-size:13px; padding:8px; margin-top:5px;" onclick="doLogout()">登出</button>
+
+    <div style="display:flex; gap:8px; width:90%; margin:15px auto 0 auto;">
+      <button class="small-btn" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="exportBackup()">📤 匯出備份</button>
+      <button class="small-btn" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('import-file-input').click()">📥 匯入備份</button>
+      <button class="small-btn" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="openHistoryModal()">🕐 歷史版本</button>
+    </div>
+    <input type="file" id="import-file-input" accept="application/json" style="display:none;" onchange="importBackup(event)">
   </div>
 
   <div id="calendar-page" style="display: none;">
@@ -157,6 +164,15 @@
     </div>
   </div>
 
+  <div id="history-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="modal-content" style="text-align: left; max-height: 85vh; overflow-y: auto;">
+      <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">🕐 歷史版本</h3>
+      <p style="font-size:12px; color:#888; line-height:1.5;">系統每次存檔都會自動保留最近 30 筆版本，可以還原到之前的某個時間點。還原會覆蓋目前的資料。</p>
+      <div id="history-list">載入中...</div>
+      <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeHistoryModal()">關閉</button>
+    </div>
+  </div>
+
   <div id="makeup-page" style="display: none;">
     <h2 style="font-weight: 300;">🔄 補課存摺管理</h2>
     <div class="card" style="background-color: #FFF9F5; border: 1px solid #E08E79;">
@@ -202,14 +218,6 @@
       <button class="button" style="width:100%; margin:0;" onclick="addStudent()">確認新增</button>
     </div>
     <div id="manage-list"></div>
-
-    <div class="card" style="background-color: #F4F6F3; border: 1px solid #ccc;">
-      <h3 style="margin-top:0; font-size: 16px;">💾 資料備份（防止資料遺失）</h3>
-      <p style="font-size:12px; color:#888; margin-top:-8px; margin-bottom:12px; line-height:1.5;">這份資料目前只存在「這台裝置的這個瀏覽器」裡，換裝置、換瀏覽器、或清除瀏覽器資料都會遺失。建議更新完學生資料後，匯出一份備份存起來（例如傳到雲端硬碟或 LINE 給自己）；要換裝置或救回資料時，用「匯入備份」還原即可。</p>
-      <button class="button" style="width:100%; margin:0 0 10px 0; background-color:#8C9C8A;" onclick="exportBackup()">📤 匯出備份 (JSON 檔案)</button>
-      <input type="file" id="import-file-input" accept="application/json" style="display:none;" onchange="importBackup(event)">
-      <button class="button btn-secondary" style="width:100%; margin:0;" onclick="document.getElementById('import-file-input').click()">📥 匯入備份</button>
-    </div>
 
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
@@ -423,18 +431,98 @@
       });
     }
 
-    // 把目前的學生名單／補課存摺推上雲端。saveToMemory() 和 saveMakeupToMemory() 會自動呼叫這個函式。
+    // 把目前的學生名單／補課存摺推上雲端，同時偷偷存一份帶時間戳記的歷史備份（不會顯示在畫面上）。
+    // saveToMemory() 和 saveMakeupToMemory() 會自動呼叫這個函式。
+    const MAX_AUTO_BACKUPS = 30; // 最多保留幾筆自動備份
     function pushToCloud() {
       if (!cloudDb || !cloudAuth || !cloudAuth.currentUser) return; // 還沒登入雲端服務時，只存本機，不報錯
-      let ref = cloudFns.doc(cloudDb, 'studioData', 'main');
-      cloudFns.setDoc(ref, {
+      let payload = {
         students: JSON.stringify(students),
         makeupBank: JSON.stringify(makeupBank),
         updatedAt: new Date().toISOString()
+      };
+      let ref = cloudFns.doc(cloudDb, 'studioData', 'main');
+      cloudFns.setDoc(ref, payload).then(function() {
+        let backupsRef = cloudFns.collection(cloudDb, 'studioData', 'main', 'backups');
+        return cloudFns.addDoc(backupsRef, {
+          students: payload.students,
+          makeupBank: payload.makeupBank,
+          savedAt: Date.now()
+        });
+      }).then(function() {
+        trimOldBackups();
       }).catch(function(err) {
-        console.error('雲端儲存失敗，資料仍保留在本機，網路恢復後再試一次即可：', err);
+        console.error('雲端儲存或自動備份失敗，主資料仍保留在本機，網路恢復後再試一次即可：', err);
       });
     }
+
+    // 只保留最近 MAX_AUTO_BACKUPS 筆自動備份，避免筆數無限增加
+    function trimOldBackups() {
+      let backupsRef = cloudFns.collection(cloudDb, 'studioData', 'main', 'backups');
+      let q = cloudFns.query(backupsRef, cloudFns.orderBy('savedAt', 'desc'));
+      cloudFns.getDocs(q).then(function(snap) {
+        let docs = snap.docs;
+        if (docs.length > MAX_AUTO_BACKUPS) {
+          docs.slice(MAX_AUTO_BACKUPS).forEach(function(d) {
+            cloudFns.deleteDoc(d.ref).catch(function(err) { console.error('清除舊版本備份失敗：', err); });
+          });
+        }
+      }).catch(function(err) { console.error('檢查歷史版本數量失敗：', err); });
+    }
+
+    // ============ 歷史版本（自動備份）還原 ============
+    function openHistoryModal() {
+      if (!cloudDb || !cloudAuth || !cloudAuth.currentUser) { alert('雲端同步尚未啟用或尚未登入，無法使用歷史版本功能！'); return; }
+      document.getElementById('history-modal').style.display = 'flex';
+      document.getElementById('history-list').innerHTML = '載入中...';
+      let backupsRef = cloudFns.collection(cloudDb, 'studioData', 'main', 'backups');
+      let q = cloudFns.query(backupsRef, cloudFns.orderBy('savedAt', 'desc'), cloudFns.limit(MAX_AUTO_BACKUPS));
+      cloudFns.getDocs(q).then(function(snap) {
+        if (snap.empty) {
+          document.getElementById('history-list').innerHTML = '<p style="color:#888; font-size:13px;">目前還沒有任何歷史版本紀錄。</p>';
+          return;
+        }
+        let html = '';
+        snap.forEach(function(docSnap) {
+          let data = docSnap.data();
+          let label = new Date(data.savedAt).toLocaleString('zh-TW', { hour12: false });
+          let studentCount = 0;
+          try { studentCount = JSON.parse(data.students).length; } catch (e) {}
+          html += '<div class="card" style="padding:10px; margin:8px 0;">' +
+            '<div style="font-size:14px;">' + label + '</div>' +
+            '<div style="font-size:12px; color:#888; margin-bottom:8px;">' + studentCount + ' 位學生</div>' +
+            '<button class="small-btn" style="background-color:#8C9C8A; color:white;" onclick="restoreBackup(\'' + docSnap.id + '\')">還原到這個版本</button>' +
+            '</div>';
+        });
+        document.getElementById('history-list').innerHTML = html;
+      }).catch(function(err) {
+        document.getElementById('history-list').innerHTML = '<p style="color:#E08E79; font-size:13px;">讀取歷史版本失敗，請稍後再試。</p>';
+        console.error(err);
+      });
+    }
+
+    function closeHistoryModal() { document.getElementById('history-modal').style.display = 'none'; }
+
+    function restoreBackup(backupId) {
+      if (!confirm('確定要還原到這個版本嗎？目前的資料會被取代。（放心，目前的狀態本身也已經是歷史版本清單裡最新的一筆，還原錯了還能再從清單挑回來。）')) return;
+      let ref = cloudFns.doc(cloudDb, 'studioData', 'main', 'backups', backupId);
+      cloudFns.getDoc(ref).then(function(snap) {
+        if (!snap.exists()) { alert('找不到這個版本，可能已經被自動清除了。'); return; }
+        let data = snap.data();
+        students = data.students ? JSON.parse(data.students) : [];
+        makeupBank = data.makeupBank ? JSON.parse(data.makeupBank) : [];
+        saveToMemory();
+        saveMakeupToMemory();
+        closeHistoryModal();
+        renderManageList();
+        if (calendar) calendar.refetchEvents();
+        alert('✅ 已還原！');
+      }).catch(function(err) {
+        alert('還原失敗，請再試一次。');
+        console.error(err);
+      });
+    }
+    // ============ 歷史版本還原結束 ============
 
     // 收到雲端更新後，重新整理目前畫面上看得到的內容
     function refreshCurrentView() {
@@ -928,7 +1016,15 @@
           window.initCloudSync(db, auth, {
             doc: firestoreMod.doc,
             setDoc: firestoreMod.setDoc,
+            getDoc: firestoreMod.getDoc,
             onSnapshot: firestoreMod.onSnapshot,
+            collection: firestoreMod.collection,
+            addDoc: firestoreMod.addDoc,
+            query: firestoreMod.query,
+            orderBy: firestoreMod.orderBy,
+            limit: firestoreMod.limit,
+            getDocs: firestoreMod.getDocs,
+            deleteDoc: firestoreMod.deleteDoc,
             onAuthStateChanged: authMod.onAuthStateChanged,
             signInWithEmailAndPassword: authMod.signInWithEmailAndPassword,
             signOut: authMod.signOut
