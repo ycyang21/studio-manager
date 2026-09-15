@@ -117,10 +117,11 @@
     <div class="modal-content">
       <h3 id="modal-title" style="margin-top: 0; font-size: 20px; color: #333;">學生姓名</h3>
       <p id="modal-date" style="color: #666; font-size: 14px; margin-bottom: 20px;">2026-09-11 18:00</p>
+      <div id="modal-balance-info" style="display:none; font-size:13px; margin: -10px 0 16px 0; padding:8px 10px; border-radius:6px; text-align:left; line-height:1.4;"></div>
       
       <div id="modal-normal-actions">
         <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#666; margin-bottom:12px; text-align:left;">
-          <input type="checkbox" id="modal-mark-paid"> 出席的同時，登記已收費 1 堂
+          <input type="checkbox" id="modal-mark-paid" onchange="checkPaidCheckboxWarning(this)"> 出席的同時，登記已收費 1 堂
         </label>
         <button class="modal-btn" style="background-color: #8C9C8A;" onclick="markStatus('attended')">✅ 出席 (紀錄學費)</button>
         <button class="modal-btn" style="background-color: #E2E8DF; color: #333;" onclick="markStatus('canceled')">❌ 延期 (不收費/留存紀錄)</button>
@@ -131,7 +132,7 @@
       <div id="modal-makeup-actions" style="display: none;">
         <div id="modal-makeup-pending">
           <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#666; margin-bottom:12px; text-align:left;">
-            <input type="checkbox" id="modal-makeup-mark-paid"> 出席的同時，登記已收費
+            <input type="checkbox" id="modal-makeup-mark-paid" onchange="checkPaidCheckboxWarning(this)"> 出席的同時，登記已收費
           </label>
           <button class="modal-btn" style="background-color: #8C9C8A;" onclick="markMakeupStatus('attended')">✅ 補課出席 (紀錄學費)</button>
           <button class="modal-btn" style="background-color: #FFB6B9;" onclick="markMakeupStatus('canceled')">❌ 取消排課 (退回存摺)</button>
@@ -252,7 +253,7 @@
 
   <div id="payment-page" style="display: none;">
     <h2 style="font-weight: 300;">💳 繳費管理</h2>
-    <p style="font-size:12px; color:#888; margin-top:-20px;">已上課堂數（含補課出席）自動累計，已繳堂數則是你登記過的每一筆繳費加總，差額就是目前欠款或超前預繳的堂數。</p>
+    <p style="font-size:12px; color:#888; margin-top:-20px;">已上課堂數（含補課出席）自動累計，已繳堂數則是你登記過的每一筆繳費加總，差額就是目前欠款或預繳剩餘的堂數。</p>
     <div id="payment-list"></div>
     <button class="button btn-secondary" onclick="showPage('main-menu')">返回主選單</button>
   </div>
@@ -675,6 +676,16 @@
               document.getElementById('modal-makeup-pending').style.display = isDone ? 'none' : 'block';
               document.getElementById('modal-makeup-done').style.display = isDone ? 'block' : 'none';
             }
+
+            let balanceStudentId = null;
+            if (props.type === 'normal') {
+              balanceStudentId = students[props.stuIdx].id;
+            } else {
+              let recForBalance = makeupBank.find(r => r.id === props.recordId);
+              balanceStudentId = recForBalance ? recForBalance.studentId : null;
+            }
+            showBalanceInfo(balanceStudentId);
+
             document.getElementById('modal-mark-paid').checked = false;
             document.getElementById('modal-makeup-mark-paid').checked = false;
             document.getElementById('attendance-modal').style.display = 'flex';
@@ -688,6 +699,47 @@
     }
 
     function closeModal() { document.getElementById('attendance-modal').style.display = 'none'; }
+
+    // 點名視窗開啟時，即時顯示這位學生目前的繳費結餘（預繳剩餘 / 已結清 / 還欠幾堂），
+    // 讓「出席的同時，登記已收費」這個 checkbox 該不該勾一眼就能判斷，避免和已登記的整批繳費重複計算。
+    function showBalanceInfo(studentId) {
+      let el = document.getElementById('modal-balance-info');
+      if (!studentId) { el.style.display = 'none'; return; }
+      let balance = getStudentBalance(studentId);
+      if (balance < 0) {
+        el.innerText = '🟢 目前預繳剩餘 ' + Math.abs(balance) + ' 堂，這堂通常已包含在內，不需要再勾選下方的「已收費」';
+        el.style.color = '#4A6741';
+        el.style.backgroundColor = '#F4F6F3';
+      } else if (balance > 0) {
+        el.innerText = '🟠 目前還欠 ' + balance + ' 堂，如果這堂是現場繳費才需要勾選下方的「已收費」';
+        el.style.color = '#B5651D';
+        el.style.backgroundColor = '#FFF9F5';
+      } else {
+        el.innerText = '目前已結清，如果這堂是現場繳費才需要勾選下方的「已收費」';
+        el.style.color = '#888';
+        el.style.backgroundColor = '#F5F5F5';
+      }
+      el.style.display = 'block';
+    }
+
+    // 勾選「出席的同時，登記已收費」時，如果這位學生本來就有預繳剩餘，跳出二次確認，
+    // 避免把已經包含在既有預繳裡的這一堂又重複登記一筆繳費（取消勾選則不需要檢查）。
+    function checkPaidCheckboxWarning(checkboxEl) {
+      if (!checkboxEl.checked || !currentModalEvent) return;
+      let studentId = null;
+      if (currentModalEvent.type === 'normal') {
+        studentId = students[currentModalEvent.stuIdx].id;
+      } else {
+        let record = makeupBank.find(r => r.id === currentModalEvent.recordId);
+        studentId = record ? record.studentId : null;
+      }
+      if (!studentId) return;
+      let balance = getStudentBalance(studentId);
+      if (balance < 0) {
+        let ok = confirm('⚠️ 這位學生目前預繳剩餘 ' + Math.abs(balance) + ' 堂，這堂課很可能已經包含在先前登記的繳費裡了。\n\n確定還要「額外」再登記一筆繳費嗎？');
+        if (!ok) { checkboxEl.checked = false; }
+      }
+    }
 
     function markStatus(status) {
       let stuIdx = currentModalEvent.stuIdx;
@@ -870,7 +922,7 @@
 
     // ============ 繳費管理（堂數存摺模型） ============
     // 核心邏輯：已上課堂數（自動算，含正常出席＋已完成補課）－已繳堂數（老師手動登記的每筆繳費加總）＝差額
-    // 差額 > 0：還欠幾堂的錢；差額 = 0：已結清；差額 < 0：已經超前預繳。
+    // 差額 > 0：還欠幾堂的錢；差額 = 0：已結清；差額 < 0：預繳還有剩餘。
     // 不管是「繳4堂」「繳一整月」「單堂繳」還是「隨性繳」，對系統來說都只是「登記一筆堂數」，不需要分別處理。
 
     function savePaymentToMemory() { localStorage.setItem('jess_payments_v1', JSON.stringify(paymentRecords)); pushToCloud(); updateMainMenuBadge(); }
@@ -983,7 +1035,7 @@
           statusHTML = `<div style="color:#E08E79; font-weight:bold;">⚠️ 尚未繳費：${balance} 堂（約 NT$ ${Math.round(balance * fee).toLocaleString()}）</div>`;
         } else if (balance < 0) {
           cardClass += ' payment-settled';
-          statusHTML = `<div style="color:#8C9C8A; font-weight:bold;">✅ 已預繳超前 ${Math.abs(balance)} 堂</div>`;
+          statusHTML = `<div style="color:#8C9C8A; font-weight:bold;">✅ 預繳剩餘 ${Math.abs(balance)} 堂</div>`;
         } else {
           cardClass += ' payment-settled';
           statusHTML = `<div style="color:#888;">✅ 已結清</div>`;
