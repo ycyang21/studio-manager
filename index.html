@@ -284,7 +284,10 @@
       <p id="modal-date" style="color: #666; font-size: 14px; margin-bottom: 20px;">2026-09-11 18:00</p>
       <div id="modal-balance-info" style="display:none; font-size:13px; margin: -10px 0 16px 0; padding:8px 10px; border-radius:6px; text-align:left; line-height:1.4;"></div>
       <div id="modal-todo-wrap" style="text-align:left; margin-bottom:16px;">
-        <input type="text" id="modal-todo-input" class="form-control" placeholder="✏️ 順手記一筆待辦（選填，出席時會自動存下來）">
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="modal-todo-input" class="form-control" placeholder="✏️ 幫這堂課記一筆待辦（例如：買樂譜）" style="flex:1;">
+          <button class="small-btn" style="padding:0 14px; background-color:#8C9C8A; color:white;" onclick="submitModalTodo()">➕</button>
+        </div>
       </div>
       
       <div id="modal-normal-actions">
@@ -1046,7 +1049,6 @@
               let isConverted = (s.makeupConvertedDates || []).includes(props.dateStr);
               if (isConverted) {
                 document.getElementById('modal-convert-actions').style.display = 'block';
-                document.getElementById('modal-todo-wrap').style.display = 'none';
                 let record = makeupBank.find(r => r.studentId === s.id && r.dateGen === props.dateStr && r.status === 'active');
                 document.getElementById('modal-convert-record-container').innerHTML = record
                   ? buildMakeupScheduleHTML(record, 'cal_')
@@ -1161,7 +1163,6 @@
           paymentRecords.push({ id: generateId(), studentId: s.id, studentName: s.name, date: dateStr, lessons: 1, note: '點名時登記' });
           savePaymentToMemory();
         }
-        maybeAddTodoFromModal(s.id, s.name);
       }
       if (status === 'canceled') s.canceledDates.push(dateStr);
       if (status === 'makeup') {
@@ -1190,7 +1191,6 @@
             paymentRecords.push({ id: generateId(), studentId: record.studentId, studentName: record.studentName, date: sch.date, lessons: Number(sch.amount) || 1, note: '補課點名時登記' });
             savePaymentToMemory();
           }
-          maybeAddTodoFromModal(record.studentId, record.studentName);
         } else if (status === 'revert') {
           sch.attended = false;
           record.status = 'active';
@@ -1224,7 +1224,6 @@
             t.paid = true; // 還沒有正式學生資料，先記在這筆臨時課本身，之後轉正時會一併帶過去
           }
         }
-        maybeAddTodoFromModal(t.studentId, t.studentName);
       } else if (status === 'canceled') {
         t.attended = false;
         t.canceled = true;
@@ -2202,14 +2201,30 @@
     }
 
     // 點名「出席」時順手記一筆：共用同一個輸入框（在點名視窗裡），出席送出時如果有打字就自動建立一筆待辦
-    function maybeAddTodoFromModal(studentId, studentName) {
+    // 點名視窗裡的「➕」：不管這堂課是還沒上、已經上過、固定課、臨時課還是補課，只要視窗裡看得到這位學生，
+    // 都可以直接記一筆待辦，不綁定要先做點名動作——排定了課，才有待辦，跟出不出席無關。
+    function submitModalTodo() {
+      if (!currentModalEvent) return;
       let input = document.getElementById('modal-todo-input');
-      if (!input) return;
       let text = input.value.trim();
-      if (!text) return;
+      if (!text) { alert('請輸入待辦內容！'); return; }
+
+      let studentId = null, studentName = null;
+      if (currentModalEvent.type === 'normal') {
+        let s = students[currentModalEvent.stuIdx];
+        studentId = s.id; studentName = s.name;
+      } else if (currentModalEvent.type === 'makeup') {
+        let record = makeupBank.find(r => r.id === currentModalEvent.recordId);
+        if (record) { studentId = record.studentId; studentName = record.studentName; }
+      } else if (currentModalEvent.type === 'temp') {
+        let t = tempLessons.find(x => x.id === currentModalEvent.tempId);
+        if (t) { studentId = t.studentId; studentName = t.studentName; }
+      }
+
       todos.push({ id: generateId(), text: text, studentId: studentId, studentName: studentName, dueDate: '', done: false, createdAt: new Date().toISOString() });
       saveTodosToMemory();
       input.value = '';
+      alert('✅ 已新增待辦！');
     }
     // ============ 待辦事項結束 ============
 
