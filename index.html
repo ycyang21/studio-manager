@@ -139,6 +139,7 @@
       </div></div>
       <div class="form-group" id="temp-existing-group">
         <label>學生</label>
+        <input type="text" id="temp-student-search" class="form-control" placeholder="🔍 搜尋學生姓名" style="margin-bottom:6px;" oninput="populateStudentSelect('temp-student', this.value, true)">
         <select id="temp-student" class="form-select"><option value="" disabled selected>選擇學生</option></select>
       </div>
       <div class="form-group" id="temp-manual-group" style="display:none;">
@@ -330,6 +331,7 @@
     <div class="card" style="background-color: #FFF9F5; border: 1px solid #E08E79;">
       <h3 style="margin-top:0; font-size: 16px; color:#E08E79;">➕ 手動新增 (先補課/請假)</h3>
       <div class="form-group">
+        <input type="text" id="makeup-student-search" class="form-control" placeholder="🔍 搜尋學生姓名" style="margin-bottom:6px;" oninput="populateStudentSelect('manual-makeup-student', this.value, true)">
         <select id="manual-makeup-student" class="form-select"><option value="" disabled selected>選擇學生</option></select>
       </div>
       <button class="button" style="width:100%; margin:0; background-color:#E08E79;" onclick="addManualMakeup()">新增 1 堂需補課紀錄</button>
@@ -381,6 +383,7 @@
       <div class="form-group"><label>聯絡電話</label><input type="tel" id="add-phone" class="form-control" placeholder="家長或學生電話"></div>
       <button class="button" style="width:100%; margin:0;" onclick="addStudent()">確認新增</button>
     </div>
+    <input type="text" id="manage-search" class="form-control" style="width:90%; margin:15px auto 0 auto; display:block;" placeholder="🔍 搜尋學生姓名" oninput="renderManageList()">
     <div id="manage-list"></div>
 
     <button class="reset-btn" id="toggle-withdrawn-btn" onclick="toggleWithdrawnList()" style="width: 90%; margin: 20px auto; display: block;">👁️ 顯示已退班學生</button>
@@ -568,6 +571,39 @@
       let target = new Date(targetDateStr + 'T00:00:00');
       let diffWeeks = Math.round((target - anchor) / (1000 * 60 * 60 * 24 * 7));
       return ((diffWeeks % 2) + 2) % 2 === 0;
+    }
+
+    // 判斷兩份固定課表（頻率＋隔週基準日）在同一個星期幾、同一個時間，會不會真的撞期：
+    // 只要有一邊是每週，就一定撞；兩邊都隔週的話，要看基準日期的單雙週是否對得上。
+    function wouldScheduleCollide(freqA, anchorA, freqB, anchorB) {
+      if (freqA !== 'biweekly' || freqB !== 'biweekly') return true;
+      if (!anchorA || !anchorB) return true; // 缺基準日期時，保守起見還是提醒
+      return isBiweeklyOnWeek(anchorA, anchorB);
+    }
+
+    // 新增/編輯學生時的上課時間防呆：跟其他在學學生（不含自己、不含已退班）比對星期＋時間是否重疊
+    function checkScheduleConflictWarning(freq, dayIndex, timeVal, anchorDate, excludeId) {
+      if (freq === 'appointment') return true;
+      let conflictName = null;
+      for (let other of students) {
+        if (other.id === excludeId) continue;
+        if (other.endDate) continue;
+        if (other.freq === 'appointment') continue;
+        if (other.dayIndex !== dayIndex || other.timeVal !== timeVal) continue;
+        if (!wouldScheduleCollide(freq, anchorDate, other.freq, other.anchorDate)) continue;
+        conflictName = other.name;
+        break;
+      }
+      if (!conflictName) return true;
+      return confirm('⚠️ 這個上課時間（' + getDayName(dayIndex) + ' ' + timeVal + '）跟「' + conflictName + '」重疊，確定要繼續嗎？');
+    }
+
+    // 新增/編輯學生時的姓名防呆：姓名＋樂器都跟某位在學學生相同才提醒（不含自己、不含已退班），
+    // 因為同名不同樂器、或同一位學生想再加開一堂同樂器的課，都是合理情況，不用特別打擾。
+    function checkDuplicateNameWarning(name, instrument, excludeId) {
+      let dup = students.find(s => s.id !== excludeId && !s.endDate && s.name === name && s.instrument === instrument);
+      if (!dup) return true;
+      return confirm('⚠️ 名單裡已經有一位「' + name + '」，樂器也是「' + instrument + '」。\n\n如果是同一位學生想加開新的課，或者剛好是同名同姓的不同學生，都可以繼續新增；如果是不小心重複輸入，請按取消。');
     }
 
     // ============ Firebase 雲端同步 ============
@@ -1123,9 +1159,8 @@
     }
 
     function openTempLessonModal() {
-      let select = document.getElementById('temp-student');
-      select.innerHTML = '<option value="" disabled selected>選擇學生</option>';
-      students.forEach(s => { if (!s.endDate) select.innerHTML += `<option value="${s.id}">${s.name}</option>`; });
+      document.getElementById('temp-student-search').value = '';
+      populateStudentSelect('temp-student', '', true);
       document.getElementById('temp-date').value = '';
       document.getElementById('temp-manual-name').value = '';
       document.getElementById('temp-manual-fee').value = '';
@@ -1220,10 +1255,28 @@
       document.getElementById('dynamic-total-revenue').innerText = 'NT$ ' + total.toLocaleString();
     }
 
-    function populateMakeupStudentSelect() {
-      let select = document.getElementById('manual-makeup-student');
+    // 依搜尋關鍵字重新產生下拉選單的學生選項；query 空白就顯示全部（已退班學生視 excludeWithdrawn 決定要不要排除）。
+    // 篩選後如果原本選到的人還在篩選結果裡，會盡量保留住那個選取狀態，不會因為打字而跳掉。
+    function populateStudentSelect(selectId, query, excludeWithdrawn) {
+      let select = document.getElementById(selectId);
+      if (!select) return;
+      let currentValue = select.value;
       select.innerHTML = '<option value="" disabled selected>選擇學生</option>';
-      students.forEach(s => { if (!s.endDate) select.innerHTML += `<option value="${s.id}">${s.name}</option>`; });
+      let q = (query || '').trim().toLowerCase();
+      students.forEach(s => {
+        if (excludeWithdrawn && s.endDate) return;
+        if (q && !s.name.toLowerCase().includes(q)) return;
+        select.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+      });
+      if (currentValue && Array.from(select.options).some(o => o.value === currentValue)) {
+        select.value = currentValue;
+      }
+    }
+
+    function populateMakeupStudentSelect() {
+      let searchBox = document.getElementById('makeup-student-search');
+      if (searchBox) searchBox.value = '';
+      populateStudentSelect('manual-makeup-student', '', true);
     }
 
     function addManualMakeup() {
@@ -1508,10 +1561,12 @@
     // ============ 繳費管理結束 ============
 
     function renderManageList() {
+      let query = (document.getElementById('manage-search').value || '').trim().toLowerCase();
       let listHTML = '';
       let withdrawnHTML = '';
       let withdrawnCount = 0;
       students.forEach((s, i) => {
+        if (query && !s.name.toLowerCase().includes(query)) return; // 不符合搜尋關鍵字就跳過，但 i 還是原本在 students 陣列裡的索引，按鈕不會點錯人
         let displayTime;
         if (s.freq === 'appointment') {
           displayTime = '約課（無固定時間）';
@@ -1531,7 +1586,7 @@
           listHTML += `<div class="card" style="display: flex; justify-content: space-between; align-items: center;"><div><div class="student-title" style="font-size: 16px;">${s.name} (${s.instrument})</div><div class="student-detail" style="margin-bottom:0;">🕒 ${displayTime}${startNote} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div></div><div style="white-space:nowrap;"><button class="small-btn" style="background-color:#E2E8DF; color:#333;" onclick="openEditModal(${i})">編輯</button><button class="small-btn" style="background-color:#B08A8A; color:white;" onclick="openWithdrawModal('${s.id}')">退班</button><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
         }
       });
-      document.getElementById('manage-list').innerHTML = listHTML || '<p style="color:#888;">目前沒有在學學生，請在上面新增。</p>';
+      document.getElementById('manage-list').innerHTML = listHTML || (query ? '<p style="color:#888;">沒有符合搜尋的在學學生。</p>' : '<p style="color:#888;">目前沒有在學學生，請在上面新增。</p>');
       document.getElementById('manage-withdrawn-list').innerHTML = withdrawnCount === 0 ? '<p style="color:#aaa; font-size:12px;">尚無已退班學生</p>' : withdrawnHTML;
     }
     
@@ -1619,6 +1674,9 @@
           anchorDate = '';
         }
       }
+
+      if (!checkDuplicateNameWarning(name, instrument, null)) return;
+      if (!checkScheduleConflictWarning(freq, dayIndex, timeVal, anchorDate, null)) return;
 
       let newId = generateId();
       students.push({ id: newId, name: name, instrument: instrument, freq: freq, startDate: startDate, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, anchorDate: anchorDate, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
@@ -1818,6 +1876,10 @@
         }
       }
 
+      let editId = students[editingIndex].id;
+      if (!checkDuplicateNameWarning(name, instrument, editId)) return;
+      if (!checkScheduleConflictWarning(freq, dayIndex, timeVal, anchorDate, editId)) return;
+
       let s = students[editingIndex];
       s.name = name; s.instrument = instrument; s.freq = freq; s.startDate = startDate; s.dayIndex = dayIndex; s.timeVal = timeVal; s.fee = fee; s.phone = phone; s.anchorDate = anchorDate;
 
@@ -1860,6 +1922,9 @@
         }
       }
       
+      if (!checkDuplicateNameWarning(name, instrument, null)) return;
+      if (!checkScheduleConflictWarning(freq, dayIndex, timeVal, anchorDate, null)) return;
+
       students.push({ id: generateId(), name: name, instrument: instrument, freq: freq, startDate: startDate, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, anchorDate: anchorDate, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
       saveToMemory(); 
       
