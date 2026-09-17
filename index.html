@@ -105,7 +105,21 @@
       <button class="small-btn" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('import-file-input').click()">📥 匯入備份</button>
       <button class="small-btn" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="openHistoryModal()">🕐 歷史版本</button>
     </div>
+    <button class="small-btn" style="width:90%; margin:8px auto 0 auto; display:block; padding:8px; background-color:#FFF9F5; color:#B08A8A;" onclick="openCleanupModal()">🗑️ 清除舊資料</button>
     <input type="file" id="import-file-input" accept="application/json" style="display:none;" onchange="importBackup(event)">
+  </div>
+
+  <div id="cleanup-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="modal-content" style="text-align: left;">
+      <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">🗑️ 清除舊資料</h3>
+      <p style="font-size:12px; color:#888; line-height:1.6;">這會把你選的日期以前的詳細出席/繳費/補課/臨時課紀錄清掉。系統會先幫每位學生把清除前的預繳/欠費結算成一筆「期初結餘」，所以清除後每個人目前的金額不會跑掉，只是看不到更早以前一筆一筆的細節了。<br><br>⚠️ 這個動作無法復原，強烈建議先按上一頁的「📤 匯出備份」存一份，再繼續。</p>
+      <div class="form-group">
+        <label>清除這個日期以前的資料</label>
+        <input type="date" id="cleanup-cutoff-date" class="form-control" value="2026-08-01">
+      </div>
+      <button class="button" style="width:100%; margin:10px 0 0 0; background-color:#B08A8A;" onclick="runDataCleanup()">確定清除</button>
+      <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeCleanupModal()">取消</button>
+    </div>
   </div>
 
   <div id="calendar-page" style="display: none;">
@@ -169,6 +183,7 @@
         <label><input type="radio" name="convert-freq" value="biweekly" onclick="checkConvertFreq()"> 隔週</label>
         <label><input type="radio" name="convert-freq" value="appointment" onclick="checkConvertFreq()"> 約課</label>
       </div></div>
+      <div class="form-group"><label>開始上課日期 (必填)</label><input type="date" id="convert-start-date" class="form-control"></div>
       <div class="form-group" id="convert-schedule-group">
         <label>上課時間 (24小時制)</label>
         <div class="time-bar">
@@ -226,6 +241,12 @@
         <button class="modal-btn" style="background-color: #B08A8A;" onclick="openWithdrawModalFromEvent()">🚪 學生退班</button>
       </div>
 
+      <div id="modal-convert-actions" style="display: none; text-align: left;">
+        <p style="font-size:12px; color:#888; margin-bottom:10px;">這堂已經轉為補課，可以直接在這裡安排補課時間，會同步顯示在「補課存摺管理」頁面。</p>
+        <div id="modal-convert-record-container"></div>
+        <button class="modal-btn" style="background-color: #fff; color: #888; border: 1px solid #ddd; margin-top:15px;" onclick="markStatus('reset')">↩️ 恢復為「未點名」</button>
+      </div>
+
       <div id="modal-makeup-actions" style="display: none;">
         <div id="modal-makeup-pending">
           <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#666; margin-bottom:12px; text-align:left;">
@@ -269,6 +290,7 @@
         <label><input type="radio" name="edit-freq" value="biweekly" onclick="checkEditFreq()"> 隔週</label>
         <label><input type="radio" name="edit-freq" value="appointment" onclick="checkEditFreq()"> 約課</label>
       </div></div>
+      <div class="form-group"><label>開始上課日期（選填，沒填的話月曆往前翻不會受限制）</label><input type="date" id="edit-start-date" class="form-control"></div>
       <div class="form-group" id="edit-schedule-group">
         <label>上課時間 (24小時制)</label>
         <div class="time-bar">
@@ -331,6 +353,8 @@
         <label><input type="radio" name="add-freq" value="biweekly" onclick="checkAddFreq()"> 隔週</label>
         <label><input type="radio" name="add-freq" value="appointment" onclick="checkAddFreq()"> 約課</label>
       </div></div>
+
+      <div class="form-group"><label>開始上課日期 (必填)</label><input type="date" id="add-start-date" class="form-control"></div>
       
       <!-- 整合在同一個美觀 Bar 內的 24 小時制選擇 -->
       <div class="form-group" id="add-schedule-group">
@@ -776,6 +800,7 @@
                 if (s.dayIndex !== dayOfWeek) return;
                 if (s.freq === 'biweekly' && !isBiweeklyOnWeek(s.anchorDate, dateStr)) return; // 隔週學生：不是「有課的那一週」就跳過
                 if (s.endDate && dateStr > s.endDate) return; // 已退班：最後上課日期之後不再排課，之前的紀錄不受影響
+                if (s.startDate && dateStr < s.startDate) return; // 開始上課日期之前不會有課，避免月曆往前翻出從未發生過的課
 
                 let attended = s.attendedDates || [];
                 let canceled = s.canceledDates || [];
@@ -859,12 +884,23 @@
             document.getElementById('modal-normal-actions').style.display = 'none';
             document.getElementById('modal-makeup-actions').style.display = 'none';
             document.getElementById('modal-temp-actions').style.display = 'none';
+            document.getElementById('modal-convert-actions').style.display = 'none';
 
             let balanceStudentId = null;
 
             if (props.type === 'normal') {
-              document.getElementById('modal-normal-actions').style.display = 'block';
-              balanceStudentId = students[props.stuIdx].id;
+              let s = students[props.stuIdx];
+              balanceStudentId = s.id;
+              let isConverted = (s.makeupConvertedDates || []).includes(props.dateStr);
+              if (isConverted) {
+                document.getElementById('modal-convert-actions').style.display = 'block';
+                let record = makeupBank.find(r => r.studentId === s.id && r.dateGen === props.dateStr && r.status === 'active');
+                document.getElementById('modal-convert-record-container').innerHTML = record
+                  ? buildMakeupScheduleHTML(record, 'cal_')
+                  : '<p style="color:#888; font-size:13px;">找不到對應的補課紀錄，可能已經排課完成，請到「補課存摺管理」查看。</p>';
+              } else {
+                document.getElementById('modal-normal-actions').style.display = 'block';
+              }
             } else if (props.type === 'makeup') {
               document.getElementById('modal-makeup-actions').style.display = 'block';
 
@@ -1065,6 +1101,7 @@
         if (s.dayIndex !== dayOfWeek || s.timeVal !== timeStr) continue;
         if (s.freq === 'biweekly' && !isBiweeklyOnWeek(s.anchorDate, dateStr)) continue;
         if (s.endDate && dateStr > s.endDate) continue;
+        if (s.startDate && dateStr < s.startDate) continue;
         if ((s.canceledDates || []).includes(dateStr)) continue;
         if ((s.makeupConvertedDates || []).includes(dateStr)) continue;
         return s.name;
@@ -1200,6 +1237,36 @@
       saveMakeupToMemory(); select.value = ""; renderMakeupList(); alert('✅ 已手動新增一筆需補課紀錄 (1堂)');
     }
 
+    // 補課存摺單一筆紀錄的「尚欠堂數 + 已排定列表 + 排課表單」，補課存摺頁面跟月曆上點「已轉補課」的那堂課共用同一份邏輯。
+    // idPrefix 用來區分兩處的 input id（例如 'cal_'），避免兩處同時渲染在畫面上時 id 互相打架。
+    function buildMakeupScheduleHTML(record, idPrefix) {
+      let schList = record.schedules.map(sch => {
+        let statusIcon = sch.attended ? '✅已上' : '⏳待上';
+        return `<div style="font-size:12px; color:#E08E79; margin-top:5px;">↳ ${statusIcon} ${sch.date} ${sch.time} (扣 ${sch.amount} 堂)</div>`;
+      }).join('');
+
+      let formHTML = '';
+      if (record.remaining > 0) {
+        let submitFn = idPrefix === '' ? `scheduleMakeup('${record.id}')` : `scheduleMakeupFromCalendar('${record.id}')`;
+        formHTML = `
+          <div style="background-color:#f9f9f9; padding:10px; border-radius:5px; margin-top:10px;">
+            <div style="display:flex; gap:10px; margin-bottom:5px;">
+              <input type="number" id="${idPrefix}amt_${record.id}" class="form-control" style="padding:5px; width:40%;" placeholder="補幾堂 (如0.5)" step="0.1" min="0.1" max="${record.remaining}">
+              <input type="date" id="${idPrefix}date_${record.id}" class="form-control" style="padding:5px; width:60%;">
+            </div>
+            <div style="display:flex; gap:5px; align-items:center; background:white; border:1px solid #ccc; border-radius:5px; padding:3px 8px; margin-top:5px;">
+              <div class="time24" id="${idPrefix}time_${record.id}" style="flex:1;">
+                <input class="time24-seg" data-unit="hour" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" placeholder="--" aria-label="時">
+                <span class="time24-colon">:</span>
+                <input class="time24-seg" data-unit="minute" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" placeholder="--" aria-label="分">
+              </div>
+              <button class="small-btn" style="padding: 6px 12px; background-color:#8C9C8A; color:white;" onclick="${submitFn}">確定排課</button>
+            </div>
+          </div>`;
+      }
+      return `<div class="student-detail" style="font-size:14px; font-weight:bold; margin-bottom:0;">總需補: ${record.totalOwed} 堂 | <span style="color:#E08E79;">尚欠: ${record.remaining} 堂</span></div>${schList}${formHTML}`;
+    }
+
     function renderMakeupList() {
       let activeHTML = ''; let historyHTML = ''; let activeCount = 0; let historyCount = 0;
       let reversedBank = [...makeupBank].reverse();
@@ -1207,30 +1274,7 @@
       reversedBank.forEach(record => {
         if (record.status === 'active') {
           activeCount++;
-          let schList = record.schedules.map(sch => {
-            let statusIcon = sch.attended ? '✅已上' : '⏳待上';
-            return `<div style="font-size:12px; color:#E08E79; margin-top:5px;">↳ ${statusIcon} ${sch.date} ${sch.time} (扣 ${sch.amount} 堂)</div>`;
-          }).join('');
-
-          let formHTML = '';
-          if (record.remaining > 0) {
-            formHTML = `
-              <div style="background-color:#f9f9f9; padding:10px; border-radius:5px; margin-top:10px;">
-                <div style="display:flex; gap:10px; margin-bottom:5px;">
-                  <input type="number" id="amt_${record.id}" class="form-control" style="padding:5px; width:40%;" placeholder="補幾堂 (如0.5)" step="0.1" min="0.1" max="${record.remaining}">
-                  <input type="date" id="date_${record.id}" class="form-control" style="padding:5px; width:60%;">
-                </div>
-                <div style="display:flex; gap:5px; align-items:center; background:white; border:1px solid #ccc; border-radius:5px; padding:3px 8px; margin-top:5px;">
-                  <div class="time24" id="time_${record.id}" style="flex:1;">
-                    <input class="time24-seg" data-unit="hour" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" placeholder="--" aria-label="時">
-                    <span class="time24-colon">:</span>
-                    <input class="time24-seg" data-unit="minute" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" placeholder="--" aria-label="分">
-                  </div>
-                  <button class="small-btn" style="padding: 6px 12px; background-color:#8C9C8A; color:white;" onclick="scheduleMakeup('${record.id}')">確定排課</button>
-                </div>
-              </div>`;
-          }
-          activeHTML += `<div class="card makeup-card"><div style="display:flex; justify-content:space-between;"><div class="student-title">${record.studentName}</div><div style="font-size:12px; color:#888;">產生於: ${record.dateGen}</div></div><div class="student-detail" style="font-size:14px; font-weight:bold;">總需補: ${record.totalOwed} 堂 | <span style="color:#E08E79;">尚欠: ${record.remaining} 堂</span></div>${schList}${formHTML}<button class="small-btn" style="margin-top:10px; color:#888; background:transparent; text-decoration:underline;" onclick="cancelMakeupRecord('${record.id}')">取消這筆紀錄</button></div>`;
+          activeHTML += `<div class="card makeup-card"><div style="display:flex; justify-content:space-between;"><div class="student-title">${record.studentName}</div><div style="font-size:12px; color:#888;">產生於: ${record.dateGen}</div></div>${buildMakeupScheduleHTML(record, '')}<button class="small-btn" style="margin-top:10px; color:#888; background:transparent; text-decoration:underline;" onclick="cancelMakeupRecord('${record.id}')">取消這筆紀錄</button></div>`;
         } else {
           historyCount++;
           historyHTML += `<div class="card history-card"><div style="display:flex; justify-content:space-between;"><div class="student-title" style="color:#888;">${record.studentName}</div><div style="font-size:12px; color:#aaa;">已結清</div></div><div class="student-detail" style="margin-bottom:0;">總補課: ${record.totalOwed} 堂 (產生於 ${record.dateGen})</div></div>`;
@@ -1240,18 +1284,36 @@
       document.getElementById('makeup-history-list').innerHTML = historyCount === 0 ? '<p style="color:#aaa; font-size:12px;">尚無歷史紀錄</p>' : historyHTML;
     }
 
-    function scheduleMakeup(recordId) {
+    // 排課的核心邏輯，補課存摺頁面／月曆兩處共用
+    function doScheduleMakeup(recordId, amt, dateStr, timeStr) {
       let record = makeupBank.find(r => r.id === recordId);
+      if (!record) { alert('找不到這筆補課紀錄，請重新整理頁面再試一次！'); return false; }
+      if (!amt || amt <= 0 || amt > record.remaining) { alert(`❌ 輸入錯誤！最多只能補 ${record.remaining} 堂`); return false; }
+      if (!dateStr || !timeStr) { alert('❌ 請完整選擇補課的日期與時間！'); return false; }
+      record.schedules.push({ date: dateStr, time: timeStr, amount: amt, attended: false });
+      record.remaining = Number((record.remaining - amt).toFixed(2));
+      saveMakeupToMemory();
+      return true;
+    }
+
+    function scheduleMakeup(recordId) {
       let amt = Number(document.getElementById('amt_' + recordId).value);
       let date = document.getElementById('date_' + recordId).value;
       let timeInput = getTimeValue('time_' + recordId);
-      
-      if (!amt || amt <= 0 || amt > record.remaining) { alert(`❌ 輸入錯誤！最多只能補 ${record.remaining} 堂`); return; }
-      if (!date || !timeInput) { alert('❌ 請完整選擇補課的日期與時間！'); return; }
+      if (!doScheduleMakeup(recordId, amt, date, timeInput)) return;
+      renderMakeupList();
+      alert('✅ 排定成功！');
+    }
 
-      record.schedules.push({ date: date, time: timeInput, amount: amt, attended: false });
-      record.remaining = Number((record.remaining - amt).toFixed(2)); 
-      saveMakeupToMemory(); renderMakeupList(); alert(`✅ 排定成功！`);
+    // 從月曆「已轉補課」的虛線框排課：讀取 cal_ 開頭的欄位，排定成功後直接關掉點名視窗、刷新月曆
+    function scheduleMakeupFromCalendar(recordId) {
+      let amt = Number(document.getElementById('cal_amt_' + recordId).value);
+      let date = document.getElementById('cal_date_' + recordId).value;
+      let timeInput = getTimeValue('cal_time_' + recordId);
+      if (!doScheduleMakeup(recordId, amt, date, timeInput)) return;
+      closeModal();
+      if (calendar) calendar.refetchEvents();
+      alert('✅ 排定成功！');
     }
 
     function cancelMakeupRecord(recordId) {
@@ -1465,7 +1527,8 @@
           let balanceNote = balance > 0 ? ('<br> ⚠️ 呆帳未收：' + balance + ' 堂') : '';
           withdrawnHTML += `<div class="card history-card" style="display: flex; justify-content: space-between; align-items: center;"><div><div class="student-title" style="color:#888;">${s.name} (${s.instrument})</div><div class="student-detail" style="margin-bottom:0;">🕒 ${displayTime} <br> 🚪 退班日期：${s.endDate}${balanceNote}</div></div><button class="small-btn del-btn" onclick="deleteStudent(${i})">永久刪除</button></div>`;
         } else {
-          listHTML += `<div class="card" style="display: flex; justify-content: space-between; align-items: center;"><div><div class="student-title" style="font-size: 16px;">${s.name} (${s.instrument})</div><div class="student-detail" style="margin-bottom:0;">🕒 ${displayTime} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div></div><div style="white-space:nowrap;"><button class="small-btn" style="background-color:#E2E8DF; color:#333;" onclick="openEditModal(${i})">編輯</button><button class="small-btn" style="background-color:#B08A8A; color:white;" onclick="openWithdrawModal('${s.id}')">退班</button><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
+          let startNote = s.startDate ? (' <br> 🌱 開始上課：' + s.startDate) : '';
+          listHTML += `<div class="card" style="display: flex; justify-content: space-between; align-items: center;"><div><div class="student-title" style="font-size: 16px;">${s.name} (${s.instrument})</div><div class="student-detail" style="margin-bottom:0;">🕒 ${displayTime}${startNote} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div></div><div style="white-space:nowrap;"><button class="small-btn" style="background-color:#E2E8DF; color:#333;" onclick="openEditModal(${i})">編輯</button><button class="small-btn" style="background-color:#B08A8A; color:white;" onclick="openWithdrawModal('${s.id}')">退班</button><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
         }
       });
       document.getElementById('manage-list').innerHTML = listHTML || '<p style="color:#888;">目前沒有在學學生，請在上面新增。</p>';
@@ -1523,6 +1586,7 @@
       document.getElementById('convert-day').value = '';
       resetTimeValue('convert-time');
       document.getElementById('convert-anchor-date').value = '';
+      document.getElementById('convert-start-date').value = t.date; // 預設用那堂體驗課的日期，因為那就是他真正的第一堂課
 
       convertingTempId = t.id;
       document.getElementById('convert-modal').style.display = 'flex';
@@ -1535,6 +1599,7 @@
       let fee = document.getElementById('convert-fee').value.trim();
       let phone = document.getElementById('convert-phone').value.trim();
       let freq = document.querySelector('input[name="convert-freq"]:checked').value;
+      let startDate = document.getElementById('convert-start-date').value;
       let dayIndex = document.getElementById('convert-day').value;
       let timeVal = getTimeValue('convert-time');
       let anchorDate = document.getElementById('convert-anchor-date').value;
@@ -1543,6 +1608,7 @@
       instrumentRadios.forEach(r => { if(r.checked) instrument = (r.value === '其他') ? (document.getElementById('convert-other-instrument').value.trim() || '未指定') : r.value; });
 
       if (name === '' || fee === '' || isNaN(Number(fee)) || Number(fee) <= 0) { alert('請填寫完整姓名，並填入大於 0 的單堂學費！'); return; }
+      if (!startDate) { alert('請填寫開始上課日期！'); return; }
       if (freq === 'appointment') {
         dayIndex = ''; timeVal = ''; anchorDate = '';
       } else {
@@ -1555,7 +1621,7 @@
       }
 
       let newId = generateId();
-      students.push({ id: newId, name: name, instrument: instrument, freq: freq, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, anchorDate: anchorDate, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
+      students.push({ id: newId, name: name, instrument: instrument, freq: freq, startDate: startDate, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, anchorDate: anchorDate, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
       saveToMemory();
 
       // 把原本那筆臨時課接到新學生身上，變成他的第一堂課紀錄；如果當初有標記已收費，補登記一筆繳費
@@ -1716,6 +1782,7 @@
       document.getElementById('edit-day').value = s.dayIndex || '';
       setTimeValue('edit-time', s.timeVal || '00:00');
       document.getElementById('edit-anchor-date').value = s.anchorDate || '';
+      document.getElementById('edit-start-date').value = s.startDate || '';
 
       document.getElementById('edit-fee').value = s.fee;
       document.getElementById('edit-phone').value = s.phone;
@@ -1731,6 +1798,7 @@
       let fee = document.getElementById('edit-fee').value.trim();
       let phone = document.getElementById('edit-phone').value.trim();
       let freq = document.querySelector('input[name="edit-freq"]:checked').value;
+      let startDate = document.getElementById('edit-start-date').value; // 選填：沒填就維持原本「不限制」的行為
       let dayIndex = document.getElementById('edit-day').value;
       let timeVal = getTimeValue('edit-time');
       let anchorDate = document.getElementById('edit-anchor-date').value;
@@ -1751,7 +1819,7 @@
       }
 
       let s = students[editingIndex];
-      s.name = name; s.instrument = instrument; s.freq = freq; s.dayIndex = dayIndex; s.timeVal = timeVal; s.fee = fee; s.phone = phone; s.anchorDate = anchorDate;
+      s.name = name; s.instrument = instrument; s.freq = freq; s.startDate = startDate; s.dayIndex = dayIndex; s.timeVal = timeVal; s.fee = fee; s.phone = phone; s.anchorDate = anchorDate;
 
       // 若學生姓名有異動，同步更新補課存摺、繳費紀錄、臨時課上顯示的姓名
       makeupBank.forEach(r => { if (r.studentId === s.id) r.studentName = s.name; });
@@ -1771,6 +1839,7 @@
       let fee = document.getElementById('add-fee').value.trim(); 
       let phone = document.getElementById('add-phone').value.trim(); 
       let freq = document.querySelector('input[name="add-freq"]:checked').value;
+      let startDate = document.getElementById('add-start-date').value;
       let dayIndex = document.getElementById('add-day').value; 
       let timeVal = getTimeValue('add-time');
       let anchorDate = document.getElementById('add-anchor-date').value;
@@ -1779,6 +1848,7 @@
       instrumentRadios.forEach(r => { if(r.checked) instrument = (r.value === '其他') ? (document.getElementById('other-instrument').value.trim() || '未指定') : r.value; });
       
       if (name === '' || fee === '' || isNaN(Number(fee)) || Number(fee) <= 0) { alert('請填寫完整姓名，並填入大於 0 的單堂學費！'); return; }
+      if (!startDate) { alert('請填寫開始上課日期！'); return; }
       if (freq === 'appointment') {
         dayIndex = ''; timeVal = ''; anchorDate = '';
       } else {
@@ -1790,10 +1860,11 @@
         }
       }
       
-      students.push({ id: generateId(), name: name, instrument: instrument, freq: freq, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, anchorDate: anchorDate, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
+      students.push({ id: generateId(), name: name, instrument: instrument, freq: freq, startDate: startDate, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, anchorDate: anchorDate, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
       saveToMemory(); 
       
       document.getElementById('add-name').value = ''; document.getElementById('add-fee').value = ''; document.getElementById('add-phone').value = ''; document.getElementById('add-day').value = ''; 
+      document.getElementById('add-start-date').value = '';
       document.getElementById('add-anchor-date').value = '';
       document.querySelector('input[name="add-freq"][value="weekly"]').checked = true;
       checkAddFreq();
@@ -1902,6 +1973,70 @@
       reader.readAsText(file);
     }
     // ============ 手動備份／還原結束 ============
+
+    // ============ 清除舊資料 ============
+    // 目標：把某個日期以前的「細節」清掉（逐堂出席、逐筆繳費、已完成的補課、舊的臨時課），
+    // 但每個人「目前」的預繳/欠費結果必須維持不變——做法是先幫每位學生把 cutoff 當下的結餘
+    // 換算成一筆「期初結餘」繳費紀錄（日期就記在 cutoff 當天），再把 cutoff 以前的細節通通刪掉。
+    // 數學上：新結餘 = debitAfter − (creditAfter + 期初結餘) = debitAfter − creditAfter − (creditBefore − debitBefore)
+    //        = (debitBefore + debitAfter) − (creditBefore + creditAfter) = 清除前的結餘，完全不變。
+    function openCleanupModal() { document.getElementById('cleanup-modal').style.display = 'flex'; }
+    function closeCleanupModal() { document.getElementById('cleanup-modal').style.display = 'none'; }
+
+    function runDataCleanup() {
+      let cutoff = document.getElementById('cleanup-cutoff-date').value;
+      if (!cutoff) { alert('請選擇日期！'); return; }
+      if (!confirm('⚠️ 確定要清除 ' + cutoff + ' 以前的詳細紀錄嗎？建議先確認已經匯出備份。這個動作無法復原！')) return;
+      if (!confirm('再次確認：真的要繼續清除嗎？清除後無法復原。')) return;
+
+      students.forEach(s => {
+        // 1. 算出這位學生在 cutoff 當下、清除前的已上課／已繳堂數
+        let debitBefore = 0;
+        (s.attendedDates || []).forEach(d => { if (d < cutoff) debitBefore++; });
+        makeupBank.forEach(r => {
+          if (r.studentId === s.id) {
+            r.schedules.forEach(sch => { if (sch.attended && sch.date < cutoff) debitBefore += (Number(sch.amount) || 0); });
+          }
+        });
+        let creditBefore = 0;
+        paymentRecords.forEach(p => { if (p.studentId === s.id && p.date < cutoff) creditBefore += (Number(p.lessons) || 0); });
+        let openingBalance = Number((creditBefore - debitBefore).toFixed(2));
+
+        // 2. 清掉 cutoff 以前的逐堂出席／延期／轉補紀錄
+        s.attendedDates = (s.attendedDates || []).filter(d => d >= cutoff);
+        s.canceledDates = (s.canceledDates || []).filter(d => d >= cutoff);
+        s.makeupConvertedDates = (s.makeupConvertedDates || []).filter(d => d >= cutoff);
+
+        // 3. 用一筆「期初結餘」繳費紀錄，把清除前的結餘原封不動地帶到 cutoff 這天
+        if (openingBalance !== 0) {
+          paymentRecords.push({ id: generateId(), studentId: s.id, studentName: s.name, date: cutoff, lessons: openingBalance, note: '期初結餘（清除舊資料時保留）' });
+        }
+      });
+
+      // 4. 清掉 cutoff 以前的逐筆繳費紀錄（上面新增的期初結餘紀錄日期就是 cutoff 當天，不會被清掉）
+      paymentRecords = paymentRecords.filter(p => p.date >= cutoff);
+
+      // 5. 補課存摺：已出席且早於 cutoff 的排課已經折算進期初結餘了，清掉；已經整筆結清、且產生於 cutoff 以前的歷史紀錄也一併清掉
+      makeupBank.forEach(r => {
+        r.schedules = r.schedules.filter(sch => !(sch.attended && sch.date < cutoff));
+      });
+      makeupBank = makeupBank.filter(r => !(r.status === 'history' && r.dateGen < cutoff && r.schedules.every(sch => sch.date < cutoff)));
+
+      // 6. 臨時課：清掉 cutoff 以前、已經有結果（出席或取消）的舊紀錄
+      tempLessons = tempLessons.filter(t => !(t.date < cutoff && (t.attended || t.canceled)));
+
+      // 7. 額外收入／呆帳：這兩個只影響「當月結算」，不影響任何人目前的結餘，直接依日期清除即可
+      extraIncome = extraIncome.filter(e => e.date >= cutoff);
+      badDebt = badDebt.filter(b => b.date >= cutoff);
+
+      saveToMemory(); saveMakeupToMemory(); savePaymentToMemory(); saveTempToMemory(); saveExtraIncomeToMemory(); saveBadDebtToMemory();
+      closeCleanupModal();
+      renderManageList();
+      if (calendar) calendar.refetchEvents();
+      updateMainMenuBadge();
+      alert('✅ 已清除 ' + cutoff + ' 以前的舊資料。每位學生目前的預繳/欠費金額已經用「期初結餘」保留下來，應該不會有變化。');
+    }
+    // ============ 清除舊資料結束 ============
   </script>
 
   <!-- ============ Firebase 雲端同步設定 ============ -->
