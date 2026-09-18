@@ -395,6 +395,7 @@
             <input type="checkbox" id="modal-makeup-mark-paid" onchange="checkPaidCheckboxWarning(this)"> 出席的同時，登記已收費
           </label>
           <button class="modal-btn" style="background-color: #8C9C8A;" onclick="markMakeupStatus('attended')">✅ 補課出席 (紀錄學費)</button>
+          <button class="modal-btn" style="background-color: #7C93B3;" onclick="openEditMakeupScheduleModalFromEvent()">✏️ 編輯補課時間</button>
           <button class="modal-btn" style="background-color: #FFB6B9;" onclick="markMakeupStatus('canceled')">❌ 取消排課 (退回存摺)</button>
         </div>
         <div id="modal-makeup-done" style="display: none;">
@@ -638,6 +639,37 @@
       <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeEditTodoModal()">取消</button>
     </div>
   </div>
+
+  <div id="edit-makeup-schedule-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="modal-content" style="text-align: left;">
+      <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">✏️ 編輯補課時間</h3>
+      <p id="edit-makeup-student-name" style="font-size:15px; font-weight:bold; color:#333; margin-bottom:10px;"></p>
+      <div class="form-group"><label>補幾堂</label><input type="number" id="edit-makeup-amt" class="form-control" step="0.1" min="0.1"></div>
+      <div class="form-group"><label>日期</label><input type="date" id="edit-makeup-date" class="form-control"></div>
+      <div class="form-group">
+        <label>時間 (24小時制)</label>
+        <div class="time-bar">
+          <div class="time24" id="edit-makeup-time" style="flex:1;">
+            <input class="time24-seg" data-unit="hour" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" placeholder="--" aria-label="時">
+            <span class="time24-colon">:</span>
+            <input class="time24-seg" data-unit="minute" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" placeholder="--" aria-label="分">
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>上課時長（分鐘）</label>
+        <div style="display:flex; gap:6px; margin-bottom:6px;">
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-makeup-duration').value=30">30</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-makeup-duration').value=50">50</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-makeup-duration').value=60">60</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-makeup-duration').value=90">90</button>
+        </div>
+        <input type="number" id="edit-makeup-duration" class="form-control" min="1" step="1" placeholder="分鐘">
+      </div>
+      <button class="button" style="width:100%; margin:10px 0 0 0; background-color:#8C9C8A;" onclick="submitEditMakeupSchedule()">💾 儲存修改</button>
+      <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeEditMakeupScheduleModal()">取消</button>
+    </div>
+  </div>
   </div>
 
   <script>
@@ -656,6 +688,8 @@
     let planChangingStudentId = null; // 正在辦理課程方案異動的學生 id（null = 沒有開啟異動視窗）
     let currentTodoStudentId = null; // 目前開著哪位學生的待辦事項視窗（null = 沒開）
     let editingTodoId = null; // 正在編輯的待辦事項 id（null = 沒有開啟編輯視窗）
+    let editingMakeupRecordId = null; // 正在編輯時間的補課紀錄 id（null = 沒有開啟編輯視窗）
+    let editingMakeupSchIdx = null; // 正在編輯時間的補課紀錄裡，第幾筆排課
     let cloudDb = null, cloudAuth = null, cloudFns = null, unsubscribeCloud = null; // Firebase 雲端同步用
 
     // 資料遷移：確保每位學生都有唯一 id，補課存摺改用 id 對應學生（避免同名學生互相干擾、改名後也不會對不到人）
@@ -1464,7 +1498,7 @@
 
     // 找出某個日期＋時間有沒有已經被別人卡住（固定/隔週課、排定的補課、其他臨時課），
     // 回傳卡住的那個人的姓名；已經延期／轉補課／取消的紀錄不算卡位，沒有衝突則回傳 null。
-    function findScheduleConflict(dateStr, timeStr, duration) {
+    function findScheduleConflict(dateStr, timeStr, duration, excludeMakeupKey) {
       let dayOfWeek = new Date(dateStr + 'T00:00:00').getDay().toString();
 
       for (let s of students) {
@@ -1482,7 +1516,9 @@
 
       for (let r of makeupBank) {
         if (r.status !== 'active') continue;
-        for (let sch of r.schedules) {
+        for (let schIdx = 0; schIdx < r.schedules.length; schIdx++) {
+          if (excludeMakeupKey && excludeMakeupKey.recordId === r.id && excludeMakeupKey.schIdx === schIdx) continue;
+          let sch = r.schedules[schIdx];
           if (sch.date === dateStr && timeRangesOverlap(timeStr, duration, sch.time, sch.duration)) return r.studentName;
         }
       }
@@ -1656,9 +1692,10 @@
     // 補課存摺單一筆紀錄的「尚欠堂數 + 已排定列表 + 排課表單」，補課存摺頁面跟月曆上點「已轉補課」的那堂課共用同一份邏輯。
     // idPrefix 用來區分兩處的 input id（例如 'cal_'），避免兩處同時渲染在畫面上時 id 互相打架。
     function buildMakeupScheduleHTML(record, idPrefix) {
-      let schList = record.schedules.map(sch => {
+      let schList = record.schedules.map((sch, idx) => {
         let statusIcon = sch.attended ? '✅已上' : '⏳待上';
-        return `<div style="font-size:12px; color:#E08E79; margin-top:5px;">↳ ${statusIcon} ${sch.date} ${sch.time} (扣 ${sch.amount} 堂)</div>`;
+        let editBtn = sch.attended ? '' : ` <button class="small-btn" style="padding:1px 6px; font-size:10px; background-color:#E2E8DF; color:#333;" onclick="openEditMakeupScheduleModal('${record.id}', ${idx})">✏️編輯</button>`;
+        return `<div style="font-size:12px; color:#E08E79; margin-top:5px;">↳ ${statusIcon} ${sch.date} ${sch.time} (扣 ${sch.amount} 堂)${editBtn}</div>`;
       }).join('');
 
       let formHTML = '';
@@ -1741,6 +1778,77 @@
     function cancelMakeupRecord(recordId) {
       if(confirm("確定刪除嗎？")) { makeupBank = makeupBank.filter(r => r.id !== recordId); saveMakeupToMemory(); renderMakeupList(); }
     }
+
+    // ============ 編輯已排定的補課時間 ============
+    // 兩個入口共用：補課存摺頁面／月曆上「已轉補課」那格的排課清單（buildMakeupScheduleHTML），
+    // 以及月曆上直接點某一筆已排定補課的視窗。已經出席的不能編輯，要先在月曆上恢復為尚未出席才能改。
+
+    function openEditMakeupScheduleModal(recordId, schIdx) {
+      let record = makeupBank.find(r => r.id === recordId);
+      if (!record) return;
+      let sch = record.schedules[schIdx];
+      if (!sch) return;
+      if (sch.attended) { alert('這堂已經出席了，請先在月曆上把它「恢復為尚未出席」，才能編輯時間。'); return; }
+
+      editingMakeupRecordId = recordId;
+      editingMakeupSchIdx = schIdx;
+      document.getElementById('edit-makeup-student-name').innerText = record.studentName;
+      document.getElementById('edit-makeup-amt').value = sch.amount;
+      document.getElementById('edit-makeup-date').value = sch.date;
+      setTimeValue('edit-makeup-time', sch.time || '00:00');
+      document.getElementById('edit-makeup-duration').value = sch.duration || 60;
+      document.getElementById('edit-makeup-schedule-modal').style.display = 'flex';
+    }
+
+    // 從月曆上直接點某一筆已排定補課的視窗開啟
+    function openEditMakeupScheduleModalFromEvent() {
+      if (!currentModalEvent || currentModalEvent.type !== 'makeup') return;
+      let recordId = currentModalEvent.recordId;
+      let schIdx = currentModalEvent.schIdx;
+      closeModal();
+      openEditMakeupScheduleModal(recordId, schIdx);
+    }
+
+    function closeEditMakeupScheduleModal() {
+      document.getElementById('edit-makeup-schedule-modal').style.display = 'none';
+      editingMakeupRecordId = null;
+      editingMakeupSchIdx = null;
+    }
+
+    function submitEditMakeupSchedule() {
+      let record = makeupBank.find(r => r.id === editingMakeupRecordId);
+      if (!record) { closeEditMakeupScheduleModal(); return; }
+      let sch = record.schedules[editingMakeupSchIdx];
+      if (!sch) { closeEditMakeupScheduleModal(); return; }
+
+      let newAmt = Number(document.getElementById('edit-makeup-amt').value);
+      let newDate = document.getElementById('edit-makeup-date').value;
+      let newTime = getTimeValue('edit-makeup-time');
+      let newDuration = Number(document.getElementById('edit-makeup-duration').value) || 60;
+
+      let maxAllowed = Number((record.remaining + sch.amount).toFixed(2)); // 這筆自己原本扣的堂數也要算進「可以用」的額度裡
+      if (!newAmt || newAmt <= 0 || newAmt > maxAllowed) { alert(`❌ 輸入錯誤！最多只能補 ${maxAllowed} 堂`); return; }
+      if (!newDate || !newTime) { alert('❌ 請完整選擇補課的日期與時間！'); return; }
+
+      let conflictName = findScheduleConflict(newDate, newTime, newDuration, { recordId: editingMakeupRecordId, schIdx: editingMakeupSchIdx });
+      if (conflictName) {
+        let ok = confirm('⚠️ 這個時段（' + newDate + ' ' + newTime + '）已經有 ' + conflictName + ' 排課了，確定還要改到這裡嗎？');
+        if (!ok) return;
+      }
+
+      record.remaining = Number((maxAllowed - newAmt).toFixed(2));
+      sch.amount = newAmt;
+      sch.date = newDate;
+      sch.time = newTime;
+      sch.duration = newDuration;
+
+      saveMakeupToMemory();
+      closeEditMakeupScheduleModal();
+      renderMakeupList();
+      if (calendar) calendar.refetchEvents();
+      alert('✅ 已更新補課時間！');
+    }
+    // ============ 編輯已排定的補課時間結束 ============
 
     function toggleHistory() {
       let el = document.getElementById('makeup-history-list'); let btn = document.getElementById('toggle-history-btn');
