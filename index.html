@@ -278,6 +278,27 @@
     </div>
   </div>
 
+  <div id="reschedule-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="modal-content" style="text-align: left;">
+      <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">🔀 課堂調課</h3>
+      <p id="reschedule-student-name" style="font-size:15px; font-weight:bold; color:#333; margin-bottom:10px;"></p>
+      <p style="font-size:12px; color:#888; line-height:1.5;">原本的時段會標記為「延期」保留紀錄，新時段會另外新增一堂臨時課。</p>
+      <div class="form-group"><label>新的日期</label><input type="date" id="reschedule-new-date" class="form-control"></div>
+      <div class="form-group">
+        <label>新的時間 (24小時制)</label>
+        <div class="time-bar">
+          <div class="time24" id="reschedule-new-time" style="flex:1;">
+            <input class="time24-seg" data-unit="hour" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" placeholder="--" aria-label="時">
+            <span class="time24-colon">:</span>
+            <input class="time24-seg" data-unit="minute" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" placeholder="--" aria-label="分">
+          </div>
+        </div>
+      </div>
+      <button class="button" style="width:100%; margin:10px 0 0 0; background-color:#7C93B3;" onclick="submitReschedule()">✅ 確認調課</button>
+      <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeRescheduleModal()">取消</button>
+    </div>
+  </div>
+
   <div id="attendance-modal">
     <div class="modal-content">
       <h3 id="modal-title" style="margin-top: 0; font-size: 20px; color: #333;">學生姓名</h3>
@@ -288,18 +309,35 @@
           <input type="text" id="modal-todo-input" class="form-control" placeholder="✏️ 幫這堂課記一筆待辦（例如：買樂譜）" style="flex:1;">
           <button class="small-btn" style="padding:0 14px; background-color:#8C9C8A; color:white;" onclick="submitModalTodo()">➕</button>
         </div>
+        <input type="date" id="modal-todo-due" class="form-control" style="margin-top:6px; font-size:13px;">
       </div>
       
       <div id="modal-normal-actions">
-        <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#666; margin-bottom:12px; text-align:left;">
-          <input type="checkbox" id="modal-mark-paid" onchange="checkPaidCheckboxWarning(this)"> 出席的同時，登記已收費 1 堂
-        </label>
-        <button class="modal-btn" style="background-color: #8C9C8A;" onclick="markStatus('attended')">✅ 出席 (紀錄學費)</button>
-        <button class="modal-btn" style="background-color: #E2E8DF; color: #333;" onclick="markStatus('canceled')">❌ 延期 (不收費/留存紀錄)</button>
-        <button class="modal-btn" style="background-color: #E08E79;" onclick="markStatus('makeup')">🔄 轉為補課 (存入存摺)</button>
-        <button class="modal-btn" style="background-color: #fff; color: #888; border: 1px solid #ddd;" onclick="markStatus('reset')">↩️ 恢復為「未點名」</button>
-        <button class="modal-btn" style="background-color: #7C93B3;" onclick="openPlanChangeModalFromEvent()">🔁 課程方案異動</button>
-        <button class="modal-btn" style="background-color: #B08A8A;" onclick="openWithdrawModalFromEvent()">🚪 學生退班</button>
+        <div id="modal-normal-paid-wrap">
+          <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#666; margin-bottom:12px; text-align:left;">
+            <input type="checkbox" id="modal-mark-paid" onchange="checkPaidCheckboxWarning(this)"> 出席的同時，登記已收費 1 堂
+          </label>
+        </div>
+
+        <div id="modal-normal-main">
+          <button class="modal-btn" style="background-color: #8C9C8A;" onclick="markStatus('attended')">✅ 出席 (紀錄學費)</button>
+          <button class="modal-btn" style="background-color: #B5A886;" onclick="showModalSubView('lesson')">🔄 課堂異動 ▸</button>
+          <button class="modal-btn" style="background-color: #A39193;" onclick="showModalSubView('student')">👤 學生異動 ▸</button>
+        </div>
+
+        <div id="modal-normal-lesson-actions" style="display:none;">
+          <button class="modal-btn" style="background-color: #fff; color: #666; border: 1px solid #ddd;" onclick="showModalSubView('main')">‹ 返回</button>
+          <button class="modal-btn" style="background-color: #E2E8DF; color: #333;" onclick="markStatus('canceled')">❌ 延期 (不收費/留存紀錄)</button>
+          <button class="modal-btn" style="background-color: #E08E79;" onclick="markStatus('makeup')">🔄 轉為補課 (存入存摺)</button>
+          <button class="modal-btn" style="background-color: #7C93B3;" onclick="openRescheduleModalFromEvent()">🔀 調課</button>
+          <button class="modal-btn" style="background-color: #fff; color: #888; border: 1px solid #ddd;" onclick="markStatus('reset')">↩️ 恢復為「未點名」</button>
+        </div>
+
+        <div id="modal-normal-student-actions" style="display:none;">
+          <button class="modal-btn" style="background-color: #fff; color: #666; border: 1px solid #ddd;" onclick="showModalSubView('main')">‹ 返回</button>
+          <button class="modal-btn" style="background-color: #7C93B3;" onclick="openPlanChangeModalFromEvent()">🔁 課程方案異動</button>
+          <button class="modal-btn" style="background-color: #B08A8A;" onclick="openWithdrawModalFromEvent()">🚪 學生退班</button>
+        </div>
       </div>
 
       <div id="modal-convert-actions" style="display: none; text-align: left;">
@@ -477,6 +515,7 @@
     <h2 style="font-weight: 300;">💳 繳費管理</h2>
     <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">返回主選單</button>
     <p style="font-size:12px; color:#888; margin-top:0;">已上課堂數（含補課出席）自動累計，已繳堂數則是你登記過的每一筆繳費加總，差額就是目前欠款或預繳剩餘的堂數。</p>
+    <input type="text" id="payment-search" class="form-control" style="width:90%; margin:0 auto 15px auto; display:block;" placeholder="🔍 搜尋學生姓名" oninput="renderPaymentList()">
     <div id="payment-list"></div>
   </div>
 
@@ -518,6 +557,23 @@
       <button class="button btn-secondary" style="width:100%; margin:15px 0 0 0;" onclick="closeStudentTodoModal()">關閉</button>
     </div>
   </div>
+
+  <div id="edit-todo-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="modal-content" style="text-align: left;">
+      <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">✏️ 編輯待辦事項</h3>
+      <div class="form-group"><input type="text" id="edit-todo-text" class="form-control" placeholder="待辦內容"></div>
+      <div class="form-group searchable-select" id="edit-todo-student-picker">
+        <label>綁定學生（選填，留空表示不綁定）</label>
+        <input type="text" id="edit-todo-student-input" class="form-control" placeholder="點一下搜尋 / 選擇學生（可留空）" autocomplete="off" oninput="filterStudentPicker('edit-todo-student', true)" onfocus="filterStudentPicker('edit-todo-student', true)">
+        <input type="hidden" id="edit-todo-student-value">
+        <div id="edit-todo-student-dropdown" class="searchable-dropdown" style="display:none;"></div>
+        <button type="button" class="small-btn" style="margin-top:6px; background:transparent; color:#888; text-decoration:underline; padding:2px 6px;" onclick="resetStudentPicker('edit-todo-student')">清除綁定</button>
+      </div>
+      <div class="form-group"><label>提醒/截止日期（選填）</label><input type="date" id="edit-todo-due" class="form-control"></div>
+      <button class="button" style="width:100%; margin:10px 0 0 0;" onclick="submitEditTodo()">💾 儲存修改</button>
+      <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeEditTodoModal()">取消</button>
+    </div>
+  </div>
   </div>
 
   <script>
@@ -535,6 +591,7 @@
     let withdrawingStudentId = null; // 正在辦理退班的學生 id（null = 沒有開啟退班視窗）
     let planChangingStudentId = null; // 正在辦理課程方案異動的學生 id（null = 沒有開啟異動視窗）
     let currentTodoStudentId = null; // 目前開著哪位學生的待辦事項視窗（null = 沒開）
+    let editingTodoId = null; // 正在編輯的待辦事項 id（null = 沒有開啟編輯視窗）
     let cloudDb = null, cloudAuth = null, cloudFns = null, unsubscribeCloud = null; // Firebase 雲端同步用
 
     // 資料遷移：確保每位學生都有唯一 id，補課存摺改用 id 對應學生（避免同名學生互相干擾、改名後也不會對不到人）
@@ -1055,6 +1112,7 @@
                   : '<p style="color:#888; font-size:13px;">找不到對應的補課紀錄，可能已經排課完成，請到「補課存摺管理」查看。</p>';
               } else {
                 document.getElementById('modal-normal-actions').style.display = 'block';
+                showModalSubView('main');
               }
             } else if (props.type === 'makeup') {
               document.getElementById('modal-makeup-actions').style.display = 'block';
@@ -1078,6 +1136,7 @@
             document.getElementById('modal-makeup-mark-paid').checked = false;
             document.getElementById('modal-temp-mark-paid').checked = false;
             document.getElementById('modal-todo-input').value = '';
+            document.getElementById('modal-todo-due').value = props.dateStr || '';
             document.getElementById('attendance-modal').style.display = 'flex';
           }
         });
@@ -1089,6 +1148,14 @@
     }
 
     function closeModal() { document.getElementById('attendance-modal').style.display = 'none'; }
+
+    // 一般課點名視窗的三層選單：main（出席/課堂異動/學生異動入口）、lesson（延期/轉補課/調課/恢復未點名）、student（課程方案異動/退班）
+    function showModalSubView(view) {
+      document.getElementById('modal-normal-paid-wrap').style.display = (view === 'main') ? 'block' : 'none';
+      document.getElementById('modal-normal-main').style.display = (view === 'main') ? 'block' : 'none';
+      document.getElementById('modal-normal-lesson-actions').style.display = (view === 'lesson') ? 'block' : 'none';
+      document.getElementById('modal-normal-student-actions').style.display = (view === 'student') ? 'block' : 'none';
+    }
 
     // 點名視窗開啟時，即時顯示這位學生目前的繳費結餘（預繳剩餘 / 已結清 / 還欠幾堂），
     // 讓「出席的同時，登記已收費」這個 checkbox 該不該勾一眼就能判斷，避免和已登記的整批繳費重複計算。
@@ -1630,8 +1697,10 @@
     }
 
     function renderPaymentList() {
+      let query = (document.getElementById('payment-search').value || '').trim().toLowerCase();
       let html = '';
       students.forEach(s => {
+        if (query && !s.name.toLowerCase().includes(query)) return;
         let debit = getStudentDebit(s.id);
         let credit = getStudentCredit(s.id);
         let balance = Number((debit - credit).toFixed(2));
@@ -1683,7 +1752,7 @@
             </div>
           </div>`;
       });
-      document.getElementById('payment-list').innerHTML = html || '<p style="color:#888;">尚無學生資料，請先到「學生名單管理」新增學生。</p>';
+      document.getElementById('payment-list').innerHTML = html || (query ? '<p style="color:#888;">沒有符合搜尋的學生。</p>' : '<p style="color:#888;">尚無學生資料，請先到「學生名單管理」新增學生。</p>');
     }
 
     // 主選單顯示目前有幾位學生尚未繳費（差額 > 0），方便一眼看到需要追繳的人數
@@ -2092,6 +2161,51 @@
     }
     // ============ 課程方案異動結束 ============
 
+    // ============ 調課 ============
+    // 僅調動「這一堂」：原本的時段標記為延期（複用「延期」按鈕的邏輯），新時段用臨時課的方式新增一筆，
+    // 兩個動作合併成一次操作，不會產生補課存摺那種需要另外追蹤的欠課關係。
+
+    function openRescheduleModalFromEvent() {
+      if (!currentModalEvent || currentModalEvent.type !== 'normal') return;
+      let s = students[currentModalEvent.stuIdx];
+      if (!s) return;
+      closeModal();
+      document.getElementById('reschedule-student-name').innerText = s.name;
+      document.getElementById('reschedule-new-date').value = currentModalEvent.dateStr || '';
+      resetTimeValue('reschedule-new-time');
+      document.getElementById('reschedule-modal').style.display = 'flex';
+    }
+
+    function closeRescheduleModal() { document.getElementById('reschedule-modal').style.display = 'none'; }
+
+    function submitReschedule() {
+      if (!currentModalEvent || currentModalEvent.type !== 'normal') { closeRescheduleModal(); return; }
+      let s = students[currentModalEvent.stuIdx];
+      if (!s) { closeRescheduleModal(); return; }
+
+      let newDate = document.getElementById('reschedule-new-date').value;
+      let newTime = getTimeValue('reschedule-new-time');
+      if (!newDate || !newTime) { alert('請完整選擇新的日期與時間！'); return; }
+
+      let conflictName = findScheduleConflict(newDate, newTime);
+      if (conflictName) {
+        let ok = confirm('⚠️ 這個時段（' + newDate + ' ' + newTime + '）已經有 ' + conflictName + ' 排課了，確定還要調課到這裡嗎？');
+        if (!ok) return;
+      }
+
+      if (!confirm('確定要把「' + s.name + '」這堂課調到 ' + newDate + ' ' + newTime + ' 嗎？原本的時段會標記為延期。')) return;
+
+      markStatus('canceled'); // 原本那堂標記為延期，複用既有邏輯
+
+      tempLessons.push({ id: generateId(), studentId: s.id, studentName: s.name, date: newDate, time: newTime, attended: false, canceled: false });
+      saveTempToMemory();
+
+      closeRescheduleModal();
+      if (calendar) calendar.refetchEvents();
+      alert('✅ 已調課！');
+    }
+    // ============ 調課結束 ============
+
     // ============ 待辦事項 ============
     // 同一份 todos 清單同時支援三種情境：綁學生的、不綁學生的工作雜事、還有點名時順手記的。
     // 待辦事項頁面看得到全部；學生的「📝 待辦」視窗只看得到綁定那位學生的。
@@ -2109,7 +2223,8 @@
             <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodoDone('${t.id}')" style="margin-top:3px;">
             <span>${tagRow}<span style="${textStyle}">${t.text}</span></span>
           </label>
-          <button class="small-btn del-btn" style="padding:2px 8px; font-size:11px; margin-left:8px;" onclick="deleteTodo('${t.id}')">刪除</button>
+          <button class="small-btn" style="padding:2px 8px; font-size:11px; margin-left:8px; background-color:#E2E8DF; color:#333;" onclick="openEditTodoModal('${t.id}')">編輯</button>
+          <button class="small-btn del-btn" style="padding:2px 8px; font-size:11px; margin-left:4px;" onclick="deleteTodo('${t.id}')">刪除</button>
         </div>`;
       }).join('');
     }
@@ -2221,10 +2336,45 @@
         if (t) { studentId = t.studentId; studentName = t.studentName; }
       }
 
-      todos.push({ id: generateId(), text: text, studentId: studentId, studentName: studentName, dueDate: '', done: false, createdAt: new Date().toISOString() });
+      todos.push({ id: generateId(), text: text, studentId: studentId, studentName: studentName, dueDate: document.getElementById('modal-todo-due').value, done: false, createdAt: new Date().toISOString() });
       saveTodosToMemory();
       input.value = '';
       alert('✅ 已新增待辦！');
+    }
+    // 編輯待辦事項：內容、綁定的學生、日期都可以改，改完哪裡看到的都會一起更新
+    function openEditTodoModal(id) {
+      let t = todos.find(x => x.id === id);
+      if (!t) return;
+      editingTodoId = id;
+      document.getElementById('edit-todo-text').value = t.text;
+      document.getElementById('edit-todo-due').value = t.dueDate || '';
+      if (t.studentId) {
+        document.getElementById('edit-todo-student-input').value = t.studentName || '';
+        document.getElementById('edit-todo-student-value').value = t.studentId;
+      } else {
+        resetStudentPicker('edit-todo-student');
+      }
+      document.getElementById('edit-todo-modal').style.display = 'flex';
+    }
+
+    function closeEditTodoModal() { document.getElementById('edit-todo-modal').style.display = 'none'; editingTodoId = null; }
+
+    function submitEditTodo() {
+      let t = todos.find(x => x.id === editingTodoId);
+      if (!t) return;
+      let text = document.getElementById('edit-todo-text').value.trim();
+      if (!text) { alert('請輸入待辦內容！'); return; }
+      let studentId = document.getElementById('edit-todo-student-value').value || null;
+      let stu = studentId ? students.find(s => s.id === studentId) : null;
+
+      t.text = text;
+      t.studentId = stu ? stu.id : null;
+      t.studentName = stu ? stu.name : null;
+      t.dueDate = document.getElementById('edit-todo-due').value;
+
+      saveTodosToMemory();
+      closeEditTodoModal();
+      refreshTodoViews();
     }
     // ============ 待辦事項結束 ============
 
