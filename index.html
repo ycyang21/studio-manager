@@ -239,6 +239,7 @@
         <input type="date" id="convert-anchor-date" class="form-control">
       </div>
       <div class="form-group"><label>單堂學費 (元)</label><input type="number" id="convert-fee" class="form-control"></div>
+      <div class="form-group"><label style="display:flex; align-items:center; gap:6px; font-weight:normal;"><input type="checkbox" id="convert-single-pay" style="width:auto;"> 單堂繳費（點名時「已收費」預設會幫你勾好）</label></div>
       <div class="form-group"><label>聯絡電話</label><input type="tel" id="convert-phone" class="form-control"></div>
       <button class="button" style="width:100%; margin:10px 0 0 0;" onclick="submitConvertStudent()">💾 確認匯入學生名單</button>
       <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeConvertModal()">取消</button>
@@ -305,6 +306,7 @@
         <input type="date" id="plan-change-anchor-date" class="form-control">
       </div>
       <div class="form-group"><label>單堂學費 (元)</label><input type="number" id="plan-change-fee" class="form-control"></div>
+      <div class="form-group"><label style="display:flex; align-items:center; gap:6px; font-weight:normal;"><input type="checkbox" id="plan-change-single-pay" style="width:auto;"> 單堂繳費（點名時「已收費」預設會幫你勾好）</label></div>
       <button class="button" style="width:100%; margin:10px 0 0 0; background-color:#7C93B3;" onclick="submitPlanChange()">💾 確認異動</button>
       <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closePlanChangeModal()">取消</button>
     </div>
@@ -463,6 +465,7 @@
         <input type="date" id="edit-anchor-date" class="form-control">
       </div>
       <div class="form-group"><label>單堂學費 (元)</label><input type="number" id="edit-fee" class="form-control"></div>
+      <div class="form-group"><label style="display:flex; align-items:center; gap:6px; font-weight:normal;"><input type="checkbox" id="edit-single-pay" style="width:auto;"> 單堂繳費（點名時「已收費」預設會幫你勾好）</label></div>
       <div class="form-group"><label>聯絡電話</label><input type="tel" id="edit-phone" class="form-control"></div>
       <button class="button" style="width:100%; margin:10px 0 0 0;" onclick="saveEditedStudent()">💾 儲存修改</button>
       <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeEditModal()">取消</button>
@@ -545,6 +548,7 @@
       </div>
       
       <div class="form-group"><label>單堂學費 (元)</label><input type="number" id="add-fee" class="form-control" placeholder="例如：1000"></div>
+      <div class="form-group"><label style="display:flex; align-items:center; gap:6px; font-weight:normal;"><input type="checkbox" id="add-single-pay" style="width:auto;"> 單堂繳費（點名時「已收費」預設會幫你勾好）</label></div>
       <div class="form-group"><label>聯絡電話</label><input type="tel" id="add-phone" class="form-control" placeholder="家長或學生電話"></div>
       <button class="button" style="width:100%; margin:0;" onclick="addStudent()">確認新增</button>
     </div>
@@ -1270,9 +1274,10 @@
 
             showBalanceInfo(balanceStudentId);
 
-            document.getElementById('modal-mark-paid').checked = false;
-            document.getElementById('modal-makeup-mark-paid').checked = false;
-            document.getElementById('modal-temp-mark-paid').checked = false;
+            let defaultPaid = getDefaultPaidChecked(props);
+            document.getElementById('modal-mark-paid').checked = (props.type === 'normal') && defaultPaid;
+            document.getElementById('modal-makeup-mark-paid').checked = (props.type === 'makeup') && defaultPaid;
+            document.getElementById('modal-temp-mark-paid').checked = (props.type === 'temp') && defaultPaid;
             document.getElementById('modal-todo-input').value = '';
             document.getElementById('modal-todo-due').value = props.dateStr || '';
             document.getElementById('attendance-modal').style.display = 'flex';
@@ -1297,6 +1302,28 @@
 
     // 點名視窗開啟時，即時顯示這位學生目前的繳費結餘（預繳剩餘 / 已結清 / 還欠幾堂），
     // 讓「出席的同時，登記已收費」這個 checkbox 該不該勾一眼就能判斷，避免和已登記的整批繳費重複計算。
+    // 判斷這堂課的「已收費」checkbox 預設要不要幫忙勾起來：看綁定學生自己的「單堂繳費」設定；
+    // 臨時課如果是手動輸入、還沒有正式學生資料可以查，就直接預設勾選（現場繳費的情況最常見）。
+    function getDefaultPaidChecked(props) {
+      if (props.type === 'normal') {
+        let s = students[props.stuIdx];
+        return !!(s && s.singleLessonPay);
+      } else if (props.type === 'makeup') {
+        let record = makeupBank.find(r => r.id === props.recordId);
+        let s = record ? students.find(x => x.id === record.studentId) : null;
+        return !!(s && s.singleLessonPay);
+      } else if (props.type === 'temp') {
+        let t = tempLessons.find(x => x.id === props.tempId);
+        if (!t) return false;
+        if (t.studentId) {
+          let s = students.find(x => x.id === t.studentId);
+          return !!(s && s.singleLessonPay);
+        }
+        return true;
+      }
+      return false;
+    }
+
     function showBalanceInfo(studentId) {
       let el = document.getElementById('modal-balance-info');
       if (!studentId) { el.style.display = 'none'; return; }
@@ -2124,6 +2151,7 @@
       resetTimeValue('convert-time');
       document.getElementById('convert-anchor-date').value = '';
       document.getElementById('convert-start-date').value = t.date; // 預設用那堂體驗課的日期，因為那就是他真正的第一堂課
+      document.getElementById('convert-single-pay').checked = true; // 體驗課大多是現場單堂繳費，先預設勾選，不符合的話可以自己取消
       document.getElementById('convert-duration').value = t.duration || 60;
 
       convertingTempId = t.id;
@@ -2139,6 +2167,7 @@
       let freq = document.querySelector('input[name="convert-freq"]:checked').value;
       let startDate = document.getElementById('convert-start-date').value;
       let duration = Number(document.getElementById('convert-duration').value) || 60;
+      let singleLessonPay = document.getElementById('convert-single-pay').checked;
       let dayIndex = document.getElementById('convert-day').value;
       let timeVal = getTimeValue('convert-time');
       let anchorDate = document.getElementById('convert-anchor-date').value;
@@ -2163,7 +2192,7 @@
       if (!checkScheduleConflictWarning(freq, dayIndex, timeVal, anchorDate, duration, null)) return;
 
       let newId = generateId();
-      students.push({ id: newId, name: name, instrument: instrument, freq: freq, startDate: startDate, duration: duration, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, anchorDate: anchorDate, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
+      students.push({ id: newId, name: name, instrument: instrument, freq: freq, startDate: startDate, duration: duration, singleLessonPay: singleLessonPay, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, anchorDate: anchorDate, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
       saveToMemory();
 
       // 把原本那筆臨時課接到新學生身上，變成他的第一堂課紀錄；如果當初有標記已收費，補登記一筆繳費
@@ -2342,6 +2371,7 @@
       setTimeValue('plan-change-time', s.timeVal || '00:00');
       document.getElementById('plan-change-anchor-date').value = s.anchorDate || '';
       document.getElementById('plan-change-duration').value = s.duration || 60;
+      document.getElementById('plan-change-single-pay').checked = !!s.singleLessonPay;
       document.getElementById('plan-change-fee').value = s.fee;
 
       document.getElementById('plan-change-modal').style.display = 'flex';
@@ -2372,6 +2402,7 @@
       let timeVal = getTimeValue('plan-change-time');
       let anchorDate = document.getElementById('plan-change-anchor-date').value;
       let duration = Number(document.getElementById('plan-change-duration').value) || 60;
+      let singleLessonPay = document.getElementById('plan-change-single-pay').checked;
       let fee = document.getElementById('plan-change-fee').value.trim();
 
       let instrumentRadios = document.getElementsByName('plan-change-instrument'); let instrument = '';
@@ -2408,7 +2439,7 @@
 
       students.push({
         id: newId, name: oldS.name, instrument: instrument, freq: freq, startDate: effectiveDate,
-        dayIndex: dayIndex, timeVal: timeVal, duration: duration, fee: fee, phone: oldS.phone, anchorDate: anchorDate,
+        dayIndex: dayIndex, timeVal: timeVal, duration: duration, singleLessonPay: singleLessonPay, fee: fee, phone: oldS.phone, anchorDate: anchorDate,
         changedFromId: oldS.id,
         attendedDates: [], canceledDates: [], makeupConvertedDates: []
       });
@@ -2674,6 +2705,7 @@
       document.getElementById('edit-anchor-date').value = s.anchorDate || '';
       document.getElementById('edit-start-date').value = s.startDate || '';
       document.getElementById('edit-duration').value = s.duration || 60;
+      document.getElementById('edit-single-pay').checked = !!s.singleLessonPay;
 
       document.getElementById('edit-fee').value = s.fee;
       document.getElementById('edit-phone').value = s.phone;
@@ -2691,6 +2723,7 @@
       let freq = document.querySelector('input[name="edit-freq"]:checked').value;
       let startDate = document.getElementById('edit-start-date').value; // 選填：沒填就維持原本「不限制」的行為
       let duration = Number(document.getElementById('edit-duration').value) || 60;
+      let singleLessonPay = document.getElementById('edit-single-pay').checked;
       let dayIndex = document.getElementById('edit-day').value;
       let timeVal = getTimeValue('edit-time');
       let anchorDate = document.getElementById('edit-anchor-date').value;
@@ -2715,7 +2748,7 @@
       if (!checkScheduleConflictWarning(freq, dayIndex, timeVal, anchorDate, duration, editId)) return;
 
       let s = students[editingIndex];
-      s.name = name; s.instrument = instrument; s.freq = freq; s.startDate = startDate; s.duration = duration; s.dayIndex = dayIndex; s.timeVal = timeVal; s.fee = fee; s.phone = phone; s.anchorDate = anchorDate;
+      s.name = name; s.instrument = instrument; s.freq = freq; s.startDate = startDate; s.duration = duration; s.singleLessonPay = singleLessonPay; s.dayIndex = dayIndex; s.timeVal = timeVal; s.fee = fee; s.phone = phone; s.anchorDate = anchorDate;
 
       // 若學生姓名有異動，同步更新補課存摺、繳費紀錄、臨時課、待辦事項上顯示的姓名
       makeupBank.forEach(r => { if (r.studentId === s.id) r.studentName = s.name; });
@@ -2738,6 +2771,7 @@
       let freq = document.querySelector('input[name="add-freq"]:checked').value;
       let startDate = document.getElementById('add-start-date').value;
       let duration = Number(document.getElementById('add-duration').value) || 60;
+      let singleLessonPay = document.getElementById('add-single-pay').checked;
       let dayIndex = document.getElementById('add-day').value; 
       let timeVal = getTimeValue('add-time');
       let anchorDate = document.getElementById('add-anchor-date').value;
@@ -2761,10 +2795,10 @@
       if (!checkDuplicateNameWarning(name, instrument, null)) return;
       if (!checkScheduleConflictWarning(freq, dayIndex, timeVal, anchorDate, duration, null)) return;
 
-      students.push({ id: generateId(), name: name, instrument: instrument, freq: freq, startDate: startDate, duration: duration, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, anchorDate: anchorDate, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
+      students.push({ id: generateId(), name: name, instrument: instrument, freq: freq, startDate: startDate, duration: duration, singleLessonPay: singleLessonPay, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, anchorDate: anchorDate, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
       saveToMemory(); 
       
-      document.getElementById('add-name').value = ''; document.getElementById('add-fee').value = ''; document.getElementById('add-phone').value = ''; document.getElementById('add-day').value = ''; document.getElementById('add-duration').value = 60;
+      document.getElementById('add-name').value = ''; document.getElementById('add-fee').value = ''; document.getElementById('add-phone').value = ''; document.getElementById('add-day').value = ''; document.getElementById('add-duration').value = 60; document.getElementById('add-single-pay').checked = false;
       document.getElementById('add-start-date').value = '';
       document.getElementById('add-anchor-date').value = '';
       document.querySelector('input[name="add-freq"][value="weekly"]').checked = true;
