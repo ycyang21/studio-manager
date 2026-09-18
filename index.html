@@ -59,6 +59,7 @@
     .event-canceled { background-color: #f0f0f0 !important; color: #aaa !important; text-decoration: line-through !important; opacity: 0.6; }
     .event-makeup-conv { background-color: #FFF9F5 !important; color: #E08E79 !important; border: 1px dashed #E08E79 !important; opacity: 0.8; }
     .event-temp { background-color: #7C93B3 !important; color: white !important; }
+    .event-absent-charged { background-color: #C1666B !important; color: white !important; }
 
     /* 可搜尋的學生選擇器：點下去/打字時，下面浮出一個過濾後的名單可以直接點選 */
     .searchable-select { position: relative; }
@@ -355,7 +356,7 @@
       <div id="modal-normal-actions">
         <div id="modal-normal-paid-wrap">
           <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#666; margin-bottom:12px; text-align:left;">
-            <input type="checkbox" id="modal-mark-paid" onchange="checkPaidCheckboxWarning(this)"> 出席的同時，登記已收費 1 堂
+            <input type="checkbox" id="modal-mark-paid" onchange="checkPaidCheckboxWarning(this)"> 同時登記已收費 1 堂
           </label>
         </div>
 
@@ -368,6 +369,7 @@
         <div id="modal-normal-lesson-actions" style="display:none;">
           <button class="modal-btn" style="background-color: #fff; color: #666; border: 1px solid #ddd;" onclick="showModalSubView('main')">‹ 返回</button>
           <button class="modal-btn" style="background-color: #E2E8DF; color: #333;" onclick="markStatus('canceled')">❌ 延期 (不收費/留存紀錄)</button>
+          <button class="modal-btn" style="background-color: #C1666B;" onclick="markStatus('absent_charged')">💸 缺席收費 (人沒來但仍計費)</button>
           <button class="modal-btn" style="background-color: #E08E79;" onclick="markStatus('makeup')">🔄 轉為補課 (存入存摺)</button>
           <button class="modal-btn" style="background-color: #7C93B3;" onclick="openRescheduleModalFromEvent()">🔀 調課</button>
           <button class="modal-btn" style="background-color: #fff; color: #888; border: 1px solid #ddd;" onclick="markStatus('reset')">↩️ 恢復為「未點名」</button>
@@ -1092,6 +1094,7 @@
                 let attended = s.attendedDates || [];
                 let canceled = s.canceledDates || [];
                 let makeupConverted = s.makeupConvertedDates || [];
+                let absentCharged = s.absentChargedDates || [];
 
                 let eventClass = s.instrument === '鋼琴' ? 'event-piano' : (s.instrument === '小提琴' ? 'event-violin' : 'event-other');
                 let displayTitle = s.name + ' (' + s.instrument + ')';
@@ -1102,6 +1105,8 @@
                   eventClass = 'event-canceled'; displayTitle = '❌ ' + s.name + ' (延期)';
                 } else if (makeupConverted.includes(dateStr)) {
                   eventClass = 'event-makeup-conv'; displayTitle = '🔄 ' + s.name + ' (轉補)';
+                } else if (absentCharged.includes(dateStr)) {
+                  eventClass = 'event-absent-charged'; displayTitle = '💸 ' + s.name + ' (缺席收費)';
                 }
 
                 if (getStudentBalance(s.id) > 0) { displayTitle = '💰 ' + displayTitle; }
@@ -1162,7 +1167,7 @@
             let props = info.event.extendedProps;
             currentModalEvent = props;
             
-            let cleanTitle = info.event.title.replace(/💰 |✅ |❌ |🔄 |📌 |\[補課\] |\[補\] /g, '').replace(/\s*\(延期\)|\s*\(轉補\)|\s*\(取消\)/g, '');
+            let cleanTitle = info.event.title.replace(/💰 |✅ |❌ |🔄 |📌 |💸 |\[補課\] |\[補\] /g, '').replace(/\s*\(延期\)|\s*\(轉補\)|\s*\(取消\)|\s*\(缺席收費\)/g, '');
             document.getElementById('modal-title').innerText = cleanTitle;
             
             let timeStr = info.event.start.toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit', hour12: false});
@@ -1246,7 +1251,7 @@
 
     // 一般課點名視窗的三層選單：main（出席/課堂異動/學生異動入口）、lesson（延期/轉補課/調課/恢復未點名）、student（課程方案異動/退班）
     function showModalSubView(view) {
-      document.getElementById('modal-normal-paid-wrap').style.display = (view === 'main') ? 'block' : 'none';
+      document.getElementById('modal-normal-paid-wrap').style.display = (view === 'main' || view === 'lesson') ? 'block' : 'none';
       document.getElementById('modal-normal-main').style.display = (view === 'main') ? 'block' : 'none';
       document.getElementById('modal-normal-lesson-actions').style.display = (view === 'lesson') ? 'block' : 'none';
       document.getElementById('modal-normal-student-actions').style.display = (view === 'student') ? 'block' : 'none';
@@ -1304,6 +1309,7 @@
       if(!s.attendedDates) s.attendedDates = [];
       if(!s.canceledDates) s.canceledDates = [];
       if(!s.makeupConvertedDates) s.makeupConvertedDates = [];
+      if(!s.absentChargedDates) s.absentChargedDates = [];
 
       if (s.makeupConvertedDates.includes(dateStr)) {
          let relatedRecord = makeupBank.find(r => r.studentId === s.id && r.dateGen === dateStr);
@@ -1317,12 +1323,21 @@
       s.attendedDates = s.attendedDates.filter(d => d !== dateStr);
       s.canceledDates = s.canceledDates.filter(d => d !== dateStr);
       s.makeupConvertedDates = s.makeupConvertedDates.filter(d => d !== dateStr);
+      s.absentChargedDates = s.absentChargedDates.filter(d => d !== dateStr);
 
       if (status === 'attended') {
         s.attendedDates.push(dateStr);
         let payCheckbox = document.getElementById('modal-mark-paid');
         if (payCheckbox && payCheckbox.checked) {
           paymentRecords.push({ id: generateId(), studentId: s.id, studentName: s.name, date: dateStr, lessons: 1, note: '點名時登記' });
+          savePaymentToMemory();
+        }
+      }
+      if (status === 'absent_charged') {
+        s.absentChargedDates.push(dateStr);
+        let payCheckbox = document.getElementById('modal-mark-paid');
+        if (payCheckbox && payCheckbox.checked) {
+          paymentRecords.push({ id: generateId(), studentId: s.id, studentName: s.name, date: dateStr, lessons: 1, note: '缺席收費點名時登記' });
           savePaymentToMemory();
         }
       }
@@ -1506,6 +1521,8 @@
         let fee = Number(s.fee) || 0;
         let attended = s.attendedDates || [];
         attended.forEach(d => { if (d.startsWith(monthStr)) teaching += fee; });
+        let absentCharged = s.absentChargedDates || [];
+        absentCharged.forEach(d => { if (d.startsWith(monthStr)) teaching += fee; });
       });
 
       makeupBank.forEach(record => {
@@ -1709,7 +1726,7 @@
     function getStudentDebit(studentId) {
       let s = students.find(x => x.id === studentId);
       if (!s) return 0;
-      let count = (s.attendedDates || []).length;
+      let count = (s.attendedDates || []).length + (s.absentChargedDates || []).length;
       makeupBank.forEach(r => {
         if (r.studentId === studentId) {
           r.schedules.forEach(sch => { if (sch.attended) count += (Number(sch.amount) || 0); });
@@ -2743,6 +2760,7 @@
         // 1. 算出這位學生在 cutoff 當下、清除前的已上課／已繳堂數
         let debitBefore = 0;
         (s.attendedDates || []).forEach(d => { if (d < cutoff) debitBefore++; });
+        (s.absentChargedDates || []).forEach(d => { if (d < cutoff) debitBefore++; });
         makeupBank.forEach(r => {
           if (r.studentId === s.id) {
             r.schedules.forEach(sch => { if (sch.attended && sch.date < cutoff) debitBefore += (Number(sch.amount) || 0); });
@@ -2752,10 +2770,11 @@
         paymentRecords.forEach(p => { if (p.studentId === s.id && p.date < cutoff) creditBefore += (Number(p.lessons) || 0); });
         let openingBalance = Number((creditBefore - debitBefore).toFixed(2));
 
-        // 2. 清掉 cutoff 以前的逐堂出席／延期／轉補紀錄
+        // 2. 清掉 cutoff 以前的逐堂出席／延期／轉補／缺席收費紀錄
         s.attendedDates = (s.attendedDates || []).filter(d => d >= cutoff);
         s.canceledDates = (s.canceledDates || []).filter(d => d >= cutoff);
         s.makeupConvertedDates = (s.makeupConvertedDates || []).filter(d => d >= cutoff);
+        s.absentChargedDates = (s.absentChargedDates || []).filter(d => d >= cutoff);
 
         // 3. 用一筆「期初結餘」繳費紀錄，把清除前的結餘原封不動地帶到 cutoff 這天
         if (openingBalance !== 0) {
