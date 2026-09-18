@@ -60,6 +60,7 @@
     .event-makeup-conv { background-color: #FFF9F5 !important; color: #E08E79 !important; border: 1px dashed #E08E79 !important; opacity: 0.8; }
     .event-temp { background-color: #7C93B3 !important; color: white !important; }
     .event-absent-charged { background-color: #C1666B !important; color: white !important; }
+    .event-rescheduled { background-color: #EEF1F5 !important; color: #7C93B3 !important; border: 1px dashed #7C93B3 !important; opacity: 0.8; }
 
     /* 可搜尋的學生選擇器：點下去/打字時，下面浮出一個過濾後的名單可以直接點選 */
     .searchable-select { position: relative; }
@@ -313,7 +314,7 @@
     <div class="modal-content" style="text-align: left;">
       <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">🔀 課堂調課</h3>
       <p id="reschedule-student-name" style="font-size:15px; font-weight:bold; color:#333; margin-bottom:10px;"></p>
-      <p style="font-size:12px; color:#888; line-height:1.5;">原本的時段會標記為「延期」保留紀錄，新時段會另外新增一堂臨時課。</p>
+      <p style="font-size:12px; color:#888; line-height:1.5;">原本的時段會標記為「已調課」保留紀錄，新時段會另外新增一堂臨時課。</p>
       <div class="form-group"><label>新的日期</label><input type="date" id="reschedule-new-date" class="form-control"></div>
       <div class="form-group">
         <label>新的時間 (24小時制)</label>
@@ -1095,6 +1096,7 @@
                 let canceled = s.canceledDates || [];
                 let makeupConverted = s.makeupConvertedDates || [];
                 let absentCharged = s.absentChargedDates || [];
+                let rescheduled = s.rescheduledDates || [];
 
                 let eventClass = s.instrument === '鋼琴' ? 'event-piano' : (s.instrument === '小提琴' ? 'event-violin' : 'event-other');
                 let displayTitle = s.name + ' (' + s.instrument + ')';
@@ -1107,6 +1109,8 @@
                   eventClass = 'event-makeup-conv'; displayTitle = '🔄 ' + s.name + ' (轉補)';
                 } else if (absentCharged.includes(dateStr)) {
                   eventClass = 'event-absent-charged'; displayTitle = '💸 ' + s.name + ' (缺席收費)';
+                } else if (rescheduled.includes(dateStr)) {
+                  eventClass = 'event-rescheduled'; displayTitle = '🔀 ' + s.name + ' (已調課)';
                 }
 
                 if (getStudentBalance(s.id) > 0) { displayTitle = '💰 ' + displayTitle; }
@@ -1167,7 +1171,7 @@
             let props = info.event.extendedProps;
             currentModalEvent = props;
             
-            let cleanTitle = info.event.title.replace(/💰 |✅ |❌ |🔄 |📌 |💸 |\[補課\] |\[補\] /g, '').replace(/\s*\(延期\)|\s*\(轉補\)|\s*\(取消\)|\s*\(缺席收費\)/g, '');
+            let cleanTitle = info.event.title.replace(/💰 |✅ |❌ |🔄 |📌 |💸 |🔀 |\[補課\] |\[補\] /g, '').replace(/\s*\(延期\)|\s*\(轉補\)|\s*\(取消\)|\s*\(缺席收費\)|\s*\(已調課\)/g, '');
             document.getElementById('modal-title').innerText = cleanTitle;
             
             let timeStr = info.event.start.toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit', hour12: false});
@@ -1310,6 +1314,7 @@
       if(!s.canceledDates) s.canceledDates = [];
       if(!s.makeupConvertedDates) s.makeupConvertedDates = [];
       if(!s.absentChargedDates) s.absentChargedDates = [];
+      if(!s.rescheduledDates) s.rescheduledDates = [];
 
       if (s.makeupConvertedDates.includes(dateStr)) {
          let relatedRecord = makeupBank.find(r => r.studentId === s.id && r.dateGen === dateStr);
@@ -1324,13 +1329,21 @@
       s.canceledDates = s.canceledDates.filter(d => d !== dateStr);
       s.makeupConvertedDates = s.makeupConvertedDates.filter(d => d !== dateStr);
       s.absentChargedDates = s.absentChargedDates.filter(d => d !== dateStr);
+      s.rescheduledDates = s.rescheduledDates.filter(d => d !== dateStr);
+
+      // 先清掉這堂課之前「點名時勾選已收費」自動產生的那筆繳費紀錄，不管這次是要重新登記還是改成別的狀態，
+      // 都先歸零，避免重複點名累積出重複的繳費，或是改回未出席後那筆錢卻沒有跟著消失
+      let paymentChanged = false;
+      let beforeLen = paymentRecords.length;
+      paymentRecords = paymentRecords.filter(p => !(p.studentId === s.id && p.date === dateStr && (p.note === '點名時登記' || p.note === '缺席收費點名時登記')));
+      if (paymentRecords.length !== beforeLen) paymentChanged = true;
 
       if (status === 'attended') {
         s.attendedDates.push(dateStr);
         let payCheckbox = document.getElementById('modal-mark-paid');
         if (payCheckbox && payCheckbox.checked) {
           paymentRecords.push({ id: generateId(), studentId: s.id, studentName: s.name, date: dateStr, lessons: 1, note: '點名時登記' });
-          savePaymentToMemory();
+          paymentChanged = true;
         }
       }
       if (status === 'absent_charged') {
@@ -1338,10 +1351,11 @@
         let payCheckbox = document.getElementById('modal-mark-paid');
         if (payCheckbox && payCheckbox.checked) {
           paymentRecords.push({ id: generateId(), studentId: s.id, studentName: s.name, date: dateStr, lessons: 1, note: '缺席收費點名時登記' });
-          savePaymentToMemory();
+          paymentChanged = true;
         }
       }
       if (status === 'canceled') s.canceledDates.push(dateStr);
+      if (status === 'rescheduled') s.rescheduledDates.push(dateStr);
       if (status === 'makeup') {
         s.makeupConvertedDates.push(dateStr);
         makeupBank.push({
@@ -1350,6 +1364,7 @@
         });
         saveMakeupToMemory();
       }
+      if (paymentChanged) savePaymentToMemory();
       saveToMemory(); calendar.refetchEvents(); closeModal();
     }
 
@@ -1360,24 +1375,34 @@
       
       if (record) {
         let sch = record.schedules[schIdx];
+
+        if (status === 'canceled') {
+          if (!confirm("確定要取消這堂補課嗎？時數將退回給學生。")) { closeModal(); return; }
+        }
+
+        // 同樣先清掉這筆補課之前「點名時登記」的繳費紀錄，理由跟一般課一樣：避免重複、確保復原時錢會跟著消失
+        let paymentChanged = false;
+        let beforeLen2 = paymentRecords.length;
+        paymentRecords = paymentRecords.filter(p => !(p.studentId === record.studentId && p.date === sch.date && p.note === '補課點名時登記'));
+        if (paymentRecords.length !== beforeLen2) paymentChanged = true;
+
         if (status === 'attended') {
           sch.attended = true;
           if (record.remaining === 0 && record.schedules.every(s => s.attended)) { record.status = 'history'; }
           let payCheckbox = document.getElementById('modal-makeup-mark-paid');
           if (payCheckbox && payCheckbox.checked) {
             paymentRecords.push({ id: generateId(), studentId: record.studentId, studentName: record.studentName, date: sch.date, lessons: Number(sch.amount) || 1, note: '補課點名時登記' });
-            savePaymentToMemory();
+            paymentChanged = true;
           }
         } else if (status === 'revert') {
           sch.attended = false;
           record.status = 'active';
         } else if (status === 'canceled') {
-          if(confirm("確定要取消這堂補課嗎？時數將退回給學生。")) {
-            record.remaining = Number((record.remaining + sch.amount).toFixed(2));
-            record.schedules.splice(schIdx, 1);
-            record.status = 'active'; 
-          } else { return; }
+          record.remaining = Number((record.remaining + sch.amount).toFixed(2));
+          record.schedules.splice(schIdx, 1);
+          record.status = 'active';
         }
+        if (paymentChanged) savePaymentToMemory();
         saveMakeupToMemory(); calendar.refetchEvents();
       }
       closeModal();
@@ -1389,25 +1414,37 @@
       let t = tempLessons.find(x => x.id === currentModalEvent.tempId);
       if (!t) { closeModal(); return; }
 
+      // 已經綁定正式學生的臨時課，先清掉之前「點名時登記」的繳費紀錄，理由跟一般課／補課一樣
+      let paymentChanged = false;
+      if (t.studentId) {
+        let beforeLen3 = paymentRecords.length;
+        paymentRecords = paymentRecords.filter(p => !(p.studentId === t.studentId && p.date === t.date && p.note === '臨時課點名時登記'));
+        if (paymentRecords.length !== beforeLen3) paymentChanged = true;
+      }
+
       if (status === 'attended') {
         t.attended = true;
         t.canceled = false;
         let payCheckbox = document.getElementById('modal-temp-mark-paid');
-        if (payCheckbox && payCheckbox.checked) {
-          if (t.studentId) {
+        let isChecked = !!(payCheckbox && payCheckbox.checked);
+        if (t.studentId) {
+          if (isChecked) {
             paymentRecords.push({ id: generateId(), studentId: t.studentId, studentName: t.studentName, date: t.date, lessons: 1, note: '臨時課點名時登記' });
-            savePaymentToMemory();
-          } else {
-            t.paid = true; // 還沒有正式學生資料，先記在這筆臨時課本身，之後轉正時會一併帶過去
+            paymentChanged = true;
           }
+        } else {
+          t.paid = isChecked; // 還沒有正式學生資料，直接記在這筆臨時課本身，每次點名都依當下的勾選狀態覆蓋，不會累積
         }
       } else if (status === 'canceled') {
         t.attended = false;
         t.canceled = true;
+        if (!t.studentId) t.paid = false;
       } else if (status === 'reset') {
         t.attended = false;
         t.canceled = false;
+        if (!t.studentId) t.paid = false;
       }
+      if (paymentChanged) savePaymentToMemory();
       saveTempToMemory(); calendar.refetchEvents(); closeModal();
     }
 
@@ -1439,6 +1476,7 @@
         if (s.startDate && dateStr < s.startDate) continue;
         if ((s.canceledDates || []).includes(dateStr)) continue;
         if ((s.makeupConvertedDates || []).includes(dateStr)) continue;
+        if ((s.rescheduledDates || []).includes(dateStr)) continue;
         return s.name;
       }
 
@@ -2323,9 +2361,9 @@
         if (!ok) return;
       }
 
-      if (!confirm('確定要把「' + s.name + '」這堂課調到 ' + newDate + ' ' + newTime + ' 嗎？原本的時段會標記為延期。')) return;
+      if (!confirm('確定要把「' + s.name + '」這堂課調到 ' + newDate + ' ' + newTime + ' 嗎？原本的時段會標記為調課。')) return;
 
-      markStatus('canceled'); // 原本那堂標記為延期，複用既有邏輯
+      markStatus('rescheduled'); // 原本那堂標記為「已調課」（不是延期），跟延期用不同的樣式跟紀錄區分開來
 
       tempLessons.push({ id: generateId(), studentId: s.id, studentName: s.name, date: newDate, time: newTime, duration: duration, attended: false, canceled: false });
       saveTempToMemory();
@@ -2770,11 +2808,12 @@
         paymentRecords.forEach(p => { if (p.studentId === s.id && p.date < cutoff) creditBefore += (Number(p.lessons) || 0); });
         let openingBalance = Number((creditBefore - debitBefore).toFixed(2));
 
-        // 2. 清掉 cutoff 以前的逐堂出席／延期／轉補／缺席收費紀錄
+        // 2. 清掉 cutoff 以前的逐堂出席／延期／轉補／缺席收費／調課紀錄
         s.attendedDates = (s.attendedDates || []).filter(d => d >= cutoff);
         s.canceledDates = (s.canceledDates || []).filter(d => d >= cutoff);
         s.makeupConvertedDates = (s.makeupConvertedDates || []).filter(d => d >= cutoff);
         s.absentChargedDates = (s.absentChargedDates || []).filter(d => d >= cutoff);
+        s.rescheduledDates = (s.rescheduledDates || []).filter(d => d >= cutoff);
 
         // 3. 用一筆「期初結餘」繳費紀錄，把清除前的結餘原封不動地帶到 cutoff 這天
         if (openingBalance !== 0) {
