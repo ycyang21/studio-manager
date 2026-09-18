@@ -1124,25 +1124,25 @@
                 });
               });
 
+              // 不管這筆補課存摺紀錄是「還有欠」還是「已經結清（history）」，只要底下有排定日期，
+              // 月曆上都要看得到那一天——之前只顯示 active 的，會導致補課出席後、那天整個從月曆上消失。
               makeupBank.forEach(record => {
-                if(record.status === 'active') {
-                  record.schedules.forEach((sch, schIdx) => {
-                    if (sch.date === dateStr) {
-                      let displayTitle = '[補課] ' + record.studentName;
-                      let eventClass = 'event-makeup';
-                      if (sch.attended) { displayTitle = '✅ [補] ' + record.studentName; eventClass = 'event-attended'; }
+                record.schedules.forEach((sch, schIdx) => {
+                  if (sch.date === dateStr) {
+                    let displayTitle = '[補課] ' + record.studentName;
+                    let eventClass = 'event-makeup';
+                    if (sch.attended) { displayTitle = '✅ [補] ' + record.studentName; eventClass = 'event-attended'; }
 
-                      if (getStudentBalance(record.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
+                    if (getStudentBalance(record.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
 
-                      events.push({
-                        title: displayTitle,
-                        className: eventClass,
-                        start: dateStr + (sch.time ? 'T' + sch.time : ''),
-                        extendedProps: { type: 'makeup', recordId: record.id, schIdx: schIdx, dateStr: dateStr }
-                      });
-                    }
-                  });
-                }
+                    events.push({
+                      title: displayTitle,
+                      className: eventClass,
+                      start: dateStr + (sch.time ? 'T' + sch.time : ''),
+                      extendedProps: { type: 'makeup', recordId: record.id, schIdx: schIdx, dateStr: dateStr }
+                    });
+                  }
+                });
               });
 
               tempLessons.forEach(t => {
