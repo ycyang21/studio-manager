@@ -1416,6 +1416,11 @@
       let stuIdx = currentModalEvent.stuIdx;
       let dateStr = currentModalEvent.dateStr;
       let s = students[stuIdx];
+
+      // 出席／缺席收費代表「這堂課確定發生過了」，如果日期還沒到，先跟你確認一下，避免手滑點錯
+      if ((status === 'attended' || status === 'absent_charged') && dateStr > formatDate(new Date())) {
+        if (!confirm('⚠️ ' + dateStr + ' 這天還沒到，出席狀況應該還未確定，確定要現在標記嗎？')) return;
+      }
       
       if(!s.attendedDates) s.attendedDates = [];
       if(!s.canceledDates) s.canceledDates = [];
@@ -1486,6 +1491,9 @@
         if (status === 'canceled') {
           if (!confirm("確定要取消這堂補課嗎？時數將退回給學生。")) { closeModal(); return; }
         }
+        if (status === 'attended' && sch.date > formatDate(new Date())) {
+          if (!confirm('⚠️ ' + sch.date + ' 這天還沒到，出席狀況應該還未確定，確定要現在標記嗎？')) return;
+        }
 
         // 同樣先清掉這筆補課之前「點名時登記」的繳費紀錄，理由跟一般課一樣：避免重複、確保復原時錢會跟著消失
         let paymentChanged = false;
@@ -1520,6 +1528,10 @@
     function markTempStatus(status) {
       let t = tempLessons.find(x => x.id === currentModalEvent.tempId);
       if (!t) { closeModal(); return; }
+
+      if (status === 'attended' && t.date > formatDate(new Date())) {
+        if (!confirm('⚠️ ' + t.date + ' 這天還沒到，出席狀況應該還未確定，確定要現在標記嗎？')) return;
+      }
 
       // 已經綁定正式學生的臨時課，先清掉之前「點名時登記」的繳費紀錄，理由跟一般課／補課一樣
       let paymentChanged = false;
@@ -3202,6 +3214,9 @@
         const app = initializeApp(firebaseConfig);
         const db = firestoreMod.getFirestore(app);
         const auth = authMod.getAuth(app);
+        // 明確指定登入狀態要長期保存在這台裝置上（不是只存這次瀏覽器分頁），這樣關掉 App、重開手機都不會被登出，
+        // 除非你自己按登出，或是瀏覽器本身把網站資料清掉（例如 iPhone Safari 太久沒開會自動清）。
+        try { await authMod.setPersistence(auth, authMod.browserLocalPersistence); } catch (err) { console.error('設定登入保存方式失敗：', err); }
 
         if (window.initCloudSync) {
           window.initCloudSync(db, auth, {
