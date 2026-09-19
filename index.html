@@ -64,8 +64,14 @@
 
     /* 手機版精簡月曆：只在偵測到窄螢幕時，由 JS 加上 calendar-compact 這個 class 才會生效，桌面版完全不受影響 */
     #calendar.calendar-compact .fc-daygrid-event-harness { margin-bottom: 2px !important; }
-    #calendar.calendar-compact .fc-event { height: 7px !important; min-height: 7px !important; padding: 0 !important; border-radius: 3px !important; overflow: hidden; border-width: 0 !important; }
+    #calendar.calendar-compact .fc-event { padding: 0 !important; border-radius: 3px !important; overflow: hidden; border-width: 0 !important; }
     #calendar.calendar-compact .fc-event-time, #calendar.calendar-compact .fc-event-title { display: none !important; }
+    /* 虛線轉補／虛線調課／反灰延期：這幾種原本時段實質上沒上課，只留一條細條當標記，不放名字 */
+    #calendar.calendar-compact .fc-event.event-canceled,
+    #calendar.calendar-compact .fc-event.event-makeup-conv,
+    #calendar.calendar-compact .fc-event.event-rescheduled { height: 6px !important; min-height: 6px !important; }
+    /* 其他（出席、缺席收費、待上課、補課、臨時課…）都算「確定排定」，用這個小標籤顯示學生姓名 */
+    #calendar.calendar-compact .fc-compact-name { font-size: 9px; line-height: 15px; padding: 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white; font-weight: 600; }
     #calendar.calendar-compact .fc-daygrid-more-link { font-size: 10px !important; padding: 0 2px !important; }
     #calendar.calendar-compact .fc-daygrid-day-number { font-size: 13px; }
     #calendar.calendar-compact .fc-daygrid-day.calendar-day-selected { background-color: #F4F6F3; }
@@ -522,7 +528,8 @@
     <h2 style="font-weight: 300;">⚙️ 學生名單管理</h2>
     <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">返回主選單</button>
     <div class="card" style="background-color: #F4F6F3; border: 1px solid #8C9C8A;">
-      <h3 style="margin-top:0; font-size: 16px;">➕ 新增學生資料</h3>
+      <h3 style="margin-top:0; font-size: 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="toggleAddStudentForm()">➕ 新增學生資料 <span id="add-student-toggle-arrow" style="font-size:13px; color:#8C9C8A;">▸ 展開</span></h3>
+      <div id="add-student-form-body" style="display:none;">
       <div class="form-group"><label>學生姓名</label><input type="text" id="add-name" class="form-control" placeholder="例如：王大花"></div>
       <div class="form-group"><label>學習樂器</label><div class="radio-group"><label><input type="radio" name="add-instrument" value="鋼琴" onclick="checkInstrument()" checked> 鋼琴</label><label><input type="radio" name="add-instrument" value="小提琴" onclick="checkInstrument()"> 小提琴</label><label><input type="radio" name="add-instrument" value="其他" onclick="checkInstrument()"> 其他</label><input type="text" id="other-instrument" class="form-control" style="display: none; width: auto; flex-grow: 1; padding: 5px;" placeholder="請輸入樂器"></div></div>
 
@@ -570,6 +577,7 @@
       <div class="form-group"><label style="display:flex; align-items:center; gap:6px; font-weight:normal;"><input type="checkbox" id="add-single-pay" style="width:auto;"> 單堂繳費（點名時「已收費」預設會幫你勾好）</label></div>
       <div class="form-group"><label>聯絡電話</label><input type="tel" id="add-phone" class="form-control" placeholder="家長或學生電話"></div>
       <button class="button" style="width:100%; margin:0;" onclick="addStudent()">確認新增</button>
+      </div>
     </div>
     <input type="text" id="manage-search" class="form-control" style="width:90%; margin:15px auto 0 auto; display:block;" placeholder="🔍 搜尋學生姓名" oninput="renderManageList()">
     <div id="manage-list"></div>
@@ -1211,7 +1219,7 @@
 
         if (getStudentBalance(s.id) > 0) { displayTitle = '💰 ' + displayTitle; }
 
-        items.push({ title: displayTitle, className: eventClass, time: s.timeVal, allDay: !s.timeVal, props: { type: 'normal', stuIdx: stuIdx, dateStr: dateStr } });
+        items.push({ title: displayTitle, className: eventClass, time: s.timeVal, allDay: !s.timeVal, name: s.name, props: { type: 'normal', stuIdx: stuIdx, dateStr: dateStr } });
       });
 
       // 不管這筆補課存摺紀錄是「還有欠」還是「已經結清（history）」，只要底下有排定日期，都要看得到那一天——
@@ -1223,7 +1231,7 @@
           let eventClass = 'event-makeup';
           if (sch.attended) { displayTitle = '✅ [補] ' + record.studentName; eventClass = 'event-attended'; }
           if (getStudentBalance(record.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
-          items.push({ title: displayTitle, className: eventClass, time: sch.time, allDay: !sch.time, props: { type: 'makeup', recordId: record.id, schIdx: schIdx, dateStr: dateStr } });
+          items.push({ title: displayTitle, className: eventClass, time: sch.time, allDay: !sch.time, name: record.studentName, props: { type: 'makeup', recordId: record.id, schIdx: schIdx, dateStr: dateStr } });
         });
       });
 
@@ -1235,7 +1243,7 @@
         else if (t.canceled) { displayTitle = '❌ ' + t.studentName + ' (取消)'; eventClass = 'event-canceled'; }
         if (t.amount !== undefined && t.amount !== 1) { displayTitle += ' (' + t.amount + '堂)'; }
         if (getStudentBalance(t.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
-        items.push({ title: displayTitle, className: eventClass, time: t.time, allDay: !t.time, props: { type: 'temp', tempId: t.id, dateStr: dateStr } });
+        items.push({ title: displayTitle, className: eventClass, time: t.time, allDay: !t.time, name: t.studentName, props: { type: 'temp', tempId: t.id, dateStr: dateStr } });
       });
 
       items.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
@@ -1248,12 +1256,12 @@
         let calendarEl = document.getElementById('calendar');
         if (isMobileCalendarMode) calendarEl.classList.add('calendar-compact');
 
-        calendar = new FullCalendar.Calendar(calendarEl, {
+        let calendarConfig = {
           initialView: 'dayGridMonth', locale: 'zh-tw',
           headerToolbar: { left: 'prev,next', center: 'title', right: 'today' },
           height: 'auto', displayEventTime: true,
           eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
-          dayMaxEvents: isMobileCalendarMode ? 8 : false,
+          dayMaxEvents: isMobileCalendarMode ? 6 : false,
           events: function(info, successCallback, failureCallback) {
             let events = [];
             let d = new Date(info.start.valueOf());
@@ -1266,7 +1274,7 @@
                   className: it.className,
                   start: dateStr + (it.allDay ? '' : 'T' + it.time),
                   allDay: it.allDay,
-                  extendedProps: it.props
+                  extendedProps: Object.assign({ name: it.name }, it.props)
                 });
               });
               d.setDate(d.getDate() + 1);
@@ -1290,7 +1298,21 @@
             let timeStr = info.event.start.toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit', hour12: false});
             openModalForCalendarEvent(info.event.extendedProps, info.event.title, info.event.extendedProps.dateStr, timeStr, info.event.allDay);
           }
-        });
+        };
+
+        if (isMobileCalendarMode) {
+          // 手機版格子裡的色條：只有「確定有排定/發生課程」的才顯示學生姓名，虛線轉補、虛線調課、反灰延期這種
+          // 原本時段實質上沒上課的，只留一條純色細條當標記，不放文字，避免誤導成「這裡真的有一堂課」。
+          let noNameClasses = ['event-canceled', 'event-makeup-conv', 'event-rescheduled'];
+          calendarConfig.eventContent = function(arg) {
+            let isNoName = arg.event.classNames.some(c => noNameClasses.includes(c));
+            if (isNoName) return { html: '' };
+            let name = arg.event.extendedProps.name || '';
+            return { html: '<div class="fc-compact-name">' + name + '</div>' };
+          };
+        }
+
+        calendar = new FullCalendar.Calendar(calendarEl, calendarConfig);
         calendar.render();
       } else {
         calendar.refetchEvents();
@@ -2604,6 +2626,15 @@
       alert('✅ 已完成退班。');
     }
 
+    // 新增學生表單預設收起來，避免每次進頁面都要先滑過一大串欄位才看得到學生名單
+    function toggleAddStudentForm() {
+      let body = document.getElementById('add-student-form-body');
+      let arrow = document.getElementById('add-student-toggle-arrow');
+      let opening = body.style.display === 'none';
+      body.style.display = opening ? 'block' : 'none';
+      arrow.innerText = opening ? '▾ 收起' : '▸ 展開';
+    }
+
     function toggleWithdrawnList() {
       let el = document.getElementById('manage-withdrawn-list'); let btn = document.getElementById('toggle-withdrawn-btn');
       if (el.style.display === 'none') { el.style.display = 'block'; btn.innerText = '🔺 隱藏已結案'; } else { el.style.display = 'none'; btn.innerText = '👁️ 顯示已結案'; }
@@ -3080,6 +3111,8 @@
       checkAddFreq();
       resetTimeValue('add-time');
       document.getElementsByName('add-instrument')[0].checked = true; document.getElementById('other-instrument').style.display = 'none'; document.getElementById('other-instrument').value = ''; 
+      document.getElementById('add-student-form-body').style.display = 'none';
+      document.getElementById('add-student-toggle-arrow').innerText = '▸ 展開';
       renderManageList(); alert('✅ 新增成功！');
     }
     
