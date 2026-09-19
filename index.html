@@ -181,12 +181,16 @@
       <div class="form-group">
         <label>上課時長（分鐘）</label>
         <div style="display:flex; gap:6px; margin-bottom:6px;">
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('temp-duration').value=30">30</button>
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('temp-duration').value=50">50</button>
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('temp-duration').value=60">60</button>
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('temp-duration').value=90">90</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('temp-duration').value=30; syncTempAmountDuration('duration')">30</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('temp-duration').value=50; syncTempAmountDuration('duration')">50</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('temp-duration').value=60; syncTempAmountDuration('duration')">60</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('temp-duration').value=90; syncTempAmountDuration('duration')">90</button>
         </div>
-        <input type="number" id="temp-duration" class="form-control" value="60" min="1" step="1" placeholder="分鐘">
+        <input type="number" id="temp-duration" class="form-control" value="60" min="1" step="1" placeholder="分鐘" oninput="syncTempAmountDuration('duration')">
+      </div>
+      <div class="form-group">
+        <label>這堂算幾堂（跟上面的時長會自動互相換算）</label>
+        <input type="number" id="temp-amount" class="form-control" value="1" min="0.05" step="0.05" oninput="syncTempAmountDuration('amount')">
       </div>
       <button class="button" style="width:100%; margin:10px 0 0 0;" onclick="submitTempLesson()">確認新增</button>
       <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeTempLessonModal()">取消</button>
@@ -412,6 +416,7 @@
         </label>
         <button class="modal-btn" style="background-color: #8C9C8A;" onclick="markTempStatus('attended')">✅ 出席 (紀錄學費)</button>
         <button class="modal-btn" style="background-color: #E2E8DF; color: #333;" onclick="markTempStatus('canceled')">❌ 取消 (不收費/留存紀錄)</button>
+        <button class="modal-btn" style="background-color: #7C93B3;" onclick="openEditTempLessonModalFromEvent()">✏️ 編輯這筆臨時課</button>
         <button class="modal-btn" style="background-color: #fff; color: #888; border: 1px solid #ddd;" onclick="markTempStatus('reset')">↩️ 恢復為「未點名」</button>
         <button class="modal-btn" id="modal-temp-convert-btn" style="background-color: #7C93B3; display:none;" onclick="openConvertModalFromTemp()">🎓 轉為正式學生</button>
         <button class="modal-btn" style="background-color: #FFB6B9;" onclick="deleteTempLesson()">🗑️ 刪除這筆臨時課</button>
@@ -648,7 +653,7 @@
     <div class="modal-content" style="text-align: left;">
       <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">✏️ 編輯補課時間</h3>
       <p id="edit-makeup-student-name" style="font-size:15px; font-weight:bold; color:#333; margin-bottom:10px;"></p>
-      <div class="form-group"><label>補幾堂</label><input type="number" id="edit-makeup-amt" class="form-control" step="0.1" min="0.1"></div>
+      <div class="form-group"><label>補幾堂（跟下面的時長會自動互相換算）</label><input type="number" id="edit-makeup-amt" class="form-control" step="0.05" min="0.05" oninput="syncEditMakeupAmountDuration('amount')"></div>
       <div class="form-group"><label>日期</label><input type="date" id="edit-makeup-date" class="form-control"></div>
       <div class="form-group">
         <label>時間 (24小時制)</label>
@@ -663,15 +668,53 @@
       <div class="form-group">
         <label>上課時長（分鐘）</label>
         <div style="display:flex; gap:6px; margin-bottom:6px;">
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-makeup-duration').value=30">30</button>
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-makeup-duration').value=50">50</button>
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-makeup-duration').value=60">60</button>
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-makeup-duration').value=90">90</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-makeup-duration').value=30; syncEditMakeupAmountDuration('duration')">30</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-makeup-duration').value=50; syncEditMakeupAmountDuration('duration')">50</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-makeup-duration').value=60; syncEditMakeupAmountDuration('duration')">60</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-makeup-duration').value=90; syncEditMakeupAmountDuration('duration')">90</button>
         </div>
-        <input type="number" id="edit-makeup-duration" class="form-control" min="1" step="1" placeholder="分鐘">
+        <input type="number" id="edit-makeup-duration" class="form-control" min="1" step="1" placeholder="分鐘" oninput="syncEditMakeupAmountDuration('duration')">
       </div>
       <button class="button" style="width:100%; margin:10px 0 0 0; background-color:#8C9C8A;" onclick="submitEditMakeupSchedule()">💾 儲存修改</button>
       <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeEditMakeupScheduleModal()">取消</button>
+    </div>
+  </div>
+
+  <div id="edit-temp-lesson-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="modal-content" style="text-align: left;">
+      <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">✏️ 編輯臨時課</h3>
+      <p id="edit-temp-student-name" style="font-size:15px; font-weight:bold; color:#333; margin-bottom:10px;"></p>
+      <div class="form-group"><label>日期</label><input type="date" id="edit-temp-date" class="form-control"></div>
+      <div class="form-group">
+        <label>時間 (24小時制)</label>
+        <div class="time-bar">
+          <div class="time24" id="edit-temp-time" style="flex:1;">
+            <input class="time24-seg" data-unit="hour" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" placeholder="--" aria-label="時">
+            <span class="time24-colon">:</span>
+            <input class="time24-seg" data-unit="minute" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" placeholder="--" aria-label="分">
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>上課時長（分鐘）</label>
+        <div style="display:flex; gap:6px; margin-bottom:6px;">
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-temp-duration').value=30; syncEditTempAmountDuration('duration')">30</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-temp-duration').value=50; syncEditTempAmountDuration('duration')">50</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-temp-duration').value=60; syncEditTempAmountDuration('duration')">60</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('edit-temp-duration').value=90; syncEditTempAmountDuration('duration')">90</button>
+        </div>
+        <input type="number" id="edit-temp-duration" class="form-control" min="1" step="1" placeholder="分鐘" oninput="syncEditTempAmountDuration('duration')">
+      </div>
+      <div class="form-group">
+        <label>這堂算幾堂（跟上面的時長會自動互相換算）</label>
+        <input type="number" id="edit-temp-amount" class="form-control" min="0.05" step="0.05" oninput="syncEditTempAmountDuration('amount')">
+      </div>
+      <div class="form-group" id="edit-temp-fee-group" style="display:none;">
+        <label>單堂學費 (元)</label>
+        <input type="number" id="edit-temp-fee" class="form-control">
+      </div>
+      <button class="button" style="width:100%; margin:10px 0 0 0; background-color:#8C9C8A;" onclick="submitEditTempLesson()">💾 儲存修改</button>
+      <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeEditTempLessonModal()">取消</button>
     </div>
   </div>
   </div>
@@ -694,6 +737,8 @@
     let editingTodoId = null; // 正在編輯的待辦事項 id（null = 沒有開啟編輯視窗）
     let editingMakeupRecordId = null; // 正在編輯時間的補課紀錄 id（null = 沒有開啟編輯視窗）
     let editingMakeupSchIdx = null; // 正在編輯時間的補課紀錄裡，第幾筆排課
+    let editingMakeupBaseDuration = 60; // 正在編輯的補課，背後綁定學生的正常時長，用來換算堂數
+    let editingTempLessonId = null; // 正在編輯的臨時課 id（null = 沒有開啟編輯視窗）
     let cloudDb = null, cloudAuth = null, cloudFns = null, unsubscribeCloud = null; // Firebase 雲端同步用
 
     // 資料遷移：確保每位學生都有唯一 id，補課存摺改用 id 對應學生（避免同名學生互相干擾、改名後也不會對不到人）
@@ -1190,6 +1235,7 @@
                   if (t.attended) { displayTitle = '✅ ' + t.studentName; eventClass = 'event-attended'; }
                   else if (t.canceled) { displayTitle = '❌ ' + t.studentName + ' (取消)'; eventClass = 'event-canceled'; }
 
+                  if (t.amount !== undefined && t.amount !== 1) { displayTitle += ' (' + t.amount + '堂)'; }
                   if (getStudentBalance(t.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
 
                   events.push({
@@ -1209,7 +1255,7 @@
             let props = info.event.extendedProps;
             currentModalEvent = props;
             
-            let cleanTitle = info.event.title.replace(/💰 |✅ |❌ |🔄 |📌 |💸 |🔀 |\[補課\] |\[補\] /g, '').replace(/\s*\(延期\)|\s*\(轉補\)|\s*\(取消\)|\s*\(缺席收費\)|\s*\(已調課\)/g, '');
+            let cleanTitle = info.event.title.replace(/💰 |✅ |❌ |🔄 |📌 |💸 |🔀 |\[補課\] |\[補\] /g, '').replace(/\s*\(延期\)|\s*\(轉補\)|\s*\(取消\)|\s*\(缺席收費\)|\s*\(已調課\)|\s*\([\d.]+堂\)/g, '');
             document.getElementById('modal-title').innerText = cleanTitle;
             
             let timeStr = info.event.start.toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit', hour12: false});
@@ -1490,7 +1536,7 @@
         let isChecked = !!(payCheckbox && payCheckbox.checked);
         if (t.studentId) {
           if (isChecked) {
-            paymentRecords.push({ id: generateId(), studentId: t.studentId, studentName: t.studentName, date: t.date, lessons: 1, note: '臨時課點名時登記' });
+            paymentRecords.push({ id: generateId(), studentId: t.studentId, studentName: t.studentName, date: t.date, lessons: (Number(t.amount) || 1), note: '臨時課點名時登記' });
             paymentChanged = true;
           }
         } else {
@@ -1518,6 +1564,85 @@
       closeModal();
     }
 
+    // ============ 編輯臨時課 ============
+    // 已經出席的不能編輯，要先在月曆上恢復為未點名，才能改時間或堂數——理由跟編輯補課時間一樣，
+    // 避免悄悄動到已經算進某個月份結算的紀錄。
+
+    function openEditTempLessonModalFromEvent() {
+      if (!currentModalEvent || currentModalEvent.type !== 'temp') return;
+      let t = tempLessons.find(x => x.id === currentModalEvent.tempId);
+      if (!t) return;
+      if (t.attended) { alert('這堂已經出席了，請先「恢復為未點名」，才能編輯時間或堂數。'); return; }
+
+      editingTempLessonId = t.id;
+      document.getElementById('edit-temp-student-name').innerText = t.studentName;
+      document.getElementById('edit-temp-date').value = t.date;
+      setTimeValue('edit-temp-time', t.time || '00:00');
+      document.getElementById('edit-temp-duration').value = t.duration || 60;
+      document.getElementById('edit-temp-amount').value = (t.amount !== undefined ? t.amount : 1);
+      if (t.studentId) {
+        document.getElementById('edit-temp-fee-group').style.display = 'none';
+      } else {
+        document.getElementById('edit-temp-fee-group').style.display = 'block';
+        document.getElementById('edit-temp-fee').value = t.manualFee || '';
+      }
+      closeModal();
+      document.getElementById('edit-temp-lesson-modal').style.display = 'flex';
+    }
+
+    function closeEditTempLessonModal() {
+      document.getElementById('edit-temp-lesson-modal').style.display = 'none';
+      editingTempLessonId = null;
+    }
+
+    // 這個彈窗的時長跟堂數互相換算，基準是原本那筆臨時課自己已經定案的時長（不用重新去查學生資料）
+    function syncEditTempAmountDuration(source) {
+      let t = tempLessons.find(x => x.id === editingTempLessonId);
+      let base = (t && t.studentId) ? ((students.find(s => s.id === t.studentId) || {}).duration || 60) : 60;
+      if (source === 'duration') {
+        let dur = Number(document.getElementById('edit-temp-duration').value) || 0;
+        document.getElementById('edit-temp-amount').value = Number((dur / base).toFixed(2));
+      } else {
+        let amt = Number(document.getElementById('edit-temp-amount').value) || 0;
+        document.getElementById('edit-temp-duration').value = Math.round(amt * base);
+      }
+    }
+
+    function submitEditTempLesson() {
+      let t = tempLessons.find(x => x.id === editingTempLessonId);
+      if (!t) { closeEditTempLessonModal(); return; }
+
+      let newDate = document.getElementById('edit-temp-date').value;
+      let newTime = getTimeValue('edit-temp-time');
+      let newDuration = Number(document.getElementById('edit-temp-duration').value) || 60;
+      let newAmount = Number(document.getElementById('edit-temp-amount').value) || 1;
+      if (!newDate || !newTime) { alert('請完整選擇日期與時間！'); return; }
+      if (newAmount <= 0) { alert('堂數請輸入大於 0 的數字！'); return; }
+
+      if (!t.studentId) {
+        let newFee = Number(document.getElementById('edit-temp-fee').value);
+        if (!newFee || newFee <= 0) { alert('請填入大於 0 的單堂學費！'); return; }
+        t.manualFee = newFee;
+      }
+
+      let conflictName = findScheduleConflict(newDate, newTime, newDuration, null, t.id);
+      if (conflictName) {
+        let ok = confirm('⚠️ 這個時段（' + newDate + ' ' + newTime + '）已經有 ' + conflictName + ' 排課了，確定還要改到這裡嗎？');
+        if (!ok) return;
+      }
+
+      t.date = newDate;
+      t.time = newTime;
+      t.duration = newDuration;
+      t.amount = newAmount;
+
+      saveTempToMemory();
+      closeEditTempLessonModal();
+      if (calendar) calendar.refetchEvents();
+      alert('✅ 已更新臨時課！');
+    }
+    // ============ 編輯臨時課結束 ============
+
     function saveTempToMemory() { localStorage.setItem('jess_temp_v1', JSON.stringify(tempLessons)); pushToCloud(); }
     function saveExtraIncomeToMemory() { localStorage.setItem('jess_extra_income_v1', JSON.stringify(extraIncome)); pushToCloud(); }
     function saveBadDebtToMemory() { localStorage.setItem('jess_bad_debt_v1', JSON.stringify(badDebt)); pushToCloud(); }
@@ -1525,7 +1650,7 @@
 
     // 找出某個日期＋時間有沒有已經被別人卡住（固定/隔週課、排定的補課、其他臨時課），
     // 回傳卡住的那個人的姓名；已經延期／轉補課／取消的紀錄不算卡位，沒有衝突則回傳 null。
-    function findScheduleConflict(dateStr, timeStr, duration, excludeMakeupKey) {
+    function findScheduleConflict(dateStr, timeStr, duration, excludeMakeupKey, excludeTempId) {
       let dayOfWeek = new Date(dateStr + 'T00:00:00').getDay().toString();
 
       for (let s of students) {
@@ -1552,6 +1677,7 @@
 
       for (let t of tempLessons) {
         if (t.canceled) continue;
+        if (excludeTempId && t.id === excludeTempId) continue;
         if (t.date === dateStr && timeRangesOverlap(timeStr, duration, t.time, t.duration)) return t.studentName;
       }
 
@@ -1564,6 +1690,7 @@
       document.getElementById('temp-manual-name').value = '';
       document.getElementById('temp-manual-fee').value = '';
       document.getElementById('temp-duration').value = 60;
+      document.getElementById('temp-amount').value = 1;
       resetTimeValue('temp-time');
       document.querySelector('input[name="temp-mode"][value="existing"]').checked = true;
       checkTempMode();
@@ -1578,6 +1705,31 @@
       document.getElementById('temp-existing-group').style.display = (mode === 'existing') ? 'block' : 'none';
       document.getElementById('temp-manual-group').style.display = (mode === 'manual') ? 'block' : 'none';
       document.getElementById('temp-manual-fee-group').style.display = (mode === 'manual') ? 'block' : 'none';
+      syncTempAmountDuration('duration');
+    }
+
+    // 新增臨時課時，「上課時長」跟「這堂算幾堂」互相換算的基準：選了既有學生就用他自己的時長，
+    // 手動輸入新的人（沒有資料可以參考）就用 60 分鐘當基準。
+    function getTempBaseDuration() {
+      let mode = document.querySelector('input[name="temp-mode"]:checked').value;
+      if (mode === 'existing') {
+        let studentId = document.getElementById('temp-student-value').value;
+        let s = students.find(x => x.id === studentId);
+        return (s && s.duration) ? s.duration : 60;
+      }
+      return 60;
+    }
+
+    // source 是剛剛被改動的那個欄位：改時長就換算堂數，改堂數就換算時長
+    function syncTempAmountDuration(source) {
+      let base = getTempBaseDuration();
+      if (source === 'duration') {
+        let dur = Number(document.getElementById('temp-duration').value) || 0;
+        document.getElementById('temp-amount').value = Number((dur / base).toFixed(2));
+      } else {
+        let amt = Number(document.getElementById('temp-amount').value) || 0;
+        document.getElementById('temp-duration').value = Math.round(amt * base);
+      }
     }
 
     function submitTempLesson() {
@@ -1585,7 +1737,9 @@
       let dateStr = document.getElementById('temp-date').value;
       let timeStr = getTimeValue('temp-time');
       let duration = Number(document.getElementById('temp-duration').value) || 60;
+      let amount = Number(document.getElementById('temp-amount').value) || 1;
       if (!dateStr || !timeStr) { alert('請完整選擇日期與時間！'); return; }
+      if (amount <= 0) { alert('堂數請輸入大於 0 的數字！'); return; }
 
       let conflictName = findScheduleConflict(dateStr, timeStr, duration);
       if (conflictName) {
@@ -1598,13 +1752,13 @@
         if (!studentId) { alert('請先選擇學生！'); return; }
         let stu = students.find(s => s.id === studentId);
         if (!stu) { alert('找不到這位學生，請重新整理頁面再試一次！'); return; }
-        tempLessons.push({ id: generateId(), studentId: stu.id, studentName: stu.name, date: dateStr, time: timeStr, duration: duration, attended: false, canceled: false });
+        tempLessons.push({ id: generateId(), studentId: stu.id, studentName: stu.name, date: dateStr, time: timeStr, duration: duration, amount: amount, attended: false, canceled: false });
       } else {
         let manualName = document.getElementById('temp-manual-name').value.trim();
         let manualFee = document.getElementById('temp-manual-fee').value.trim();
         if (manualName === '') { alert('請輸入姓名！'); return; }
         if (manualFee === '' || isNaN(Number(manualFee)) || Number(manualFee) <= 0) { alert('請填入大於 0 的單堂學費！'); return; }
-        tempLessons.push({ id: generateId(), studentId: null, studentName: manualName, manualFee: Number(manualFee), date: dateStr, time: timeStr, duration: duration, attended: false, canceled: false, paid: false });
+        tempLessons.push({ id: generateId(), studentId: null, studentName: manualName, manualFee: Number(manualFee), date: dateStr, time: timeStr, duration: duration, amount: amount, attended: false, canceled: false, paid: false });
       }
 
       saveTempToMemory();
@@ -1636,11 +1790,12 @@
 
       tempLessons.forEach(t => {
         if (t.attended && t.date.startsWith(monthStr)) {
+          let amt = Number(t.amount) || 1;
           if (t.studentId) {
             let stuData = students.find(s => s.id === t.studentId);
-            teaching += stuData ? (Number(stuData.fee) || 0) : 0;
+            teaching += (stuData ? (Number(stuData.fee) || 0) : 0) * amt;
           } else {
-            teaching += Number(t.manualFee) || 0; // 還沒轉正的臨時課，學費直接記在這筆紀錄上
+            teaching += (Number(t.manualFee) || 0) * amt; // 還沒轉正的臨時課，學費直接記在這筆紀錄上
           }
         }
       });
@@ -1683,6 +1838,7 @@
       document.getElementById(prefix + '-dropdown').style.display = 'none';
       if (prefix === 'temp-student') {
         document.getElementById('temp-duration').value = s.duration || 60; // 選了既有學生，時長直接帶入他自己設定的長度
+        syncTempAmountDuration('duration'); // 順便把堂數換算成對應這位學生的比例
       }
     }
 
@@ -1733,7 +1889,7 @@
         formHTML = `
           <div style="background-color:#f9f9f9; padding:10px; border-radius:5px; margin-top:10px;">
             <div style="display:flex; gap:10px; margin-bottom:5px;">
-              <input type="number" id="${idPrefix}amt_${record.id}" class="form-control" style="padding:5px; width:40%;" placeholder="補幾堂 (如0.5)" step="0.1" min="0.1" max="${record.remaining}">
+              <input type="number" id="${idPrefix}amt_${record.id}" class="form-control" style="padding:5px; width:40%;" placeholder="補幾堂 (如0.5)" step="0.05" min="0.05" max="${record.remaining}" oninput="syncMakeupAmountDuration('${idPrefix}', '${record.id}', 'amount', ${defaultDuration})">
               <input type="date" id="${idPrefix}date_${record.id}" class="form-control" style="padding:5px; width:60%;">
             </div>
             <div style="display:flex; gap:5px; align-items:center; background:white; border:1px solid #ccc; border-radius:5px; padding:3px 8px; margin-top:5px;">
@@ -1742,7 +1898,7 @@
                 <span class="time24-colon">:</span>
                 <input class="time24-seg" data-unit="minute" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" placeholder="--" aria-label="分">
               </div>
-              <input type="number" id="${idPrefix}duration_${record.id}" value="${defaultDuration}" min="1" step="1" style="width:50px; border:none; text-align:center; font-size:14px;" title="上課時長（分鐘）">
+              <input type="number" id="${idPrefix}duration_${record.id}" value="${defaultDuration}" min="1" step="1" style="width:50px; border:none; text-align:center; font-size:14px;" title="上課時長（分鐘）" oninput="syncMakeupAmountDuration('${idPrefix}', '${record.id}', 'duration', ${defaultDuration})">
               <span style="font-size:11px; color:#888;">分</span>
               <button class="small-btn" style="padding: 6px 12px; background-color:#8C9C8A; color:white;" onclick="${submitFn}">確定排課</button>
             </div>
@@ -1769,6 +1925,21 @@
     }
 
     // 排課的核心邏輯，補課存摺頁面／月曆兩處共用
+    // 補課排課表單裡，「補幾堂」跟「時長（分鐘）」互相換算：baseDuration 是這位學生自己的正常時長
+    function syncMakeupAmountDuration(idPrefix, recordId, source, baseDuration) {
+      let base = Number(baseDuration) || 60;
+      let amtEl = document.getElementById(idPrefix + 'amt_' + recordId);
+      let durEl = document.getElementById(idPrefix + 'duration_' + recordId);
+      if (!amtEl || !durEl) return;
+      if (source === 'duration') {
+        let dur = Number(durEl.value) || 0;
+        amtEl.value = Number((dur / base).toFixed(2));
+      } else {
+        let amt = Number(amtEl.value) || 0;
+        durEl.value = Math.round(amt * base);
+      }
+    }
+
     function doScheduleMakeup(recordId, amt, dateStr, timeStr, duration) {
       let record = makeupBank.find(r => r.id === recordId);
       if (!record) { alert('找不到這筆補課紀錄，請重新整理頁面再試一次！'); return false; }
@@ -1819,6 +1990,8 @@
 
       editingMakeupRecordId = recordId;
       editingMakeupSchIdx = schIdx;
+      let stuForDuration = students.find(x => x.id === record.studentId);
+      editingMakeupBaseDuration = (stuForDuration && stuForDuration.duration) ? stuForDuration.duration : 60;
       document.getElementById('edit-makeup-student-name').innerText = record.studentName;
       document.getElementById('edit-makeup-amt').value = sch.amount;
       document.getElementById('edit-makeup-date').value = sch.date;
@@ -1840,6 +2013,17 @@
       document.getElementById('edit-makeup-schedule-modal').style.display = 'none';
       editingMakeupRecordId = null;
       editingMakeupSchIdx = null;
+    }
+
+    function syncEditMakeupAmountDuration(source) {
+      let base = editingMakeupBaseDuration || 60;
+      if (source === 'duration') {
+        let dur = Number(document.getElementById('edit-makeup-duration').value) || 0;
+        document.getElementById('edit-makeup-amt').value = Number((dur / base).toFixed(2));
+      } else {
+        let amt = Number(document.getElementById('edit-makeup-amt').value) || 0;
+        document.getElementById('edit-makeup-duration').value = Math.round(amt * base);
+      }
     }
 
     function submitEditMakeupSchedule() {
@@ -1905,7 +2089,7 @@
           r.schedules.forEach(sch => { if (sch.attended) count += (Number(sch.amount) || 0); });
         }
       });
-      tempLessons.forEach(t => { if (t.studentId === studentId && t.attended) count += 1; });
+      tempLessons.forEach(t => { if (t.studentId === studentId && t.attended) count += (Number(t.amount) || 1); });
       return Number(count.toFixed(2));
     }
 
@@ -2504,7 +2688,7 @@
 
       markStatus('rescheduled'); // 原本那堂標記為「已調課」（不是延期），跟延期用不同的樣式跟紀錄區分開來
 
-      tempLessons.push({ id: generateId(), studentId: s.id, studentName: s.name, date: newDate, time: newTime, duration: duration, attended: false, canceled: false });
+      tempLessons.push({ id: generateId(), studentId: s.id, studentName: s.name, date: newDate, time: newTime, duration: duration, amount: 1, attended: false, canceled: false });
       saveTempToMemory();
 
       closeRescheduleModal();
