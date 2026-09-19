@@ -3214,9 +3214,6 @@
         const app = initializeApp(firebaseConfig);
         const db = firestoreMod.getFirestore(app);
         const auth = authMod.getAuth(app);
-        // 明確指定登入狀態要長期保存在這台裝置上（不是只存這次瀏覽器分頁），這樣關掉 App、重開手機都不會被登出，
-        // 除非你自己按登出，或是瀏覽器本身把網站資料清掉（例如 iPhone Safari 太久沒開會自動清）。
-        try { await authMod.setPersistence(auth, authMod.browserLocalPersistence); } catch (err) { console.error('設定登入保存方式失敗：', err); }
 
         if (window.initCloudSync) {
           window.initCloudSync(db, auth, {
