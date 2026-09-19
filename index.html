@@ -1650,11 +1650,12 @@
 
     // 找出某個日期＋時間有沒有已經被別人卡住（固定/隔週課、排定的補課、其他臨時課），
     // 回傳卡住的那個人的姓名；已經延期／轉補課／取消的紀錄不算卡位，沒有衝突則回傳 null。
-    function findScheduleConflict(dateStr, timeStr, duration, excludeMakeupKey, excludeTempId) {
+    function findScheduleConflict(dateStr, timeStr, duration, excludeMakeupKey, excludeTempId, excludeStudentOnDate) {
       let dayOfWeek = new Date(dateStr + 'T00:00:00').getDay().toString();
 
       for (let s of students) {
         if (s.freq === 'appointment') continue;
+        if (excludeStudentOnDate && s.id === excludeStudentOnDate.studentId && dateStr === excludeStudentOnDate.date) continue;
         if (s.dayIndex !== dayOfWeek) continue;
         if (!timeRangesOverlap(timeStr, duration, s.timeVal, s.duration)) continue;
         if (s.freq === 'biweekly' && !isBiweeklyOnWeek(s.anchorDate, dateStr)) continue;
@@ -2678,7 +2679,7 @@
       let duration = Number(document.getElementById('reschedule-duration').value) || 60;
       if (!newDate || !newTime) { alert('請完整選擇新的日期與時間！'); return; }
 
-      let conflictName = findScheduleConflict(newDate, newTime, duration);
+      let conflictName = findScheduleConflict(newDate, newTime, duration, null, null, { studentId: s.id, date: currentModalEvent.dateStr });
       if (conflictName) {
         let ok = confirm('⚠️ 這個時段（' + newDate + ' ' + newTime + '）已經有 ' + conflictName + ' 排課了，確定還要調課到這裡嗎？');
         if (!ok) return;
