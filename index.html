@@ -62,6 +62,16 @@
     .event-absent-charged { background-color: #C1666B !important; color: white !important; }
     .event-rescheduled { background-color: #EEF1F5 !important; color: #7C93B3 !important; border: 1px dashed #7C93B3 !important; opacity: 0.8; }
 
+    /* 手機版精簡月曆：只在偵測到窄螢幕時，由 JS 加上 calendar-compact 這個 class 才會生效，桌面版完全不受影響 */
+    #calendar.calendar-compact .fc-daygrid-event-harness { margin-bottom: 2px !important; }
+    #calendar.calendar-compact .fc-event { height: 7px !important; min-height: 7px !important; padding: 0 !important; border-radius: 3px !important; overflow: hidden; border-width: 0 !important; }
+    #calendar.calendar-compact .fc-event-time, #calendar.calendar-compact .fc-event-title { display: none !important; }
+    #calendar.calendar-compact .fc-daygrid-more-link { font-size: 10px !important; padding: 0 2px !important; }
+    #calendar.calendar-compact .fc-daygrid-day-number { font-size: 13px; }
+    #calendar.calendar-compact .fc-daygrid-day.calendar-day-selected { background-color: #F4F6F3; }
+
+    .day-panel-item { border-radius: 6px; padding: 10px 12px; margin-bottom: 6px; text-align: left; cursor: pointer; font-size: 14px; font-weight: bold; }
+
     /* 可搜尋的學生選擇器：點下去/打字時，下面浮出一個過濾後的名單可以直接點選 */
     .searchable-select { position: relative; }
     .searchable-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 8px 8px; max-height: 180px; overflow-y: auto; z-index: 30; box-shadow: 0 4px 10px rgba(0,0,0,0.12); }
@@ -140,6 +150,10 @@
       <button class="small-btn" style="flex:1; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">返回主選單</button>
     </div>
     <div id="calendar"></div>
+    <div id="calendar-day-panel" style="display:none; margin-top:12px; background-color:white; border-radius:8px; padding:12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+      <h3 id="calendar-day-panel-title" style="font-size:15px; text-align:left; margin:0 0 10px 0; color:#4A4A4A;"></h3>
+      <div id="calendar-day-panel-list"></div>
+    </div>
   </div>
 
   <div id="temp-lesson-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
@@ -1149,184 +1163,132 @@
       
       document.getElementById(pageId).style.display = 'block';
       
-      if(pageId === 'calendar-page') { renderCalendar(); }
+      if(pageId === 'calendar-page') {
+        selectedCalendarDate = null;
+        let panel = document.getElementById('calendar-day-panel');
+        if (panel) panel.style.display = 'none';
+        renderCalendar();
+      }
+    }
+
+    let isMobileCalendarMode = false; // 是否用手機精簡版月曆（第一次畫月曆時判斷一次，畫面寬度窄於門檻就開啟，桌面版完全不受影響）
+    let selectedCalendarDate = null; // 手機版目前展開的是哪一天
+    let currentDayPanelItems = []; // 手機版下方清單目前對應那一天有哪些事件，點清單項目時要用
+
+    // 算出「這一天」所有事件的清單（一般課、補課、臨時課），回傳統一格式 {title, className, time, allDay, props}。
+    // 月曆生成事件的迴圈、跟手機版點某一天展開的清單，都共用這個函式，邏輯只需要維護一份，不會兩邊兜不起來。
+    function getEventsForDate(dateStr) {
+      let dayOfWeek = new Date(dateStr + 'T00:00:00').getDay().toString();
+      let items = [];
+
+      students.forEach((s, stuIdx) => {
+        if (s.freq === 'appointment') return; // 約課學生沒有固定課表，不會自動排上月曆
+        if (s.dayIndex !== dayOfWeek) return;
+        if (s.freq === 'biweekly' && !isBiweeklyOnWeek(s.anchorDate, dateStr)) return; // 隔週學生：不是「有課的那一週」就跳過
+        if (s.endDate && dateStr > s.endDate) return; // 已退班：最後上課日期之後不再排課，之前的紀錄不受影響
+        if (s.startDate && dateStr < s.startDate) return; // 開始上課日期之前不會有課，避免月曆往前翻出從未發生過的課
+
+        let attended = s.attendedDates || [];
+        let canceled = s.canceledDates || [];
+        let makeupConverted = s.makeupConvertedDates || [];
+        let absentCharged = s.absentChargedDates || [];
+        let rescheduled = s.rescheduledDates || [];
+
+        let eventClass = s.instrument === '鋼琴' ? 'event-piano' : (s.instrument === '小提琴' ? 'event-violin' : 'event-other');
+        let displayTitle = s.name + ' (' + s.instrument + ')';
+
+        if (attended.includes(dateStr)) {
+          eventClass = 'event-attended'; displayTitle = '✅ ' + s.name;
+        } else if (canceled.includes(dateStr)) {
+          eventClass = 'event-canceled'; displayTitle = '❌ ' + s.name + ' (延期)';
+        } else if (makeupConverted.includes(dateStr)) {
+          eventClass = 'event-makeup-conv'; displayTitle = '🔄 ' + s.name + ' (轉補)';
+        } else if (absentCharged.includes(dateStr)) {
+          eventClass = 'event-absent-charged'; displayTitle = '💸 ' + s.name + ' (缺席收費)';
+        } else if (rescheduled.includes(dateStr)) {
+          eventClass = 'event-rescheduled'; displayTitle = '🔀 ' + s.name + ' (已調課)';
+        }
+
+        if (getStudentBalance(s.id) > 0) { displayTitle = '💰 ' + displayTitle; }
+
+        items.push({ title: displayTitle, className: eventClass, time: s.timeVal, allDay: !s.timeVal, props: { type: 'normal', stuIdx: stuIdx, dateStr: dateStr } });
+      });
+
+      // 不管這筆補課存摺紀錄是「還有欠」還是「已經結清（history）」，只要底下有排定日期，都要看得到那一天——
+      // 只顯示 active 的話，會導致補課出席後、那天整個從清單上消失。
+      makeupBank.forEach(record => {
+        record.schedules.forEach((sch, schIdx) => {
+          if (sch.date !== dateStr) return;
+          let displayTitle = '[補課] ' + record.studentName;
+          let eventClass = 'event-makeup';
+          if (sch.attended) { displayTitle = '✅ [補] ' + record.studentName; eventClass = 'event-attended'; }
+          if (getStudentBalance(record.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
+          items.push({ title: displayTitle, className: eventClass, time: sch.time, allDay: !sch.time, props: { type: 'makeup', recordId: record.id, schIdx: schIdx, dateStr: dateStr } });
+        });
+      });
+
+      tempLessons.forEach(t => {
+        if (t.date !== dateStr) return;
+        let displayTitle = '📌 ' + t.studentName;
+        let eventClass = 'event-temp';
+        if (t.attended) { displayTitle = '✅ ' + t.studentName; eventClass = 'event-attended'; }
+        else if (t.canceled) { displayTitle = '❌ ' + t.studentName + ' (取消)'; eventClass = 'event-canceled'; }
+        if (t.amount !== undefined && t.amount !== 1) { displayTitle += ' (' + t.amount + '堂)'; }
+        if (getStudentBalance(t.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
+        items.push({ title: displayTitle, className: eventClass, time: t.time, allDay: !t.time, props: { type: 'temp', tempId: t.id, dateStr: dateStr } });
+      });
+
+      items.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+      return items;
     }
 
     function renderCalendar() {
       if (!calendar) {
+        isMobileCalendarMode = window.innerWidth <= 700; // 只在第一次畫月曆時判斷一次；手機版才套用精簡樣式跟下方清單，桌面版完全不變
         let calendarEl = document.getElementById('calendar');
+        if (isMobileCalendarMode) calendarEl.classList.add('calendar-compact');
+
         calendar = new FullCalendar.Calendar(calendarEl, {
           initialView: 'dayGridMonth', locale: 'zh-tw',
           headerToolbar: { left: 'prev,next', center: 'title', right: 'today' },
           height: 'auto', displayEventTime: true,
           eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+          dayMaxEvents: isMobileCalendarMode ? 8 : false,
           events: function(info, successCallback, failureCallback) {
             let events = [];
             let d = new Date(info.start.valueOf());
-            
-            while(d < info.end) {
-              let dayOfWeek = d.getDay().toString();
+
+            while (d < info.end) {
               let dateStr = formatDate(d);
-
-              students.forEach((s, stuIdx) => {
-                if (s.freq === 'appointment') return; // 約課學生沒有固定課表，不會自動排上月曆
-                if (s.dayIndex !== dayOfWeek) return;
-                if (s.freq === 'biweekly' && !isBiweeklyOnWeek(s.anchorDate, dateStr)) return; // 隔週學生：不是「有課的那一週」就跳過
-                if (s.endDate && dateStr > s.endDate) return; // 已退班：最後上課日期之後不再排課，之前的紀錄不受影響
-                if (s.startDate && dateStr < s.startDate) return; // 開始上課日期之前不會有課，避免月曆往前翻出從未發生過的課
-
-                let attended = s.attendedDates || [];
-                let canceled = s.canceledDates || [];
-                let makeupConverted = s.makeupConvertedDates || [];
-                let absentCharged = s.absentChargedDates || [];
-                let rescheduled = s.rescheduledDates || [];
-
-                let eventClass = s.instrument === '鋼琴' ? 'event-piano' : (s.instrument === '小提琴' ? 'event-violin' : 'event-other');
-                let displayTitle = s.name + ' (' + s.instrument + ')';
-
-                if (attended.includes(dateStr)) {
-                  eventClass = 'event-attended'; displayTitle = '✅ ' + s.name;
-                } else if (canceled.includes(dateStr)) {
-                  eventClass = 'event-canceled'; displayTitle = '❌ ' + s.name + ' (延期)';
-                } else if (makeupConverted.includes(dateStr)) {
-                  eventClass = 'event-makeup-conv'; displayTitle = '🔄 ' + s.name + ' (轉補)';
-                } else if (absentCharged.includes(dateStr)) {
-                  eventClass = 'event-absent-charged'; displayTitle = '💸 ' + s.name + ' (缺席收費)';
-                } else if (rescheduled.includes(dateStr)) {
-                  eventClass = 'event-rescheduled'; displayTitle = '🔀 ' + s.name + ' (已調課)';
-                }
-
-                if (getStudentBalance(s.id) > 0) { displayTitle = '💰 ' + displayTitle; }
-
+              getEventsForDate(dateStr).forEach(it => {
                 events.push({
-                  title: displayTitle,
-                  className: eventClass,
-                  start: dateStr + (s.timeVal ? 'T' + s.timeVal : ''),
-                  allDay: !s.timeVal,
-                  extendedProps: { type: 'normal', stuIdx: stuIdx, dateStr: dateStr }
+                  title: it.title,
+                  className: it.className,
+                  start: dateStr + (it.allDay ? '' : 'T' + it.time),
+                  allDay: it.allDay,
+                  extendedProps: it.props
                 });
               });
-
-              // 不管這筆補課存摺紀錄是「還有欠」還是「已經結清（history）」，只要底下有排定日期，
-              // 月曆上都要看得到那一天——之前只顯示 active 的，會導致補課出席後、那天整個從月曆上消失。
-              makeupBank.forEach(record => {
-                record.schedules.forEach((sch, schIdx) => {
-                  if (sch.date === dateStr) {
-                    let displayTitle = '[補課] ' + record.studentName;
-                    let eventClass = 'event-makeup';
-                    if (sch.attended) { displayTitle = '✅ [補] ' + record.studentName; eventClass = 'event-attended'; }
-
-                    if (getStudentBalance(record.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
-
-                    events.push({
-                      title: displayTitle,
-                      className: eventClass,
-                      start: dateStr + (sch.time ? 'T' + sch.time : ''),
-                      extendedProps: { type: 'makeup', recordId: record.id, schIdx: schIdx, dateStr: dateStr }
-                    });
-                  }
-                });
-              });
-
-              tempLessons.forEach(t => {
-                if (t.date === dateStr) {
-                  let displayTitle = '📌 ' + t.studentName;
-                  let eventClass = 'event-temp';
-                  if (t.attended) { displayTitle = '✅ ' + t.studentName; eventClass = 'event-attended'; }
-                  else if (t.canceled) { displayTitle = '❌ ' + t.studentName + ' (取消)'; eventClass = 'event-canceled'; }
-
-                  if (t.amount !== undefined && t.amount !== 1) { displayTitle += ' (' + t.amount + '堂)'; }
-                  if (getStudentBalance(t.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
-
-                  events.push({
-                    title: displayTitle,
-                    className: eventClass,
-                    start: dateStr + (t.time ? 'T' + t.time : ''),
-                    extendedProps: { type: 'temp', tempId: t.id, dateStr: dateStr }
-                  });
-                }
-              });
-
               d.setDate(d.getDate() + 1);
             }
             successCallback(events);
           },
+          dateClick: function(info) {
+            if (!isMobileCalendarMode) return; // 桌面版維持原本互動方式，點空白處不會有動作
+            selectCalendarDay(info.dateStr);
+          },
+          moreLinkClick: function(info) {
+            selectCalendarDay(formatDate(info.date));
+            return 'none'; // 不跳出 FullCalendar 內建的彈出清單，改成在下方展開
+          },
           eventClick: function(info) {
-            let props = info.event.extendedProps;
-            currentModalEvent = props;
-            
-            let cleanTitle = info.event.title.replace(/💰 |✅ |❌ |🔄 |📌 |💸 |🔀 |\[補課\] |\[補\] /g, '').replace(/\s*\(延期\)|\s*\(轉補\)|\s*\(取消\)|\s*\(缺席收費\)|\s*\(已調課\)|\s*\([\d.]+堂\)/g, '');
-            document.getElementById('modal-title').innerText = cleanTitle;
-            
+            if (isMobileCalendarMode) {
+              // 手機版：點小色塊也是選這一天，不直接跳點名視窗，避免色塊太小點錯人
+              selectCalendarDay(info.event.extendedProps.dateStr);
+              return;
+            }
             let timeStr = info.event.start.toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit', hour12: false});
-
-            // 依事件類型找出這堂課的時長，用來算結束時間；只在點名視窗裡顯示完整區間，月曆格子本身維持原樣不動
-            let evtDuration = 60;
-            if (props.type === 'normal') {
-              let s0 = students[props.stuIdx];
-              if (s0) evtDuration = s0.duration || 60;
-            } else if (props.type === 'makeup') {
-              let record0 = makeupBank.find(r => r.id === props.recordId);
-              let sch0 = record0 ? record0.schedules[props.schIdx] : null;
-              if (sch0) evtDuration = sch0.duration || 60;
-            } else if (props.type === 'temp') {
-              let t0 = tempLessons.find(x => x.id === props.tempId);
-              if (t0) evtDuration = t0.duration || 60;
-            }
-            let endTimeStr = '';
-            if (!info.event.allDay) {
-              let endMin = timeToMinutes(timeStr) + evtDuration;
-              endTimeStr = String(Math.floor(endMin / 60) % 24).padStart(2, '0') + ':' + String(endMin % 60).padStart(2, '0');
-            }
-            document.getElementById('modal-date').innerText = props.dateStr + (info.event.allDay ? '' : ' ' + timeStr + (endTimeStr ? ('-' + endTimeStr) : ''));
-
-            document.getElementById('modal-normal-actions').style.display = 'none';
-            document.getElementById('modal-makeup-actions').style.display = 'none';
-            document.getElementById('modal-temp-actions').style.display = 'none';
-            document.getElementById('modal-convert-actions').style.display = 'none';
-            document.getElementById('modal-todo-wrap').style.display = 'block';
-
-            let balanceStudentId = null;
-
-            if (props.type === 'normal') {
-              let s = students[props.stuIdx];
-              balanceStudentId = s.id;
-              let isConverted = (s.makeupConvertedDates || []).includes(props.dateStr);
-              if (isConverted) {
-                document.getElementById('modal-convert-actions').style.display = 'block';
-                let record = makeupBank.find(r => r.studentId === s.id && r.dateGen === props.dateStr && r.status === 'active');
-                document.getElementById('modal-convert-record-container').innerHTML = record
-                  ? buildMakeupScheduleHTML(record, 'cal_')
-                  : '<p style="color:#888; font-size:13px;">找不到對應的補課紀錄，可能已經排課完成，請到「補課存摺管理」查看。</p>';
-              } else {
-                document.getElementById('modal-normal-actions').style.display = 'block';
-                showModalSubView('main');
-              }
-            } else if (props.type === 'makeup') {
-              document.getElementById('modal-makeup-actions').style.display = 'block';
-
-              let record = makeupBank.find(r => r.id === props.recordId);
-              let sch = record ? record.schedules[props.schIdx] : null;
-              let isDone = !!(sch && sch.attended);
-              document.getElementById('modal-makeup-pending').style.display = isDone ? 'none' : 'block';
-              document.getElementById('modal-makeup-done').style.display = isDone ? 'block' : 'none';
-              balanceStudentId = record ? record.studentId : null;
-            } else if (props.type === 'temp') {
-              document.getElementById('modal-temp-actions').style.display = 'block';
-              let t = tempLessons.find(x => x.id === props.tempId);
-              balanceStudentId = t ? t.studentId : null;
-              document.getElementById('modal-temp-convert-btn').style.display = (t && !t.studentId) ? 'block' : 'none';
-            }
-
-            showBalanceInfo(balanceStudentId);
-
-            let defaultPaid = getDefaultPaidChecked(props);
-            document.getElementById('modal-mark-paid').checked = (props.type === 'normal') && defaultPaid;
-            document.getElementById('modal-makeup-mark-paid').checked = (props.type === 'makeup') && defaultPaid;
-            document.getElementById('modal-temp-mark-paid').checked = (props.type === 'temp') && defaultPaid;
-            document.getElementById('modal-todo-input').value = '';
-            document.getElementById('modal-todo-due').value = props.dateStr || '';
-            document.getElementById('attendance-modal').style.display = 'flex';
+            openModalForCalendarEvent(info.event.extendedProps, info.event.title, info.event.extendedProps.dateStr, timeStr, info.event.allDay);
           }
         });
         calendar.render();
@@ -1336,7 +1298,123 @@
       setTimeout(() => { calendar.updateSize(); }, 100);
     }
 
-    function closeModal() { document.getElementById('attendance-modal').style.display = 'none'; }
+    // 手機版點某一天：在月曆正下方展開那一天完整的課程清單，月曆本身不會被取代或捲走，
+    // 你可以連續點好幾個不同日期比較，不用每次都要返回或往上捲。
+    function selectCalendarDay(dateStr) {
+      selectedCalendarDate = dateStr;
+      let items = getEventsForDate(dateStr);
+      currentDayPanelItems = items;
+
+      document.querySelectorAll('#calendar .calendar-day-selected').forEach(el => el.classList.remove('calendar-day-selected'));
+      let cell = document.querySelector('#calendar .fc-daygrid-day[data-date="' + dateStr + '"]');
+      if (cell) cell.classList.add('calendar-day-selected');
+
+      let d = new Date(dateStr + 'T00:00:00');
+      document.getElementById('calendar-day-panel-title').innerText = dateStr + '（' + getDayName(d.getDay().toString()) + '）';
+
+      let list = document.getElementById('calendar-day-panel-list');
+      if (items.length === 0) {
+        list.innerHTML = '<p style="color:#aaa; font-size:13px;">這天沒有排課。</p>';
+      } else {
+        list.innerHTML = items.map((it, idx) => {
+          let timeLabel = it.allDay ? '' : (it.time + '　');
+          return `<div class="day-panel-item ${it.className}" onclick="openDayPanelItem(${idx})">${timeLabel}${it.title}</div>`;
+        }).join('');
+      }
+      document.getElementById('calendar-day-panel').style.display = 'block';
+    }
+
+    function openDayPanelItem(idx) {
+      let it = currentDayPanelItems[idx];
+      if (!it) return;
+      openModalForCalendarEvent(it.props, it.title, it.props.dateStr, it.time, it.allDay);
+    }
+
+    // 開啟點名視窗的核心邏輯：桌面版直接點月曆上的事件、手機版點下方清單裡的項目，都共用這個函式
+    function openModalForCalendarEvent(props, title, dateStr, timeStr, allDay) {
+      currentModalEvent = props;
+
+      let cleanTitle = title.replace(/💰 |✅ |❌ |🔄 |📌 |💸 |🔀 |\[補課\] |\[補\] /g, '').replace(/\s*\(延期\)|\s*\(轉補\)|\s*\(取消\)|\s*\(缺席收費\)|\s*\(已調課\)|\s*\([\d.]+堂\)/g, '');
+      document.getElementById('modal-title').innerText = cleanTitle;
+
+      // 依事件類型找出這堂課的時長，用來算結束時間；只在點名視窗裡顯示完整區間，月曆格子本身維持原樣不動
+      let evtDuration = 60;
+      if (props.type === 'normal') {
+        let s0 = students[props.stuIdx];
+        if (s0) evtDuration = s0.duration || 60;
+      } else if (props.type === 'makeup') {
+        let record0 = makeupBank.find(r => r.id === props.recordId);
+        let sch0 = record0 ? record0.schedules[props.schIdx] : null;
+        if (sch0) evtDuration = sch0.duration || 60;
+      } else if (props.type === 'temp') {
+        let t0 = tempLessons.find(x => x.id === props.tempId);
+        if (t0) evtDuration = t0.duration || 60;
+      }
+      let endTimeStr = '';
+      if (!allDay) {
+        let endMin = timeToMinutes(timeStr) + evtDuration;
+        endTimeStr = String(Math.floor(endMin / 60) % 24).padStart(2, '0') + ':' + String(endMin % 60).padStart(2, '0');
+      }
+      document.getElementById('modal-date').innerText = dateStr + (allDay ? '' : ' ' + timeStr + (endTimeStr ? ('-' + endTimeStr) : ''));
+
+      document.getElementById('modal-normal-actions').style.display = 'none';
+      document.getElementById('modal-makeup-actions').style.display = 'none';
+      document.getElementById('modal-temp-actions').style.display = 'none';
+      document.getElementById('modal-convert-actions').style.display = 'none';
+      document.getElementById('modal-todo-wrap').style.display = 'block';
+
+      let balanceStudentId = null;
+
+      if (props.type === 'normal') {
+        let s = students[props.stuIdx];
+        balanceStudentId = s.id;
+        let isConverted = (s.makeupConvertedDates || []).includes(props.dateStr);
+        if (isConverted) {
+          document.getElementById('modal-convert-actions').style.display = 'block';
+          let record = makeupBank.find(r => r.studentId === s.id && r.dateGen === props.dateStr && r.status === 'active');
+          document.getElementById('modal-convert-record-container').innerHTML = record
+            ? buildMakeupScheduleHTML(record, 'cal_')
+            : '<p style="color:#888; font-size:13px;">找不到對應的補課紀錄，可能已經排課完成，請到「補課存摺管理」查看。</p>';
+        } else {
+          document.getElementById('modal-normal-actions').style.display = 'block';
+          showModalSubView('main');
+        }
+      } else if (props.type === 'makeup') {
+        document.getElementById('modal-makeup-actions').style.display = 'block';
+
+        let record = makeupBank.find(r => r.id === props.recordId);
+        let sch = record ? record.schedules[props.schIdx] : null;
+        let isDone = !!(sch && sch.attended);
+        document.getElementById('modal-makeup-pending').style.display = isDone ? 'none' : 'block';
+        document.getElementById('modal-makeup-done').style.display = isDone ? 'block' : 'none';
+        balanceStudentId = record ? record.studentId : null;
+      } else if (props.type === 'temp') {
+        document.getElementById('modal-temp-actions').style.display = 'block';
+        let t = tempLessons.find(x => x.id === props.tempId);
+        balanceStudentId = t ? t.studentId : null;
+        document.getElementById('modal-temp-convert-btn').style.display = (t && !t.studentId) ? 'block' : 'none';
+      }
+
+      showBalanceInfo(balanceStudentId);
+
+      let defaultPaid = getDefaultPaidChecked(props);
+      document.getElementById('modal-mark-paid').checked = (props.type === 'normal') && defaultPaid;
+      document.getElementById('modal-makeup-mark-paid').checked = (props.type === 'makeup') && defaultPaid;
+      document.getElementById('modal-temp-mark-paid').checked = (props.type === 'temp') && defaultPaid;
+      document.getElementById('modal-todo-input').value = '';
+      document.getElementById('modal-todo-due').value = props.dateStr || '';
+      document.getElementById('attendance-modal').style.display = 'flex';
+    }
+
+    // 手機版：如果下方目前正展開著某一天的清單，資料異動後順便刷新，不用手動重新點一次日期就能看到最新狀態
+    function refreshDayPanelIfNeeded() {
+      if (isMobileCalendarMode && selectedCalendarDate) selectCalendarDay(selectedCalendarDate);
+    }
+
+    function closeModal() {
+      document.getElementById('attendance-modal').style.display = 'none';
+      refreshDayPanelIfNeeded();
+    }
 
     // 一般課點名視窗的三層選單：main（出席/課堂異動/學生異動入口）、lesson（延期/轉補課/調課/恢復未點名）、student（課程方案異動/退班）
     function showModalSubView(view) {
@@ -2440,7 +2518,7 @@
       document.getElementById('withdraw-modal').style.display = 'flex';
     }
 
-    function closeWithdrawModal() { document.getElementById('withdraw-modal').style.display = 'none'; withdrawingStudentId = null; }
+    function closeWithdrawModal() { document.getElementById('withdraw-modal').style.display = 'none'; withdrawingStudentId = null; refreshDayPanelIfNeeded(); }
 
     // 依目前結餘狀態，顯示對應的說明文字跟一鍵按鈕：預繳剩餘 → 已退款/不退款；尚未繳清 → 已繳清/不繳清；已結清 → 單一確認鈕
     function renderWithdrawBalanceUI() {
@@ -2585,7 +2663,7 @@
       document.getElementById('plan-change-effective-date').value = dateStr || '';
     }
 
-    function closePlanChangeModal() { document.getElementById('plan-change-modal').style.display = 'none'; planChangingStudentId = null; }
+    function closePlanChangeModal() { document.getElementById('plan-change-modal').style.display = 'none'; planChangingStudentId = null; refreshDayPanelIfNeeded(); }
 
     function submitPlanChange() {
       let oldS = students.find(x => x.id === planChangingStudentId);
@@ -2679,7 +2757,7 @@
       document.getElementById('reschedule-modal').style.display = 'flex';
     }
 
-    function closeRescheduleModal() { document.getElementById('reschedule-modal').style.display = 'none'; }
+    function closeRescheduleModal() { document.getElementById('reschedule-modal').style.display = 'none'; refreshDayPanelIfNeeded(); }
 
     function submitReschedule() {
       if (!currentModalEvent || currentModalEvent.type !== 'normal') { closeRescheduleModal(); return; }
