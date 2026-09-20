@@ -474,18 +474,23 @@
       <h3 id="modal-title" style="margin-top: 0; font-size: 20px; color: #333;">學生姓名</h3>
       <p id="modal-date" style="color: #666; font-size: 14px; margin-bottom: 20px;">2026-09-11 18:00</p>
       <div id="modal-balance-info" style="display:none; font-size:13px; margin: -10px 0 16px 0; padding:8px 10px; border-radius:6px; text-align:left; line-height:1.4;"></div>
-      <div id="modal-todo-wrap" style="text-align:left; margin-bottom:16px;">
-        <div style="display:flex; gap:6px;">
-          <input type="text" id="modal-todo-input" class="form-control" placeholder="✏️ 幫這堂課記一筆待辦（例如：買樂譜）" style="flex:1;">
-          <button class="small-btn" style="padding:0 14px; background-color:#8C9C8A; color:white;" onclick="submitModalTodo()">➕</button>
-        </div>
-        <input type="date" id="modal-todo-due" class="form-control" style="margin-top:6px; font-size:13px;">
-      </div>
+      <div style="text-align:left; margin-bottom:16px;">
+        <h4 style="margin:0; font-size:14px; color:#666; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="toggleModalNotesSection()">📝 待辦 / 課堂記錄 <span id="modal-notes-toggle-arrow" style="font-size:12px; color:#8C9C8A;">▸ 展開</span></h4>
+        <div id="modal-notes-section-body" style="display:none; margin-top:10px;">
+          <div id="modal-todo-wrap" style="margin-bottom:12px;">
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="modal-todo-input" class="form-control" placeholder="✏️ 幫這堂課記一筆待辦（例如：買樂譜）" style="flex:1;">
+              <button class="small-btn" style="padding:0 14px; background-color:#8C9C8A; color:white;" onclick="submitModalTodo()">➕</button>
+            </div>
+            <input type="date" id="modal-todo-due" class="form-control" style="margin-top:6px; font-size:13px;">
+          </div>
 
-      <div id="modal-lessonnote-wrap" style="text-align:left; margin-bottom:16px;">
-        <div style="display:flex; gap:6px;">
-          <input type="text" id="modal-lessonnote-input" class="form-control" placeholder="📔 記一筆今天的課堂狀況（例如：注意力比較不集中）" style="flex:1;">
-          <button class="small-btn" style="padding:0 14px; background-color:#7C93B3; color:white;" onclick="submitModalLessonNote()">➕</button>
+          <div id="modal-lessonnote-wrap">
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="modal-lessonnote-input" class="form-control" placeholder="📔 記一筆今天的課堂狀況（例如：注意力比較不集中）" style="flex:1;">
+              <button class="small-btn" style="padding:0 14px; background-color:#7C93B3; color:white;" onclick="submitModalLessonNote()">➕</button>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -753,8 +758,8 @@
     <div id="student-detail-tab-growth" style="display:none;">
       <div style="display:flex; gap:6px; margin-bottom:12px;">
         <button class="small-btn growth-subtab-btn" data-subtab="lessonnote" onclick="showGrowthSubtab('lessonnote')" style="flex:1; padding:8px; background-color:#8C9C8A; color:white;">📔 課堂記錄</button>
-        <button class="small-btn growth-subtab-btn" data-subtab="achievement" onclick="showGrowthSubtab('achievement')" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;">🏆 成就</button>
         <button class="small-btn growth-subtab-btn" data-subtab="progress" onclick="showGrowthSubtab('progress')" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;">🌱 學習進度</button>
+        <button class="small-btn growth-subtab-btn" data-subtab="achievement" onclick="showGrowthSubtab('achievement')" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;">🏆 成就記錄</button>
       </div>
       <div id="growth-subtab-lessonnote">
         <div class="card" style="text-align:left;">
@@ -764,10 +769,15 @@
         </div>
         <div id="student-detail-lessonnote-list"></div>
       </div>
-      <div id="growth-subtab-achievement" style="display:none;">
-        <p style="color:#aaa; font-size:13px;">這個區塊還在建置中，下一輪會做。</p>
-      </div>
       <div id="growth-subtab-progress" style="display:none;">
+        <div class="card" style="text-align:left;">
+          <textarea id="detail-progress-text" class="form-control" placeholder="學會了什麼概念、完成了哪首重要曲目、完成了哪本教材..." style="margin-bottom:8px; min-height:60px; resize:vertical;"></textarea>
+          <input type="date" id="detail-progress-date" class="form-control" style="margin-bottom:8px;">
+          <button class="small-btn" style="width:100%; padding:8px; background-color:#8C9C8A; color:white;" onclick="submitDetailProgress()">➕ 新增學習進度</button>
+        </div>
+        <div id="student-detail-progress-list"></div>
+      </div>
+      <div id="growth-subtab-achievement" style="display:none;">
         <p style="color:#aaa; font-size:13px;">這個區塊還在建置中，下一輪會做。</p>
       </div>
     </div>
@@ -913,6 +923,7 @@
     let badDebt = JSON.parse(localStorage.getItem('jess_bad_debt_v1')) || []; // 呆帳（學生退班時確定收不到的欠費），月結算時作為負數扣除
     let todos = JSON.parse(localStorage.getItem('jess_todos_v1')) || []; // 待辦事項：可綁學生也可以不綁，可以設日期也可以不設
     let lessonNotes = JSON.parse(localStorage.getItem('jess_lessonnotes_v1')) || []; // 課堂記錄：一定綁學生，記某一天上課的狀況（自由書寫）
+    let progressNotes = JSON.parse(localStorage.getItem('jess_progressnotes_v1')) || []; // 學習進度：一定綁學生，記某個里程碑（自由書寫），不綁定特定一堂課
     let calendar; 
     let currentModalEvent = null; 
     let editingIndex = null; // 目前正在編輯的學生索引（null = 沒有開啟編輯視窗）
@@ -1303,7 +1314,7 @@
       if (document.getElementById('salary-page').style.display === 'block') calculateDynamicRevenue();
       if (document.getElementById('todo-page').style.display === 'block') renderTodoPage();
       if (document.getElementById('student-detail-page').style.display === 'block' && currentDetailStudentId) {
-        renderStudentDetailBasicInfo(); renderStudentDetailPayment(); renderStudentDetailMakeup(); renderStudentDetailTodos(); renderStudentDetailLessonNotes();
+        renderStudentDetailBasicInfo(); renderStudentDetailPayment(); renderStudentDetailMakeup(); renderStudentDetailTodos(); renderStudentDetailLessonNotes(); renderStudentDetailProgress();
       }
       if (document.getElementById('dashboard-page').style.display === 'block') renderDashboard();
       if (calendar) calendar.refetchEvents();
@@ -1611,6 +1622,9 @@
       document.getElementById('modal-temp-mark-paid').checked = (props.type === 'temp') && defaultPaid;
       document.getElementById('modal-todo-input').value = '';
       document.getElementById('modal-todo-due').value = props.dateStr || '';
+      document.getElementById('modal-lessonnote-input').value = '';
+      document.getElementById('modal-notes-section-body').style.display = 'none';
+      document.getElementById('modal-notes-toggle-arrow').innerText = '▸ 展開';
       document.getElementById('attendance-modal').style.display = 'flex';
     }
 
@@ -1946,6 +1960,7 @@
     function saveBadDebtToMemory() { localStorage.setItem('jess_bad_debt_v1', JSON.stringify(badDebt)); pushToCloud(); }
     function saveTodosToMemory() { localStorage.setItem('jess_todos_v1', JSON.stringify(todos)); pushToCloud(); }
     function saveLessonNotesToMemory() { localStorage.setItem('jess_lessonnotes_v1', JSON.stringify(lessonNotes)); pushToCloud(); }
+    function saveProgressNotesToMemory() { localStorage.setItem('jess_progressnotes_v1', JSON.stringify(progressNotes)); pushToCloud(); }
 
     // 找出某個日期＋時間有沒有已經被別人卡住（固定/隔週課、排定的補課、其他臨時課），
     // 回傳卡住的那個人的姓名；已經延期／轉補課／取消的紀錄不算卡位，沒有衝突則回傳 null。
@@ -2941,6 +2956,15 @@
     }
 
     // 新增學生表單預設收起來，避免每次進頁面都要先滑過一大串欄位才看得到學生名單
+    // 待辦跟課堂記錄不是每堂課都需要寫，收合起來預設不展開，避免點名視窗每次都要多滑一段
+    function toggleModalNotesSection() {
+      let body = document.getElementById('modal-notes-section-body');
+      let arrow = document.getElementById('modal-notes-toggle-arrow');
+      let opening = body.style.display === 'none';
+      body.style.display = opening ? 'block' : 'none';
+      arrow.innerText = opening ? '▾ 收起' : '▸ 展開';
+    }
+
     function toggleAddStudentForm() {
       let body = document.getElementById('add-student-form-body');
       let arrow = document.getElementById('add-student-toggle-arrow');
@@ -3306,6 +3330,7 @@
       renderStudentDetailMakeup();
       renderStudentDetailTodos();
       renderStudentDetailLessonNotes();
+      renderStudentDetailProgress();
       showStudentDetailTab('basic');
       showPage('student-detail-page');
     }
@@ -3404,6 +3429,43 @@
       renderStudentDetailLessonNotes();
     }
     // ============ 成長記錄結束 ============
+
+    // ============ 成長記錄：學習進度 ============
+    function renderStudentDetailProgress() {
+      let sorted = progressNotes.filter(n => n.studentId === currentDetailStudentId).sort((a, b) => b.date.localeCompare(a.date));
+      let html = sorted.length === 0
+        ? '<p style="color:#aaa; font-size:13px;">目前沒有學習進度紀錄。</p>'
+        : sorted.map(n => `
+          <div class="pay-history-row" style="align-items:flex-start; flex-direction:column; padding:10px 0;">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+              <span style="font-size:12px; color:#8C9C8A; font-weight:bold;">${n.date}</span>
+              <button class="small-btn del-btn" style="padding:2px 8px; font-size:11px;" onclick="deleteProgressNote('${n.id}')">刪除</button>
+            </div>
+            <div style="margin-top:4px; white-space:pre-wrap; text-align:left;">${n.text}</div>
+          </div>`).join('');
+      document.getElementById('student-detail-progress-list').innerHTML = html;
+    }
+
+    function submitDetailProgress() {
+      let s = students.find(x => x.id === currentDetailStudentId);
+      if (!s) return;
+      let text = document.getElementById('detail-progress-text').value.trim();
+      if (!text) { alert('請輸入學習進度內容！'); return; }
+      let date = document.getElementById('detail-progress-date').value || formatDate(new Date());
+      progressNotes.push({ id: generateId(), studentId: s.id, studentName: s.name, date: date, text: text, createdAt: new Date().toISOString() });
+      saveProgressNotesToMemory();
+      document.getElementById('detail-progress-text').value = '';
+      document.getElementById('detail-progress-date').value = '';
+      renderStudentDetailProgress();
+    }
+
+    function deleteProgressNote(id) {
+      if (!confirm('確定要刪除這筆學習進度嗎？')) return;
+      progressNotes = progressNotes.filter(n => n.id !== id);
+      saveProgressNotesToMemory();
+      renderStudentDetailProgress();
+    }
+    // ============ 學習進度結束 ============
 
     // 繳費分頁：用跟「繳費管理」頁面完全一樣的卡片渲染邏輯，只是只畫這一位學生、id 加上 detail_ 前綴避免跟繳費管理頁面同時存在時衝突
     function renderStudentDetailPayment() {
