@@ -78,6 +78,22 @@
     /* 學生詳細頁的橫向分頁籤：基本資料／繳費／補課 */
     .detail-tab-btn { flex: 1; padding: 10px 0; background: none; border: none; border-bottom: 3px solid transparent; font-size: 14px; color: #999; cursor: pointer; }
     .detail-tab-btn.active { color: #8C9C8A; border-bottom-color: #8C9C8A; font-weight: bold; }
+
+    /* 手機版底部固定分頁列：只在偵測到窄螢幕時，由 JS 在 body 加上 mobile-tabs 這個 class 才會生效，桌面版完全不受影響 */
+    #bottom-tab-bar { display: none; }
+    body.mobile-tabs #bottom-tab-bar {
+      display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 500;
+      background-color: white; border-top: 1px solid #eee;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    body.mobile-tabs { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+    .bottom-tab-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; padding: 8px 0 6px 0; background: none; border: none; color: #999; cursor: pointer;
+    }
+    .bottom-tab-btn.active { color: #8C9C8A; }
+    .bottom-tab-icon { font-size: 20px; line-height: 1; }
+    .bottom-tab-label { font-size: 10px; }
     #calendar.calendar-compact .fc-daygrid-more-link { font-size: 10px !important; padding: 0 2px !important; }
     #calendar.calendar-compact .fc-daygrid-day-number { font-size: 13px; }
     #calendar.calendar-compact .fc-daygrid-day.calendar-day-selected { background-color: #F4F6F3; }
@@ -131,15 +147,28 @@
     <button class="button" onclick="showPage('manage-page')">💳 繳費管理</button>
     <button class="button" onclick="showPage('todo-page')">📝 待辦事項</button>
     <div id="payment-badge" style="display:none; font-size:13px; color:#E08E79; font-weight:bold; margin:-10px auto 5px auto; width:90%; text-align:center;"></div>
-    <button class="button btn-secondary" id="logout-btn" style="display:none; font-size:13px; padding:8px; margin-top:5px;" onclick="doLogout()">登出</button>
+  </div>
 
-    <div style="display:flex; gap:8px; width:90%; margin:15px auto 0 auto;">
+  <div id="more-page" style="display: none;">
+    <h2 style="font-weight: 300;">⚙️ 更多</h2>
+    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">‹ 返回首頁</button>
+    <button class="button btn-secondary" id="logout-btn" style="display:none; width:90%; margin:0 auto 15px auto;" onclick="doLogout()">登出</button>
+
+    <div style="display:flex; gap:8px; width:90%; margin:0 auto;">
       <button class="small-btn" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="exportBackup()">📤 匯出備份</button>
       <button class="small-btn" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('import-file-input').click()">📥 匯入備份</button>
       <button class="small-btn" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="openHistoryModal()">🕐 歷史版本</button>
     </div>
     <button class="small-btn" style="width:90%; margin:8px auto 0 auto; display:block; padding:8px; background-color:#FFF9F5; color:#B08A8A;" onclick="openCleanupModal()">🗑️ 清除舊資料</button>
     <input type="file" id="import-file-input" accept="application/json" style="display:none;" onchange="importBackup(event)">
+  </div>
+
+  <div id="bottom-tab-bar" style="display:none;">
+    <button class="bottom-tab-btn" data-tab="home" onclick="showPage('main-menu')"><span class="bottom-tab-icon">🏠</span><span class="bottom-tab-label">首頁</span></button>
+    <button class="bottom-tab-btn" data-tab="students" onclick="showPage('manage-page')"><span class="bottom-tab-icon">👥</span><span class="bottom-tab-label">學生管理</span></button>
+    <button class="bottom-tab-btn" data-tab="calendar" onclick="showPage('calendar-page')"><span class="bottom-tab-icon">📅</span><span class="bottom-tab-label">月曆</span></button>
+    <button class="bottom-tab-btn" data-tab="salary" onclick="showPage('salary-page')"><span class="bottom-tab-icon">💰</span><span class="bottom-tab-label">結算</span></button>
+    <button class="bottom-tab-btn" data-tab="more" onclick="showPage('more-page')"><span class="bottom-tab-icon">⚙️</span><span class="bottom-tab-label">更多</span></button>
   </div>
 
   <div id="cleanup-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
@@ -886,6 +915,12 @@
     })();
     updateMainMenuBadge();
 
+    // 底部分頁列只在手機寬度才啟用，只判斷這一次（跟月曆的精簡模式用同一個門檻），桌面版完全不受影響
+    if (window.innerWidth <= 700) {
+      document.body.classList.add('mobile-tabs');
+      updateBottomTabHighlight('main-menu'); // 首頁本來就是預設畫面，不會經過 showPage()，這裡手動點亮一次
+    }
+
 
     // ============ 24 小時制「時 / 分」輸入元件 ============
     // 每個 .time24 容器內有兩個 .time24-seg input（data-unit 為 hour 或 minute），
@@ -1248,9 +1283,19 @@
     }
     // ============ Firebase 雲端同步結束 ============
 
+    // 底部分頁列的燈號要跟目前顯示的頁面對起來；不在對照表裡的頁面（例如待辦事項）就先不亮任何一個分頁
+    function updateBottomTabHighlight(pageId) {
+      const tabMap = { 'main-menu': 'home', 'manage-page': 'students', 'student-detail-page': 'students', 'calendar-page': 'calendar', 'salary-page': 'salary', 'more-page': 'more' };
+      let activeTab = tabMap[pageId] || null;
+      document.querySelectorAll('.bottom-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === activeTab);
+      });
+    }
+
     function showPage(pageId) {
-      const pages = ['main-menu', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'makeup-page', 'payment-page', 'todo-page'];
+      const pages = ['main-menu', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'makeup-page', 'payment-page', 'todo-page', 'more-page'];
       pages.forEach(p => document.getElementById(p).style.display = 'none');
+      updateBottomTabHighlight(pageId);
       
       if(pageId === 'manage-page') {
         resetManageFilters();
