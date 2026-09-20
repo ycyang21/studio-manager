@@ -740,6 +740,7 @@
       <button class="detail-tab-btn" id="student-detail-tab-btn-basic" onclick="showStudentDetailTab('basic')">基本資料</button>
       <button class="detail-tab-btn" id="student-detail-tab-btn-payment" onclick="showStudentDetailTab('payment')">繳費</button>
       <button class="detail-tab-btn" id="student-detail-tab-btn-makeup" onclick="showStudentDetailTab('makeup')">補課</button>
+      <button class="detail-tab-btn" id="student-detail-tab-btn-todo" onclick="showStudentDetailTab('todo')">待辦</button>
     </div>
     <div id="student-detail-tab-basic" style="display:none;">
       <div id="student-detail-basic-content"></div>
@@ -748,6 +749,16 @@
     <div id="student-detail-tab-makeup" style="display:none;">
       <button class="small-btn" style="width:100%; margin-bottom:12px; padding:10px; background-color:#E08E79; color:white;" onclick="addManualMakeupForDetail()">➕ 新增一筆需補課紀錄 (1堂)</button>
       <div id="student-detail-makeup-list"></div>
+    </div>
+    <div id="student-detail-tab-todo" style="display:none;">
+      <div class="card" style="text-align:left;">
+        <input type="text" id="detail-todo-text" class="form-control" placeholder="待辦內容" style="margin-bottom:8px;">
+        <input type="date" id="detail-todo-due" class="form-control" style="margin-bottom:8px;" placeholder="截止日期">
+        <button class="small-btn" style="width:100%; padding:8px; background-color:#8C9C8A; color:white;" onclick="submitDetailTodo()">➕ 新增待辦（截止日期留空會自動帶下次上課日）</button>
+      </div>
+      <div id="student-detail-todo-pending"></div>
+      <button class="reset-btn" id="student-detail-todo-toggle-btn" onclick="toggleStudentDetailTodoDone()" style="width:100%; margin:15px 0;">👁️ 顯示已完成</button>
+      <div id="student-detail-todo-done" style="display:none;"></div>
     </div>
   </div>
 
@@ -2787,7 +2798,7 @@
         let hasOwed = getStudentBalance(s.id) > 0;
         let hasUnscheduledMakeup = makeupBank.some(r => r.studentId === s.id && r.status === 'active' && r.remaining > 0);
         let statusBadges = (hasOwed ? '⚠️ ' : '') + (hasUnscheduledMakeup ? '🔄 ' : '');
-        return `<div class="card"><div class="student-title" style="font-size: 16px;">${statusBadges}${s.name} (${s.instrument})</div><div class="student-detail">🕒 ${displayTime}${locationNote}${startNote} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div><div style="display:flex; flex-wrap:wrap; gap:6px;"><button class="small-btn" style="background-color:#5d705b; color:white;" onclick="openStudentDetail('${s.id}')">📋 詳細資料</button><button class="small-btn" style="background-color:#E2E8DF; color:#333;" onclick="openEditModal(${i})">編輯</button><button class="small-btn" style="background-color:#7C93B3; color:white;" onclick="openPlanChangeModal('${s.id}')">🔁 課程方案異動</button><button class="small-btn" style="background-color:#8C9C8A; color:white;" onclick="openStudentTodoModal('${s.id}')">📝 待辦</button><button class="small-btn" style="background-color:#B08A8A; color:white;" onclick="openWithdrawModal('${s.id}')">退班</button><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
+        return `<div class="card"><div class="student-title" style="font-size: 16px;">${statusBadges}${s.name} (${s.instrument})</div><div class="student-detail">🕒 ${displayTime}${locationNote}${startNote} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div><div style="display:flex; flex-wrap:wrap; gap:6px;"><button class="small-btn" style="background-color:#5d705b; color:white;" onclick="openStudentDetail('${s.id}')">📋 詳細資料</button><button class="small-btn" style="background-color:#E2E8DF; color:#333;" onclick="openEditModal(${i})">編輯</button><button class="small-btn" style="background-color:#7C93B3; color:white;" onclick="openPlanChangeModal('${s.id}')">🔁 課程方案異動</button><button class="small-btn" style="background-color:#B08A8A; color:white;" onclick="openWithdrawModal('${s.id}')">退班</button><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
       }).join('');
 
       document.getElementById('manage-list').innerHTML = listHTML || (query ? '<p style="color:#888;">沒有符合搜尋／篩選條件的在學學生。</p>' : '<p style="color:#888;">沒有符合篩選條件的在學學生。</p>');
@@ -3340,6 +3351,8 @@
     function refreshTodoViews() {
       if (document.getElementById('todo-page').style.display === 'block') renderTodoPage();
       if (document.getElementById('student-todo-modal').style.display === 'flex' && currentTodoStudentId) renderStudentTodoList(currentTodoStudentId);
+      if (document.getElementById('student-detail-page').style.display === 'block' && currentDetailStudentId) renderStudentDetailTodos();
+      if (document.getElementById('dashboard-page').style.display === 'block') renderDashboardTodos();
     }
 
     function renderTodoPage() {
@@ -3498,6 +3511,7 @@
       renderStudentDetailBasicInfo();
       renderStudentDetailPayment();
       renderStudentDetailMakeup();
+      renderStudentDetailTodos();
       showStudentDetailTab('basic');
       showPage('student-detail-page');
     }
@@ -3535,6 +3549,34 @@
       alert('✅ 已手動新增一筆需補課紀錄 (1堂)');
     }
 
+    // 待辦分頁：邏輯跟原本學生卡片上「📝 待辦」那個彈出視窗一樣，只是整合進詳細頁裡，不用再另外開視窗
+    function renderStudentDetailTodos() {
+      syncAutoTodoDueDates();
+      let sorted = todos.filter(t => t.studentId === currentDetailStudentId).sort((a, b) => (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99'));
+      document.getElementById('student-detail-todo-pending').innerHTML = renderTodoItems(sorted.filter(t => !t.done));
+      document.getElementById('student-detail-todo-done').innerHTML = renderTodoItems(sorted.filter(t => t.done));
+    }
+
+    function submitDetailTodo() {
+      let s = students.find(x => x.id === currentDetailStudentId);
+      if (!s) return;
+      let text = document.getElementById('detail-todo-text').value.trim();
+      if (!text) { alert('請輸入待辦內容！'); return; }
+      let due = document.getElementById('detail-todo-due').value;
+      let dueDateAuto = false;
+      if (!due) { due = getNextLessonDate(s.id) || ''; dueDateAuto = true; }
+      todos.push({ id: generateId(), text: text, studentId: s.id, studentName: s.name, dueDate: due, dueDateAuto: dueDateAuto, done: false, createdAt: new Date().toISOString() });
+      saveTodosToMemory();
+      document.getElementById('detail-todo-text').value = '';
+      document.getElementById('detail-todo-due').value = '';
+      renderStudentDetailTodos();
+    }
+
+    function toggleStudentDetailTodoDone() {
+      let el = document.getElementById('student-detail-todo-done'); let btn = document.getElementById('student-detail-todo-toggle-btn');
+      if (el.style.display === 'none') { el.style.display = 'block'; btn.innerText = '🔺 隱藏已完成'; } else { el.style.display = 'none'; btn.innerText = '👁️ 顯示已完成'; }
+    }
+
     // 繳費分頁：用跟「繳費管理」頁面完全一樣的卡片渲染邏輯，只是只畫這一位學生、id 加上 detail_ 前綴避免跟繳費管理頁面同時存在時衝突
     function renderStudentDetailPayment() {
       let s = students.find(x => x.id === currentDetailStudentId);
@@ -3547,7 +3589,7 @@
     }
 
     function showStudentDetailTab(tab) {
-      ['basic', 'payment', 'makeup'].forEach(t => {
+      ['basic', 'payment', 'makeup', 'todo'].forEach(t => {
         document.getElementById('student-detail-tab-' + t).style.display = (t === tab) ? 'block' : 'none';
         document.getElementById('student-detail-tab-btn-' + t).classList.toggle('active', t === tab);
       });
