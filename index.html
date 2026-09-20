@@ -754,7 +754,7 @@
       <div class="card" style="text-align:left;">
         <input type="text" id="detail-todo-text" class="form-control" placeholder="待辦內容" style="margin-bottom:8px;">
         <input type="date" id="detail-todo-due" class="form-control" style="margin-bottom:8px;" placeholder="截止日期">
-        <button class="small-btn" style="width:100%; padding:8px; background-color:#8C9C8A; color:white;" onclick="submitDetailTodo()">➕ 新增待辦（截止日期留空會自動帶下次上課日）</button>
+        <button class="small-btn" style="width:100%; padding:8px; background-color:#8C9C8A; color:white;" onclick="submitDetailTodo()">➕ 新增待辦</button>
       </div>
       <div id="student-detail-todo-pending"></div>
       <button class="reset-btn" id="student-detail-todo-toggle-btn" onclick="toggleStudentDetailTodoDone()" style="width:100%; margin:15px 0;">👁️ 顯示已完成</button>
@@ -811,7 +811,7 @@
         <input type="hidden" id="todo-student-value">
         <div id="todo-student-dropdown" class="searchable-dropdown" style="display:none;"></div>
       </div>
-      <div class="form-group"><label>提醒/截止日期（選填，留空且有綁定學生的話會自動帶下次上課日）</label><input type="date" id="todo-due" class="form-control"></div>
+      <div class="form-group"><label>提醒/截止日期（選填）</label><input type="date" id="todo-due" class="form-control"></div>
       <button class="button" style="width:100%; margin:0;" onclick="submitTodo()">確認新增</button>
     </div>
     <h3 style="font-size: 16px; text-align: left; padding-left: 20px; margin-top: 20px;">📋 待辦清單</h3>
@@ -825,7 +825,7 @@
       <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">📝 待辦事項</h3>
       <p id="student-todo-name" style="font-size:15px; font-weight:bold; color:#333; margin-bottom:10px;"></p>
       <div class="form-group"><input type="text" id="student-todo-text" class="form-control" placeholder="例如：幫他買樂譜"></div>
-      <div class="form-group"><label style="font-size:13px;">提醒/截止日期（選填，留空會自動帶下次上課日）</label><input type="date" id="student-todo-due" class="form-control"></div>
+      <div class="form-group"><label style="font-size:13px;">提醒/截止日期（選填）</label><input type="date" id="student-todo-due" class="form-control"></div>
       <button class="button" style="width:100%; margin:0 0 15px 0; background-color:#8C9C8A;" onclick="submitStudentTodo()">➕ 新增待辦</button>
 
       <div id="student-todo-pending"></div>
@@ -848,7 +848,6 @@
         <button type="button" class="small-btn" style="margin-top:6px; background:transparent; color:#888; text-decoration:underline; padding:2px 6px;" onclick="resetStudentPicker('edit-todo-student')">清除綁定</button>
       </div>
       <div class="form-group"><label>提醒/截止日期（選填）</label><input type="date" id="edit-todo-due" class="form-control"></div>
-      <div class="form-group"><label style="display:flex; align-items:center; gap:6px; font-weight:normal;"><input type="checkbox" id="edit-todo-auto-due" style="width:auto;" onchange="toggleEditTodoAutoDue()"> 🔄 自動跟著這位學生的下一堂課（排課異動時會自動更新；需要先綁定學生）</label></div>
       <button class="button" style="width:100%; margin:10px 0 0 0;" onclick="submitEditTodo()">💾 儲存修改</button>
       <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeEditTodoModal()">取消</button>
     </div>
@@ -2662,7 +2661,6 @@
     }
 
     function renderDashboardTodos() {
-      syncAutoTodoDueDates();
       let pending = todos.filter(t => !t.done).sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
       let content = document.getElementById('dashboard-todo-content');
       if (pending.length === 0) {
@@ -3296,58 +3294,6 @@
     }
 
     // 待辦事項可能同時顯示在待辦頁面、也可能顯示在某位學生的待辦視窗，資料一變兩邊都要跟著更新
-    // 算出這位學生「最近的下一次上課」是哪一天（>= 今天）：固定課表要跳過延期/轉補/已調課的那幾天，
-    // 再加上還沒出席的補課、臨時課，全部取最早的那一個。找不到（約課學生沒有任何排定、或已退班）就回傳 null。
-    function getNextLessonDate(studentId) {
-      let s = students.find(x => x.id === studentId);
-      if (!s) return null;
-      let today = formatDate(new Date());
-      let candidates = [];
-
-      if (s.freq !== 'appointment' && s.dayIndex !== '' && s.dayIndex !== undefined) {
-        let d = new Date(today + 'T00:00:00');
-        while (d.getDay().toString() !== s.dayIndex) { d.setDate(d.getDate() + 1); }
-        for (let i = 0; i < 30; i++) {
-          let dateStr = formatDate(d);
-          if (s.endDate && dateStr > s.endDate) break;
-          let onSchedule = !s.startDate || dateStr >= s.startDate;
-          let onBiweeklyWeek = s.freq !== 'biweekly' || isBiweeklyOnWeek(s.anchorDate, dateStr);
-          if (onSchedule && onBiweeklyWeek) {
-            let skipped = (s.canceledDates || []).includes(dateStr) || (s.makeupConvertedDates || []).includes(dateStr) || (s.rescheduledDates || []).includes(dateStr);
-            if (!skipped) { candidates.push(dateStr); break; }
-          }
-          d.setDate(d.getDate() + 7);
-        }
-      }
-
-      makeupBank.forEach(record => {
-        if (record.studentId !== studentId) return;
-        record.schedules.forEach(sch => { if (!sch.attended && sch.date >= today) candidates.push(sch.date); });
-      });
-
-      tempLessons.forEach(t => {
-        if (t.studentId !== studentId) return;
-        if (!t.attended && !t.canceled && t.date >= today) candidates.push(t.date);
-      });
-
-      if (candidates.length === 0) return null;
-      candidates.sort();
-      return candidates[0];
-    }
-
-    // 綁定學生、還沒完成、截止日期是系統自動帶入的待辦，每次待辦清單要顯示之前，都先重新對一次「最近下一次上課」，
-    // 讓截止日期自動跟著排課異動走；手動指定過日期的（dueDateAuto 是 false）不會被這裡動到。
-    function syncAutoTodoDueDates() {
-      let changed = false;
-      todos.forEach(t => {
-        if (t.dueDateAuto && !t.done && t.studentId) {
-          let next = getNextLessonDate(t.studentId) || '';
-          if (t.dueDate !== next) { t.dueDate = next; changed = true; }
-        }
-      });
-      if (changed) saveTodosToMemory();
-    }
-
     function refreshTodoViews() {
       if (document.getElementById('todo-page').style.display === 'block') renderTodoPage();
       if (document.getElementById('student-todo-modal').style.display === 'flex' && currentTodoStudentId) renderStudentTodoList(currentTodoStudentId);
@@ -3356,7 +3302,6 @@
     }
 
     function renderTodoPage() {
-      syncAutoTodoDueDates();
       let sorted = [...todos].sort((a, b) => (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99'));
       document.getElementById('todo-pending-list').innerHTML = renderTodoItems(sorted.filter(t => !t.done));
       document.getElementById('todo-done-list').innerHTML = renderTodoItems(sorted.filter(t => t.done));
@@ -3368,9 +3313,7 @@
       let studentId = document.getElementById('todo-student-value').value || null;
       let stu = studentId ? students.find(s => s.id === studentId) : null;
       let due = document.getElementById('todo-due').value;
-      let dueDateAuto = false;
-      if (!due && stu) { due = getNextLessonDate(stu.id) || ''; dueDateAuto = true; }
-      todos.push({ id: generateId(), text: text, studentId: stu ? stu.id : null, studentName: stu ? stu.name : null, dueDate: due, dueDateAuto: dueDateAuto, done: false, createdAt: new Date().toISOString() });
+      todos.push({ id: generateId(), text: text, studentId: stu ? stu.id : null, studentName: stu ? stu.name : null, dueDate: due, done: false, createdAt: new Date().toISOString() });
       saveTodosToMemory();
       document.getElementById('todo-text').value = '';
       resetStudentPicker('todo-student');
@@ -3400,7 +3343,6 @@
     function closeStudentTodoModal() { document.getElementById('student-todo-modal').style.display = 'none'; currentTodoStudentId = null; }
 
     function renderStudentTodoList(studentId) {
-      syncAutoTodoDueDates();
       let sorted = todos.filter(t => t.studentId === studentId).sort((a, b) => (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99'));
       document.getElementById('student-todo-pending').innerHTML = renderTodoItems(sorted.filter(t => !t.done));
       document.getElementById('student-todo-done').innerHTML = renderTodoItems(sorted.filter(t => t.done));
@@ -3412,9 +3354,7 @@
       let text = document.getElementById('student-todo-text').value.trim();
       if (!text) { alert('請輸入待辦內容！'); return; }
       let due = document.getElementById('student-todo-due').value;
-      let dueDateAuto = false;
-      if (!due) { due = getNextLessonDate(s.id) || ''; dueDateAuto = true; }
-      todos.push({ id: generateId(), text: text, studentId: s.id, studentName: s.name, dueDate: due, dueDateAuto: dueDateAuto, done: false, createdAt: new Date().toISOString() });
+      todos.push({ id: generateId(), text: text, studentId: s.id, studentName: s.name, dueDate: due, done: false, createdAt: new Date().toISOString() });
       saveTodosToMemory();
       document.getElementById('student-todo-text').value = '';
       document.getElementById('student-todo-due').value = '';
@@ -3447,7 +3387,7 @@
         if (t) { studentId = t.studentId; studentName = t.studentName; }
       }
 
-      todos.push({ id: generateId(), text: text, studentId: studentId, studentName: studentName, dueDate: document.getElementById('modal-todo-due').value, dueDateAuto: false, done: false, createdAt: new Date().toISOString() });
+      todos.push({ id: generateId(), text: text, studentId: studentId, studentName: studentName, dueDate: document.getElementById('modal-todo-due').value, done: false, createdAt: new Date().toISOString() });
       saveTodosToMemory();
       input.value = '';
       alert('✅ 已新增待辦！');
@@ -3459,8 +3399,6 @@
       editingTodoId = id;
       document.getElementById('edit-todo-text').value = t.text;
       document.getElementById('edit-todo-due').value = t.dueDate || '';
-      document.getElementById('edit-todo-auto-due').checked = !!t.dueDateAuto;
-      document.getElementById('edit-todo-due').disabled = !!t.dueDateAuto;
       if (t.studentId) {
         document.getElementById('edit-todo-student-input').value = t.studentName || '';
         document.getElementById('edit-todo-student-value').value = t.studentId;
@@ -3468,16 +3406,6 @@
         resetStudentPicker('edit-todo-student');
       }
       document.getElementById('edit-todo-modal').style.display = 'flex';
-    }
-
-    // 勾起來的話：截止日期欄位鎖住（改用自動計算），並立刻預覽一次目前算出來的下次上課日期
-    function toggleEditTodoAutoDue() {
-      let auto = document.getElementById('edit-todo-auto-due').checked;
-      document.getElementById('edit-todo-due').disabled = auto;
-      if (auto) {
-        let studentId = document.getElementById('edit-todo-student-value').value;
-        if (studentId) document.getElementById('edit-todo-due').value = getNextLessonDate(studentId) || '';
-      }
     }
 
     function closeEditTodoModal() { document.getElementById('edit-todo-modal').style.display = 'none'; editingTodoId = null; }
@@ -3489,13 +3417,11 @@
       if (!text) { alert('請輸入待辦內容！'); return; }
       let studentId = document.getElementById('edit-todo-student-value').value || null;
       let stu = studentId ? students.find(s => s.id === studentId) : null;
-      let autoDue = document.getElementById('edit-todo-auto-due').checked && !!stu;
 
       t.text = text;
       t.studentId = stu ? stu.id : null;
       t.studentName = stu ? stu.name : null;
-      t.dueDateAuto = autoDue;
-      t.dueDate = autoDue ? (getNextLessonDate(stu.id) || '') : document.getElementById('edit-todo-due').value;
+      t.dueDate = document.getElementById('edit-todo-due').value;
 
       saveTodosToMemory();
       closeEditTodoModal();
@@ -3551,7 +3477,6 @@
 
     // 待辦分頁：邏輯跟原本學生卡片上「📝 待辦」那個彈出視窗一樣，只是整合進詳細頁裡，不用再另外開視窗
     function renderStudentDetailTodos() {
-      syncAutoTodoDueDates();
       let sorted = todos.filter(t => t.studentId === currentDetailStudentId).sort((a, b) => (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99'));
       document.getElementById('student-detail-todo-pending').innerHTML = renderTodoItems(sorted.filter(t => !t.done));
       document.getElementById('student-detail-todo-done').innerHTML = renderTodoItems(sorted.filter(t => t.done));
@@ -3563,9 +3488,7 @@
       let text = document.getElementById('detail-todo-text').value.trim();
       if (!text) { alert('請輸入待辦內容！'); return; }
       let due = document.getElementById('detail-todo-due').value;
-      let dueDateAuto = false;
-      if (!due) { due = getNextLessonDate(s.id) || ''; dueDateAuto = true; }
-      todos.push({ id: generateId(), text: text, studentId: s.id, studentName: s.name, dueDate: due, dueDateAuto: dueDateAuto, done: false, createdAt: new Date().toISOString() });
+      todos.push({ id: generateId(), text: text, studentId: s.id, studentName: s.name, dueDate: due, done: false, createdAt: new Date().toISOString() });
       saveTodosToMemory();
       document.getElementById('detail-todo-text').value = '';
       document.getElementById('detail-todo-due').value = '';
