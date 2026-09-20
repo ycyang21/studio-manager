@@ -72,6 +72,10 @@
     #calendar.calendar-compact .fc-event.event-rescheduled { height: 6px !important; min-height: 6px !important; }
     /* 其他（出席、缺席收費、待上課、補課、臨時課…）都算「確定排定」，用這個小標籤顯示學生姓名 */
     #calendar.calendar-compact .fc-compact-name { font-size: 9px; line-height: 15px; padding: 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white; font-weight: 600; }
+
+    /* 學生詳細頁的橫向分頁籤：基本資料／繳費／補課 */
+    .detail-tab-btn { flex: 1; padding: 10px 0; background: none; border: none; border-bottom: 3px solid transparent; font-size: 14px; color: #999; cursor: pointer; }
+    .detail-tab-btn.active { color: #8C9C8A; border-bottom-color: #8C9C8A; font-weight: bold; }
     #calendar.calendar-compact .fc-daygrid-more-link { font-size: 10px !important; padding: 0 2px !important; }
     #calendar.calendar-compact .fc-daygrid-day-number { font-size: 13px; }
     #calendar.calendar-compact .fc-daygrid-day.calendar-day-selected { background-color: #F4F6F3; }
@@ -636,6 +640,25 @@
 
     <button class="reset-btn" id="toggle-withdrawn-btn" onclick="toggleWithdrawnList()" style="width: 90%; margin: 20px auto; display: block;">👁️ 顯示已結案</button>
     <div id="manage-withdrawn-list" style="display: none;"></div>
+  </div>
+
+  <div id="student-detail-page" style="display: none;">
+    <button class="small-btn" style="width:90%; margin:0 auto 10px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('manage-page')">‹ 返回學生名單</button>
+    <h2 id="student-detail-name" style="font-weight: 300;"></h2>
+    <div style="display:flex; width:90%; margin:0 auto 15px auto; border-bottom: 2px solid #eee;">
+      <button class="detail-tab-btn" id="student-detail-tab-btn-basic" onclick="showStudentDetailTab('basic')">基本資料</button>
+      <button class="detail-tab-btn" id="student-detail-tab-btn-payment" onclick="showStudentDetailTab('payment')">繳費</button>
+      <button class="detail-tab-btn" id="student-detail-tab-btn-makeup" onclick="showStudentDetailTab('makeup')">補課</button>
+    </div>
+    <div id="student-detail-tab-basic" style="display:none;">
+      <div id="student-detail-basic-content"></div>
+    </div>
+    <div id="student-detail-tab-payment" style="display:none;">
+      <p style="color:#aaa; font-size:13px;">這個分頁還在建置中，目前請先到「💳 繳費管理」查看這位學生的繳費狀況。</p>
+    </div>
+    <div id="student-detail-tab-makeup" style="display:none;">
+      <p style="color:#aaa; font-size:13px;">這個分頁還在建置中，目前請先到「📓 補課存摺管理」查看這位學生的補課狀況。</p>
+    </div>
   </div>
 
   <div id="salary-page" style="display: none;">
@@ -1206,7 +1229,7 @@
     // ============ Firebase 雲端同步結束 ============
 
     function showPage(pageId) {
-      const pages = ['main-menu', 'calendar-page', 'manage-page', 'salary-page', 'makeup-page', 'payment-page', 'todo-page'];
+      const pages = ['main-menu', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'makeup-page', 'payment-page', 'todo-page'];
       pages.forEach(p => document.getElementById(p).style.display = 'none');
       
       if(pageId === 'manage-page') renderManageList();
@@ -2496,7 +2519,7 @@
           withdrawnHTML += `<div class="card history-card" style="display: flex; justify-content: space-between; align-items: center;"><div><div class="student-title" style="color:#888;">${s.name} (${s.instrument})</div><div class="student-detail" style="margin-bottom:0;">🕒 ${displayTime} <br> ${reasonNote}${balanceNote}</div></div><button class="small-btn del-btn" onclick="deleteStudent(${i})">永久刪除</button></div>`;
         } else {
           let startNote = s.startDate ? (' <br> 🌱 開始上課：' + s.startDate) : '';
-          listHTML += `<div class="card"><div class="student-title" style="font-size: 16px;">${s.name} (${s.instrument})</div><div class="student-detail">🕒 ${displayTime}${startNote} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div><div style="display:flex; flex-wrap:wrap; gap:6px;"><button class="small-btn" style="background-color:#E2E8DF; color:#333;" onclick="openEditModal(${i})">編輯</button><button class="small-btn" style="background-color:#7C93B3; color:white;" onclick="openPlanChangeModal('${s.id}')">🔁 課程方案異動</button><button class="small-btn" style="background-color:#8C9C8A; color:white;" onclick="openStudentTodoModal('${s.id}')">📝 待辦</button><button class="small-btn" style="background-color:#B08A8A; color:white;" onclick="openWithdrawModal('${s.id}')">退班</button><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
+          listHTML += `<div class="card"><div class="student-title" style="font-size: 16px;">${s.name} (${s.instrument})</div><div class="student-detail">🕒 ${displayTime}${startNote} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div><div style="display:flex; flex-wrap:wrap; gap:6px;"><button class="small-btn" style="background-color:#5d705b; color:white;" onclick="openStudentDetail('${s.id}')">📋 詳細資料</button><button class="small-btn" style="background-color:#E2E8DF; color:#333;" onclick="openEditModal(${i})">編輯</button><button class="small-btn" style="background-color:#7C93B3; color:white;" onclick="openPlanChangeModal('${s.id}')">🔁 課程方案異動</button><button class="small-btn" style="background-color:#8C9C8A; color:white;" onclick="openStudentTodoModal('${s.id}')">📝 待辦</button><button class="small-btn" style="background-color:#B08A8A; color:white;" onclick="openWithdrawModal('${s.id}')">退班</button><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
         }
       });
       document.getElementById('manage-list').innerHTML = listHTML || (query ? '<p style="color:#888;">沒有符合搜尋的在學學生。</p>' : '<p style="color:#888;">目前沒有在學學生，請在上面新增。</p>');
@@ -3126,6 +3149,49 @@
       refreshTodoViews();
     }
     // ============ 待辦事項結束 ============
+
+    // ============ 學生詳細頁（整合中，目前只有基本資料分頁，繳費／補課分頁之後會陸續補上）============
+    let currentDetailStudentId = null;
+
+    function openStudentDetail(studentId) {
+      currentDetailStudentId = studentId;
+      renderStudentDetailBasicInfo();
+      showStudentDetailTab('basic');
+      showPage('student-detail-page');
+    }
+
+    function showStudentDetailTab(tab) {
+      ['basic', 'payment', 'makeup'].forEach(t => {
+        document.getElementById('student-detail-tab-' + t).style.display = (t === tab) ? 'block' : 'none';
+        document.getElementById('student-detail-tab-btn-' + t).classList.toggle('active', t === tab);
+      });
+    }
+
+    function renderStudentDetailBasicInfo() {
+      let s = students.find(x => x.id === currentDetailStudentId);
+      if (!s) return;
+      document.getElementById('student-detail-name').innerText = s.name;
+
+      let scheduleLabel = '約課（無固定時段）';
+      if (s.freq !== 'appointment') {
+        let freqLabel = s.freq === 'biweekly' ? '隔週' : '每週';
+        scheduleLabel = freqLabel + (s.dayIndex !== undefined && s.dayIndex !== '' ? getDayName(s.dayIndex) : '') + (s.timeVal ? ' ' + s.timeVal : '');
+      }
+
+      document.getElementById('student-detail-basic-content').innerHTML = `
+        <div class="card">
+          <div class="student-detail" style="font-size:15px; line-height:2; text-align:left;">
+            <div>🎵 樂器：${s.instrument}</div>
+            <div>🕐 上課時間：${scheduleLabel}（${s.duration || 60} 分鐘）</div>
+            <div>📍 上課地點：${s.location || '（尚未填寫）'}</div>
+            <div>💰 單堂學費：NT$ ${s.fee || 0}${s.singleLessonPay ? '（單堂繳費）' : ''}</div>
+            <div>📞 聯絡電話：${s.phone || '（尚未填寫）'}</div>
+            <div>📅 開始上課日期：${s.startDate || '（尚未填寫）'}</div>
+          </div>
+          <button class="button" style="width:100%; margin-top:15px;" onclick="openEditModal(${students.findIndex(x => x.id === s.id)})">✏️ 編輯基本資料</button>
+        </div>`;
+    }
+    // ============ 學生詳細頁結束 ============
 
     function openEditModal(index) {
       editingIndex = index;
