@@ -948,15 +948,6 @@
     })();
     updateMainMenuBadge();
 
-    // 底部分頁列只在手機寬度才啟用，只判斷這一次（跟月曆的精簡模式用同一個門檻）；
-    // 手機版的首頁改成真正的 Dashboard，桌面版完全不動、還是原本的主選單。
-    if (window.innerWidth <= 700) {
-      document.body.classList.add('mobile-tabs');
-      showPage('dashboard-page');
-    } else {
-      showPage('main-menu');
-    }
-
 
     // ============ 24 小時制「時 / 分」輸入元件 ============
     // 每個 .time24 容器內有兩個 .time24-seg input（data-unit 為 hour 或 minute），
@@ -3815,6 +3806,16 @@
       alert('✅ 已清除 ' + cutoff + ' 以前的舊資料。每位學生目前的預繳/欠費金額已經用「期初結餘」保留下來，應該不會有變化。');
     }
     // ============ 清除舊資料結束 ============
+
+    // 底部分頁列只在手機寬度才啟用，只判斷這一次（跟月曆的精簡模式用同一個門檻）；手機版的首頁改成真正的 Dashboard，
+    // 桌面版完全不動、還是原本的主選單。這段特意放在整份 <script> 的最後面，確保前面所有 let 變數都已經跑過初始化，
+    // 避免呼叫 showPage() 觸發的畫面渲染，去讀到還沒被賦值、卡在 TDZ（暫時性死區）的變數而整個中斷執行。
+    if (window.innerWidth <= 700) {
+      document.body.classList.add('mobile-tabs');
+      showPage('dashboard-page');
+    } else {
+      showPage('main-menu');
+    }
   </script>
 
   <!-- ============ Firebase 雲端同步設定 ============ -->
