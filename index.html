@@ -264,6 +264,8 @@
       </div>
       <div class="form-group"><label>單堂學費 (元)</label><input type="number" id="convert-fee" class="form-control"></div>
       <div class="form-group"><label style="display:flex; align-items:center; gap:6px; font-weight:normal;"><input type="checkbox" id="convert-single-pay" style="width:auto;"> 單堂繳費（點名時「已收費」預設會幫你勾好）</label></div>
+      <div class="form-group"><label>上課地點</label><input type="text" id="convert-location" class="form-control" placeholder="例如：北車教室"></div>
+      <div class="form-group"><label>地點縮寫（最多2字，月曆顯示用）</label><input type="text" id="convert-location-abbr" class="form-control" maxlength="2" placeholder="例如：北車"></div>
       <div class="form-group"><label>聯絡電話</label><input type="tel" id="convert-phone" class="form-control"></div>
       <button class="button" style="width:100%; margin:10px 0 0 0;" onclick="submitConvertStudent()">💾 確認匯入學生名單</button>
       <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeConvertModal()">取消</button>
@@ -331,6 +333,8 @@
       </div>
       <div class="form-group"><label>單堂學費 (元)</label><input type="number" id="plan-change-fee" class="form-control"></div>
       <div class="form-group"><label style="display:flex; align-items:center; gap:6px; font-weight:normal;"><input type="checkbox" id="plan-change-single-pay" style="width:auto;"> 單堂繳費（點名時「已收費」預設會幫你勾好）</label></div>
+      <div class="form-group"><label>上課地點</label><input type="text" id="plan-change-location" class="form-control" placeholder="例如：北車教室"></div>
+      <div class="form-group"><label>地點縮寫（最多2字，月曆顯示用）</label><input type="text" id="plan-change-location-abbr" class="form-control" maxlength="2" placeholder="例如：北車"></div>
       <button class="button" style="width:100%; margin:10px 0 0 0; background-color:#7C93B3;" onclick="submitPlanChange()">💾 確認異動</button>
       <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closePlanChangeModal()">取消</button>
     </div>
@@ -491,6 +495,8 @@
       </div>
       <div class="form-group"><label>單堂學費 (元)</label><input type="number" id="edit-fee" class="form-control"></div>
       <div class="form-group"><label style="display:flex; align-items:center; gap:6px; font-weight:normal;"><input type="checkbox" id="edit-single-pay" style="width:auto;"> 單堂繳費（點名時「已收費」預設會幫你勾好）</label></div>
+      <div class="form-group"><label>上課地點</label><input type="text" id="edit-location" class="form-control" placeholder="例如：北車教室"></div>
+      <div class="form-group"><label>地點縮寫（最多2字，月曆顯示用）</label><input type="text" id="edit-location-abbr" class="form-control" maxlength="2" placeholder="例如：北車"></div>
       <div class="form-group"><label>聯絡電話</label><input type="tel" id="edit-phone" class="form-control"></div>
       <button class="button" style="width:100%; margin:10px 0 0 0;" onclick="saveEditedStudent()">💾 儲存修改</button>
       <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeEditModal()">取消</button>
@@ -575,6 +581,8 @@
       
       <div class="form-group"><label>單堂學費 (元)</label><input type="number" id="add-fee" class="form-control" placeholder="例如：1000"></div>
       <div class="form-group"><label style="display:flex; align-items:center; gap:6px; font-weight:normal;"><input type="checkbox" id="add-single-pay" style="width:auto;"> 單堂繳費（點名時「已收費」預設會幫你勾好）</label></div>
+      <div class="form-group"><label>上課地點</label><input type="text" id="add-location" class="form-control" placeholder="例如：北車教室"></div>
+      <div class="form-group"><label>地點縮寫（最多2字，月曆顯示用）</label><input type="text" id="add-location-abbr" class="form-control" maxlength="2" placeholder="例如：北車"></div>
       <div class="form-group"><label>聯絡電話</label><input type="tel" id="add-phone" class="form-control" placeholder="家長或學生電話"></div>
       <button class="button" style="width:100%; margin:0;" onclick="addStudent()">確認新增</button>
       </div>
@@ -1224,8 +1232,9 @@
         }
 
         if (getStudentBalance(s.id) > 0) { displayTitle = '💰 ' + displayTitle; }
+        if (s.location) { displayTitle += '・' + s.location; }
 
-        items.push({ title: displayTitle, className: eventClass, time: s.timeVal, allDay: !s.timeVal, name: s.name, props: { type: 'normal', stuIdx: stuIdx, dateStr: dateStr } });
+        items.push({ title: displayTitle, className: eventClass, time: s.timeVal, allDay: !s.timeVal, name: s.name, locationAbbr: s.locationAbbr || '', props: { type: 'normal', stuIdx: stuIdx, dateStr: dateStr } });
       });
 
       // 不管這筆補課存摺紀錄是「還有欠」還是「已經結清（history）」，只要底下有排定日期，都要看得到那一天——
@@ -1237,7 +1246,9 @@
           let eventClass = 'event-makeup';
           if (sch.attended) { displayTitle = '✅ [補] ' + record.studentName; eventClass = 'event-attended'; }
           if (getStudentBalance(record.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
-          items.push({ title: displayTitle, className: eventClass, time: sch.time, allDay: !sch.time, name: record.studentName, props: { type: 'makeup', recordId: record.id, schIdx: schIdx, dateStr: dateStr } });
+          let makeupStu = students.find(x => x.id === record.studentId);
+          if (makeupStu && makeupStu.location) { displayTitle += '・' + makeupStu.location; }
+          items.push({ title: displayTitle, className: eventClass, time: sch.time, allDay: !sch.time, name: record.studentName, locationAbbr: (makeupStu && makeupStu.locationAbbr) || '', props: { type: 'makeup', recordId: record.id, schIdx: schIdx, dateStr: dateStr } });
         });
       });
 
@@ -1249,7 +1260,9 @@
         else if (t.canceled) { displayTitle = '❌ ' + t.studentName + ' (取消)'; eventClass = 'event-canceled'; }
         if (t.amount !== undefined && t.amount !== 1) { displayTitle += ' (' + t.amount + '堂)'; }
         if (getStudentBalance(t.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
-        items.push({ title: displayTitle, className: eventClass, time: t.time, allDay: !t.time, name: t.studentName, props: { type: 'temp', tempId: t.id, dateStr: dateStr } });
+        let tempStu = t.studentId ? students.find(x => x.id === t.studentId) : null;
+        if (tempStu && tempStu.location) { displayTitle += '・' + tempStu.location; }
+        items.push({ title: displayTitle, className: eventClass, time: t.time, allDay: !t.time, name: t.studentName, locationAbbr: (tempStu && tempStu.locationAbbr) || '', props: { type: 'temp', tempId: t.id, dateStr: dateStr } });
       });
 
       items.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
@@ -1280,7 +1293,7 @@
                   className: it.className,
                   start: dateStr + (it.allDay ? '' : 'T' + it.time),
                   allDay: it.allDay,
-                  extendedProps: Object.assign({ name: it.name }, it.props)
+                  extendedProps: Object.assign({ name: it.name, locationAbbr: it.locationAbbr }, it.props)
                 });
               });
               d.setDate(d.getDate() + 1);
@@ -1314,7 +1327,9 @@
             let isNoName = arg.event.classNames.some(c => noNameClasses.includes(c));
             if (isNoName) return { html: '' };
             let name = arg.event.extendedProps.name || '';
-            return { html: '<div class="fc-compact-name">' + name + '</div>' };
+            let abbr = arg.event.extendedProps.locationAbbr || '';
+            let label = (abbr ? abbr + '・' : '') + name;
+            return { html: '<div class="fc-compact-name">' + label + '</div>' };
           };
         }
 
@@ -1362,7 +1377,7 @@
     function openModalForCalendarEvent(props, title, dateStr, timeStr, allDay) {
       currentModalEvent = props;
 
-      let cleanTitle = title.replace(/💰 |✅ |❌ |🔄 |📌 |💸 |🔀 |\[補課\] |\[補\] /g, '').replace(/\s*\(延期\)|\s*\(轉補\)|\s*\(取消\)|\s*\(缺席收費\)|\s*\(已調課\)|\s*\([\d.]+堂\)/g, '');
+      let cleanTitle = title.replace(/💰 |✅ |❌ |🔄 |📌 |💸 |🔀 |\[補課\] |\[補\] /g, '').replace(/\s*\(延期\)|\s*\(轉補\)|\s*\(取消\)|\s*\(缺席收費\)|\s*\(已調課\)|\s*\([\d.]+堂\)/g, '').replace(/・.*$/, '');
       document.getElementById('modal-title').innerText = cleanTitle;
 
       // 依事件類型找出這堂課的時長，用來算結束時間；只在點名視窗裡顯示完整區間，月曆格子本身維持原樣不動
@@ -2513,6 +2528,8 @@
       let startDate = document.getElementById('convert-start-date').value;
       let duration = Number(document.getElementById('convert-duration').value) || 60;
       let singleLessonPay = document.getElementById('convert-single-pay').checked;
+      let location = document.getElementById('convert-location').value.trim();
+      let locationAbbr = document.getElementById('convert-location-abbr').value.trim().slice(0, 2);
       let dayIndex = document.getElementById('convert-day').value;
       let timeVal = getTimeValue('convert-time');
       let anchorDate = document.getElementById('convert-anchor-date').value;
@@ -2537,7 +2554,7 @@
       if (!checkScheduleConflictWarning(freq, dayIndex, timeVal, anchorDate, duration, null)) return;
 
       let newId = generateId();
-      students.push({ id: newId, name: name, instrument: instrument, freq: freq, startDate: startDate, duration: duration, singleLessonPay: singleLessonPay, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, anchorDate: anchorDate, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
+      students.push({ id: newId, name: name, instrument: instrument, freq: freq, startDate: startDate, duration: duration, singleLessonPay: singleLessonPay, location: location, locationAbbr: locationAbbr, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, anchorDate: anchorDate, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
       saveToMemory();
 
       // 把原本那筆臨時課接到新學生身上，變成他的第一堂課紀錄；如果當初有標記已收費，補登記一筆繳費
@@ -2726,6 +2743,8 @@
       document.getElementById('plan-change-anchor-date').value = s.anchorDate || '';
       document.getElementById('plan-change-duration').value = s.duration || 60;
       document.getElementById('plan-change-single-pay').checked = !!s.singleLessonPay;
+      document.getElementById('plan-change-location').value = s.location || '';
+      document.getElementById('plan-change-location-abbr').value = s.locationAbbr || '';
       document.getElementById('plan-change-fee').value = s.fee;
 
       document.getElementById('plan-change-modal').style.display = 'flex';
@@ -2757,6 +2776,8 @@
       let anchorDate = document.getElementById('plan-change-anchor-date').value;
       let duration = Number(document.getElementById('plan-change-duration').value) || 60;
       let singleLessonPay = document.getElementById('plan-change-single-pay').checked;
+      let location = document.getElementById('plan-change-location').value.trim();
+      let locationAbbr = document.getElementById('plan-change-location-abbr').value.trim().slice(0, 2);
       let fee = document.getElementById('plan-change-fee').value.trim();
 
       let instrumentRadios = document.getElementsByName('plan-change-instrument'); let instrument = '';
@@ -2793,7 +2814,7 @@
 
       students.push({
         id: newId, name: oldS.name, instrument: instrument, freq: freq, startDate: effectiveDate,
-        dayIndex: dayIndex, timeVal: timeVal, duration: duration, singleLessonPay: singleLessonPay, fee: fee, phone: oldS.phone, anchorDate: anchorDate,
+        dayIndex: dayIndex, timeVal: timeVal, duration: duration, singleLessonPay: singleLessonPay, location: location, locationAbbr: locationAbbr, fee: fee, phone: oldS.phone, anchorDate: anchorDate,
         changedFromId: oldS.id,
         attendedDates: [], canceledDates: [], makeupConvertedDates: []
       });
@@ -3060,6 +3081,8 @@
       document.getElementById('edit-start-date').value = s.startDate || '';
       document.getElementById('edit-duration').value = s.duration || 60;
       document.getElementById('edit-single-pay').checked = !!s.singleLessonPay;
+      document.getElementById('edit-location').value = s.location || '';
+      document.getElementById('edit-location-abbr').value = s.locationAbbr || '';
 
       document.getElementById('edit-fee').value = s.fee;
       document.getElementById('edit-phone').value = s.phone;
@@ -3078,6 +3101,8 @@
       let startDate = document.getElementById('edit-start-date').value; // 選填：沒填就維持原本「不限制」的行為
       let duration = Number(document.getElementById('edit-duration').value) || 60;
       let singleLessonPay = document.getElementById('edit-single-pay').checked;
+      let location = document.getElementById('edit-location').value.trim();
+      let locationAbbr = document.getElementById('edit-location-abbr').value.trim().slice(0, 2);
       let dayIndex = document.getElementById('edit-day').value;
       let timeVal = getTimeValue('edit-time');
       let anchorDate = document.getElementById('edit-anchor-date').value;
@@ -3102,7 +3127,7 @@
       if (!checkScheduleConflictWarning(freq, dayIndex, timeVal, anchorDate, duration, editId)) return;
 
       let s = students[editingIndex];
-      s.name = name; s.instrument = instrument; s.freq = freq; s.startDate = startDate; s.duration = duration; s.singleLessonPay = singleLessonPay; s.dayIndex = dayIndex; s.timeVal = timeVal; s.fee = fee; s.phone = phone; s.anchorDate = anchorDate;
+      s.name = name; s.instrument = instrument; s.freq = freq; s.startDate = startDate; s.duration = duration; s.singleLessonPay = singleLessonPay; s.location = location; s.locationAbbr = locationAbbr; s.dayIndex = dayIndex; s.timeVal = timeVal; s.fee = fee; s.phone = phone; s.anchorDate = anchorDate;
 
       // 若學生姓名有異動，同步更新補課存摺、繳費紀錄、臨時課、待辦事項上顯示的姓名
       makeupBank.forEach(r => { if (r.studentId === s.id) r.studentName = s.name; });
@@ -3126,6 +3151,8 @@
       let startDate = document.getElementById('add-start-date').value;
       let duration = Number(document.getElementById('add-duration').value) || 60;
       let singleLessonPay = document.getElementById('add-single-pay').checked;
+      let location = document.getElementById('add-location').value.trim();
+      let locationAbbr = document.getElementById('add-location-abbr').value.trim().slice(0, 2);
       let dayIndex = document.getElementById('add-day').value; 
       let timeVal = getTimeValue('add-time');
       let anchorDate = document.getElementById('add-anchor-date').value;
@@ -3149,10 +3176,10 @@
       if (!checkDuplicateNameWarning(name, instrument, null)) return;
       if (!checkScheduleConflictWarning(freq, dayIndex, timeVal, anchorDate, duration, null)) return;
 
-      students.push({ id: generateId(), name: name, instrument: instrument, freq: freq, startDate: startDate, duration: duration, singleLessonPay: singleLessonPay, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, anchorDate: anchorDate, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
+      students.push({ id: generateId(), name: name, instrument: instrument, freq: freq, startDate: startDate, duration: duration, singleLessonPay: singleLessonPay, location: location, locationAbbr: locationAbbr, dayIndex: dayIndex, timeVal: timeVal, fee: fee, phone: phone, anchorDate: anchorDate, attendedDates: [], canceledDates: [], makeupConvertedDates: [] });
       saveToMemory(); 
       
-      document.getElementById('add-name').value = ''; document.getElementById('add-fee').value = ''; document.getElementById('add-phone').value = ''; document.getElementById('add-day').value = ''; document.getElementById('add-duration').value = 60; document.getElementById('add-single-pay').checked = false;
+      document.getElementById('add-name').value = ''; document.getElementById('add-fee').value = ''; document.getElementById('add-phone').value = ''; document.getElementById('add-day').value = ''; document.getElementById('add-duration').value = 60; document.getElementById('add-single-pay').checked = false; document.getElementById('add-location').value = ''; document.getElementById('add-location-abbr').value = '';
       document.getElementById('add-start-date').value = '';
       document.getElementById('add-anchor-date').value = '';
       document.querySelector('input[name="add-freq"][value="weekly"]').checked = true;
