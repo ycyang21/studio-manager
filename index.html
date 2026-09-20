@@ -654,9 +654,7 @@
       <div id="student-detail-basic-content"></div>
     </div>
     <div id="student-detail-tab-payment" style="display:none;"></div>
-    <div id="student-detail-tab-makeup" style="display:none;">
-      <p style="color:#aaa; font-size:13px;">這個分頁還在建置中，目前請先到「📓 補課存摺管理」查看這位學生的補課狀況。</p>
-    </div>
+    <div id="student-detail-tab-makeup" style="display:none;"></div>
   </div>
 
   <div id="salary-page" style="display: none;">
@@ -2082,7 +2080,7 @@
 
       let formHTML = '';
       if (record.remaining > 0) {
-        let submitFn = idPrefix === '' ? `scheduleMakeup('${record.id}')` : `scheduleMakeupFromCalendar('${record.id}')`;
+        let submitFn = idPrefix === '' ? `scheduleMakeup('${record.id}')` : (idPrefix === 'detail_' ? `scheduleMakeupFromDetail('${record.id}')` : `scheduleMakeupFromCalendar('${record.id}')`);
         let stuForDuration = students.find(s => s.id === record.studentId);
         let defaultDuration = (stuForDuration && stuForDuration.duration) ? stuForDuration.duration : 60;
         formHTML = `
@@ -2172,8 +2170,24 @@
       alert('✅ 排定成功！');
     }
 
-    function cancelMakeupRecord(recordId) {
-      if(confirm("確定刪除嗎？")) { makeupBank = makeupBank.filter(r => r.id !== recordId); saveMakeupToMemory(); renderMakeupList(); }
+    // 從學生詳細頁的補課分頁排課：讀取 detail_ 開頭的欄位，排定成功後刷新詳細頁本身
+    function scheduleMakeupFromDetail(recordId) {
+      let amt = Number(document.getElementById('detail_amt_' + recordId).value);
+      let date = document.getElementById('detail_date_' + recordId).value;
+      let timeInput = getTimeValue('detail_time_' + recordId);
+      let duration = Number(document.getElementById('detail_duration_' + recordId).value) || 60;
+      if (!doScheduleMakeup(recordId, amt, date, timeInput, duration)) return;
+      renderStudentDetailMakeup();
+      alert('✅ 排定成功！');
+    }
+
+    function cancelMakeupRecord(recordId, idPrefix) {
+      idPrefix = idPrefix || '';
+      if(confirm("確定刪除嗎？")) {
+        makeupBank = makeupBank.filter(r => r.id !== recordId);
+        saveMakeupToMemory();
+        if (idPrefix === 'detail_') { renderStudentDetailMakeup(); } else { renderMakeupList(); }
+      }
     }
 
     // ============ 編輯已排定的補課時間 ============
@@ -2255,6 +2269,7 @@
       saveMakeupToMemory();
       closeEditMakeupScheduleModal();
       renderMakeupList();
+      if (currentDetailStudentId && document.getElementById('student-detail-page').style.display === 'block') { renderStudentDetailMakeup(); }
       if (calendar) calendar.refetchEvents();
       alert('✅ 已更新補課時間！');
     }
@@ -3162,8 +3177,32 @@
       currentDetailStudentId = studentId;
       renderStudentDetailBasicInfo();
       renderStudentDetailPayment();
+      renderStudentDetailMakeup();
       showStudentDetailTab('basic');
       showPage('student-detail-page');
+    }
+
+    // 補課分頁：邏輯跟「補課存摺管理」頁面一樣（active/history 分開顯示），只是只畫這一位學生的紀錄，
+    // 排課表單、取消紀錄都用 detail_ 前綴的版本，避免跟補課存摺頁面同時存在時 DOM id 打架
+    function renderStudentDetailMakeup() {
+      let s = students.find(x => x.id === currentDetailStudentId);
+      if (!s) return;
+      let records = [...makeupBank.filter(r => r.studentId === s.id)].reverse();
+      let activeHTML = ''; let historyHTML = ''; let activeCount = 0; let historyCount = 0;
+
+      records.forEach(record => {
+        if (record.status === 'active') {
+          activeCount++;
+          activeHTML += `<div class="card makeup-card"><div style="font-size:12px; color:#888;">產生於: ${record.dateGen}</div>${buildMakeupScheduleHTML(record, 'detail_')}<button class="small-btn" style="margin-top:10px; color:#888; background:transparent; text-decoration:underline;" onclick="cancelMakeupRecord('${record.id}', 'detail_')">取消這筆紀錄</button></div>`;
+        } else {
+          historyCount++;
+          historyHTML += `<div class="card history-card"><div style="font-size:12px; color:#aaa;">已結清</div><div class="student-detail" style="margin-bottom:0;">總補課: ${record.totalOwed} 堂 (產生於 ${record.dateGen})</div></div>`;
+        }
+      });
+
+      let html = activeCount === 0 ? '<p style="color:#888; font-size:13px;">目前沒有需要補課的紀錄。</p>' : activeHTML;
+      if (historyCount > 0) { html += `<h3 style="font-size:14px; color:#888; text-align:left; margin:18px 0 8px 0;">已結清（${historyCount}）</h3>${historyHTML}`; }
+      document.getElementById('student-detail-tab-makeup').innerHTML = html;
     }
 
     // 繳費分頁：用跟「繳費管理」頁面完全一樣的卡片渲染邏輯，只是只畫這一位學生、id 加上 detail_ 前綴避免跟繳費管理頁面同時存在時衝突
