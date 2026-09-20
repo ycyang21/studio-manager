@@ -621,24 +621,6 @@
     </div>
   </div>
 
-  <div id="makeup-page" style="display: none;">
-    <h2 style="font-weight: 300;">🔄 補課存摺管理</h2>
-    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">返回主選單</button>
-    <div class="card" style="background-color: #FFF9F5; border: 1px solid #E08E79;">
-      <h3 style="margin-top:0; font-size: 16px; color:#E08E79;">➕ 手動新增 (先補課/請假)</h3>
-      <div class="form-group searchable-select" id="makeup-student-picker">
-        <input type="text" id="makeup-student-input" class="form-control" placeholder="點一下搜尋 / 選擇學生" autocomplete="off" oninput="filterStudentPicker('makeup-student', true)" onfocus="filterStudentPicker('makeup-student', true)">
-        <input type="hidden" id="makeup-student-value">
-        <div id="makeup-student-dropdown" class="searchable-dropdown" style="display:none;"></div>
-      </div>
-      <button class="button" style="width:100%; margin:0; background-color:#E08E79;" onclick="addManualMakeup()">新增 1 堂需補課紀錄</button>
-    </div>
-    <h3 style="font-size: 16px; text-align: left; padding-left: 20px; margin-top: 20px;">📝 待處理補課</h3>
-    <div id="makeup-active-list"></div>
-    <button class="reset-btn" id="toggle-history-btn" onclick="toggleHistory()" style="width: 90%; margin: 20px auto; display: block;">👁️ 顯示已完成的歷史紀錄</button>
-    <div id="makeup-history-list" style="display: none;"></div>
-  </div>
-
   <div id="manage-page" style="display: none;">
     <h2 style="font-weight: 300;">⚙️ 學生名單管理</h2>
     <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">返回主選單</button>
@@ -783,20 +765,6 @@
     </div>
   </div>
 
-  <div id="payment-page" style="display: none;">
-    <h2 style="font-weight: 300;">💳 繳費管理</h2>
-    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">返回主選單</button>
-    <p style="font-size:12px; color:#888; margin-top:0;">已上課堂數（含補課出席）自動累計，已繳堂數則是你登記過的每一筆繳費加總，差額就是目前欠款或預繳剩餘的堂數。</p>
-    <input type="text" id="payment-search" class="form-control" style="width:90%; margin:0 auto 15px auto; display:block;" placeholder="🔍 搜尋學生姓名" oninput="renderPaymentList()">
-    <div style="width:90%; margin:0 auto 15px auto; display:flex; gap:6px; flex-wrap:wrap;">
-      <button class="small-btn payment-filter-btn" data-filter="all" style="flex:1; padding:8px; background-color:#8C9C8A; color:white;" onclick="setPaymentFilter('all')">全部</button>
-      <button class="small-btn payment-filter-btn" data-filter="owed" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="setPaymentFilter('owed')">⚠️ 尚未繳費</button>
-      <button class="small-btn payment-filter-btn" data-filter="prepaid" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="setPaymentFilter('prepaid')">🟢 預繳剩餘</button>
-      <button class="small-btn payment-filter-btn" data-filter="settled" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="setPaymentFilter('settled')">已結清</button>
-    </div>
-    <div id="payment-list"></div>
-  </div>
-
   <div id="todo-page" style="display: none;">
     <h2 style="font-weight: 300;">📝 待辦事項</h2>
     <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">返回主選單</button>
@@ -818,22 +786,6 @@
     <div id="todo-pending-list"></div>
     <button class="reset-btn" id="todo-toggle-btn" onclick="toggleTodoDoneList()" style="width: 90%; margin: 20px auto; display: block;">👁️ 顯示已完成</button>
     <div id="todo-done-list" style="display: none;"></div>
-  </div>
-
-  <div id="student-todo-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
-    <div class="modal-content" style="text-align: left; max-height: 85vh; overflow-y: auto;">
-      <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">📝 待辦事項</h3>
-      <p id="student-todo-name" style="font-size:15px; font-weight:bold; color:#333; margin-bottom:10px;"></p>
-      <div class="form-group"><input type="text" id="student-todo-text" class="form-control" placeholder="例如：幫他買樂譜"></div>
-      <div class="form-group"><label style="font-size:13px;">提醒/截止日期（選填）</label><input type="date" id="student-todo-due" class="form-control"></div>
-      <button class="button" style="width:100%; margin:0 0 15px 0; background-color:#8C9C8A;" onclick="submitStudentTodo()">➕ 新增待辦</button>
-
-      <div id="student-todo-pending"></div>
-      <button class="reset-btn" id="student-todo-toggle-btn" onclick="toggleStudentTodoDone()" style="width:100%; margin:15px 0 0 0;">👁️ 顯示已完成</button>
-      <div id="student-todo-done" style="display:none; margin-top:10px;"></div>
-
-      <button class="button btn-secondary" style="width:100%; margin:15px 0 0 0;" onclick="closeStudentTodoModal()">關閉</button>
-    </div>
   </div>
 
   <div id="edit-todo-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
@@ -937,7 +889,6 @@
     let convertingTempId = null; // 正在轉為正式學生的臨時課 id（null = 沒有開啟轉正視窗）
     let withdrawingStudentId = null; // 正在辦理退班的學生 id（null = 沒有開啟退班視窗）
     let planChangingStudentId = null; // 正在辦理課程方案異動的學生 id（null = 沒有開啟異動視窗）
-    let currentTodoStudentId = null; // 目前開著哪位學生的待辦事項視窗（null = 沒開）
     let editingTodoId = null; // 正在編輯的待辦事項 id（null = 沒有開啟編輯視窗）
     let editingMakeupRecordId = null; // 正在編輯時間的補課紀錄 id（null = 沒有開啟編輯視窗）
     let editingMakeupSchIdx = null; // 正在編輯時間的補課紀錄裡，第幾筆排課
@@ -1319,11 +1270,12 @@
     // 收到雲端更新後，重新整理目前畫面上看得到的內容
     function refreshCurrentView() {
       if (document.getElementById('manage-page').style.display === 'block') renderManageList();
-      if (document.getElementById('makeup-page').style.display === 'block') { populateMakeupStudentSelect(); renderMakeupList(); }
       if (document.getElementById('salary-page').style.display === 'block') calculateDynamicRevenue();
-      if (document.getElementById('payment-page').style.display === 'block') renderPaymentList();
       if (document.getElementById('todo-page').style.display === 'block') renderTodoPage();
-      if (document.getElementById('student-todo-modal').style.display === 'flex' && currentTodoStudentId) renderStudentTodoList(currentTodoStudentId);
+      if (document.getElementById('student-detail-page').style.display === 'block' && currentDetailStudentId) {
+        renderStudentDetailBasicInfo(); renderStudentDetailPayment(); renderStudentDetailMakeup(); renderStudentDetailTodos();
+      }
+      if (document.getElementById('dashboard-page').style.display === 'block') renderDashboard();
       if (calendar) calendar.refetchEvents();
       updateMainMenuBadge();
     }
@@ -1339,7 +1291,7 @@
     }
 
     function showPage(pageId) {
-      const pages = ['main-menu', 'dashboard-page', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'makeup-page', 'payment-page', 'todo-page', 'more-page'];
+      const pages = ['main-menu', 'dashboard-page', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'todo-page', 'more-page'];
       pages.forEach(p => document.getElementById(p).style.display = 'none');
       updateBottomTabHighlight(pageId);
       
@@ -1356,8 +1308,6 @@
         document.getElementById('salary-month-picker').value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
         calculateDynamicRevenue();
       }
-      if(pageId === 'makeup-page') { populateMakeupStudentSelect(); renderMakeupList(); }
-      if(pageId === 'payment-page') renderPaymentList();
       if(pageId === 'todo-page') {
         document.getElementById('todo-text').value = '';
         resetStudentPicker('todo-student');
@@ -2177,22 +2127,8 @@
       });
     });
 
-    function populateMakeupStudentSelect() {
-      resetStudentPicker('makeup-student');
-    }
-
-    function addManualMakeup() {
-      let studentId = document.getElementById('makeup-student-value').value;
-      if (!studentId) { alert('請先選擇學生！'); return; }
-      let stu = students.find(s => s.id === studentId);
-      if (!stu) { alert('找不到這位學生，請重新整理頁面再試一次！'); return; }
-      
-      makeupBank.push({ id: generateId(), studentId: stu.id, studentName: stu.name, dateGen: formatDate(new Date()), totalOwed: 1, remaining: 1, status: 'active', schedules: [] });
-      saveMakeupToMemory(); resetStudentPicker('makeup-student'); renderMakeupList(); alert('✅ 已手動新增一筆需補課紀錄 (1堂)');
-    }
-
-    // 補課存摺單一筆紀錄的「尚欠堂數 + 已排定列表 + 排課表單」，補課存摺頁面跟月曆上點「已轉補課」的那堂課共用同一份邏輯。
-    // idPrefix 用來區分兩處的 input id（例如 'cal_'），避免兩處同時渲染在畫面上時 id 互相打架。
+    // 補課存摺單一筆紀錄的「尚欠堂數 + 已排定列表 + 排課表單」，月曆上點「已轉補課」的那堂課、跟學生詳細頁的補課分頁共用同一份邏輯。
+    // idPrefix 用來區分不同處的 input id（例如 'cal_'／'detail_'），避免同時渲染在畫面上時 id 互相打架。
     function buildMakeupScheduleHTML(record, idPrefix) {
       let schList = record.schedules.map((sch, idx) => {
         let statusIcon = sch.attended ? '✅已上' : '⏳待上';
@@ -2202,7 +2138,7 @@
 
       let formHTML = '';
       if (record.remaining > 0) {
-        let submitFn = idPrefix === '' ? `scheduleMakeup('${record.id}')` : (idPrefix === 'detail_' ? `scheduleMakeupFromDetail('${record.id}')` : `scheduleMakeupFromCalendar('${record.id}')`);
+        let submitFn = idPrefix === 'detail_' ? `scheduleMakeupFromDetail('${record.id}')` : `scheduleMakeupFromCalendar('${record.id}')`;
         let stuForDuration = students.find(s => s.id === record.studentId);
         let defaultDuration = (stuForDuration && stuForDuration.duration) ? stuForDuration.duration : 60;
         formHTML = `
@@ -2226,24 +2162,7 @@
       return `<div class="student-detail" style="font-size:14px; font-weight:bold; margin-bottom:0;">總需補: ${record.totalOwed} 堂 | <span style="color:#E08E79;">尚欠: ${record.remaining} 堂</span></div>${schList}${formHTML}`;
     }
 
-    function renderMakeupList() {
-      let activeHTML = ''; let historyHTML = ''; let activeCount = 0; let historyCount = 0;
-      let reversedBank = [...makeupBank].reverse();
-
-      reversedBank.forEach(record => {
-        if (record.status === 'active') {
-          activeCount++;
-          activeHTML += `<div class="card makeup-card"><div style="display:flex; justify-content:space-between;"><div class="student-title">${record.studentName}</div><div style="font-size:12px; color:#888;">產生於: ${record.dateGen}</div></div>${buildMakeupScheduleHTML(record, '')}<button class="small-btn" style="margin-top:10px; color:#888; background:transparent; text-decoration:underline;" onclick="cancelMakeupRecord('${record.id}')">取消這筆紀錄</button></div>`;
-        } else {
-          historyCount++;
-          historyHTML += `<div class="card history-card"><div style="display:flex; justify-content:space-between;"><div class="student-title" style="color:#888;">${record.studentName}</div><div style="font-size:12px; color:#aaa;">已結清</div></div><div class="student-detail" style="margin-bottom:0;">總補課: ${record.totalOwed} 堂 (產生於 ${record.dateGen})</div></div>`;
-        }
-      });
-      document.getElementById('makeup-active-list').innerHTML = activeCount === 0 ? '<p style="color:#888;">目前沒有需要補課的學生！</p>' : activeHTML;
-      document.getElementById('makeup-history-list').innerHTML = historyCount === 0 ? '<p style="color:#aaa; font-size:12px;">尚無歷史紀錄</p>' : historyHTML;
-    }
-
-    // 排課的核心邏輯，補課存摺頁面／月曆兩處共用
+    // 排課的核心邏輯，月曆／學生詳細頁兩處共用
     // 補課排課表單裡，「補幾堂」跟「時長（分鐘）」互相換算：baseDuration 是這位學生自己的正常時長
     function syncMakeupAmountDuration(idPrefix, recordId, source, baseDuration) {
       let base = Number(baseDuration) || 60;
@@ -2270,16 +2189,6 @@
       return true;
     }
 
-    function scheduleMakeup(recordId) {
-      let amt = Number(document.getElementById('amt_' + recordId).value);
-      let date = document.getElementById('date_' + recordId).value;
-      let timeInput = getTimeValue('time_' + recordId);
-      let duration = Number(document.getElementById('duration_' + recordId).value) || 60;
-      if (!doScheduleMakeup(recordId, amt, date, timeInput, duration)) return;
-      renderMakeupList();
-      alert('✅ 排定成功！');
-    }
-
     // 從月曆「已轉補課」的虛線框排課：讀取 cal_ 開頭的欄位，排定成功後直接關掉點名視窗、刷新月曆
     function scheduleMakeupFromCalendar(recordId) {
       let amt = Number(document.getElementById('cal_amt_' + recordId).value);
@@ -2303,12 +2212,11 @@
       alert('✅ 排定成功！');
     }
 
-    function cancelMakeupRecord(recordId, idPrefix) {
-      idPrefix = idPrefix || '';
+    function cancelMakeupRecord(recordId) {
       if(confirm("確定刪除嗎？")) {
         makeupBank = makeupBank.filter(r => r.id !== recordId);
         saveMakeupToMemory();
-        if (idPrefix === 'detail_') { renderStudentDetailMakeup(); } else { renderMakeupList(); }
+        renderStudentDetailMakeup();
       }
     }
 
@@ -2390,18 +2298,12 @@
 
       saveMakeupToMemory();
       closeEditMakeupScheduleModal();
-      renderMakeupList();
       if (currentDetailStudentId && document.getElementById('student-detail-page').style.display === 'block') { renderStudentDetailMakeup(); }
       if (calendar) calendar.refetchEvents();
       alert('✅ 已更新補課時間！');
     }
     // ============ 編輯已排定的補課時間結束 ============
 
-    function toggleHistory() {
-      let el = document.getElementById('makeup-history-list'); let btn = document.getElementById('toggle-history-btn');
-      if (el.style.display === 'none') { el.style.display = 'block'; btn.innerText = '🔺 隱藏歷史紀錄'; } else { el.style.display = 'none'; btn.innerText = '👁️ 顯示已完成的歷史紀錄'; }
-    }
-    
     function saveMakeupToMemory() { localStorage.setItem('jess_makeup_v2', JSON.stringify(makeupBank)); pushToCloud(); }
     function getDayName(index) {
       const days = {'0':'週日', '1':'週一', '2':'週二', '3':'週三', '4':'週四', '5':'週五', '6':'週六'};
@@ -2506,7 +2408,7 @@
 
       document.getElementById(idPrefix + 'paylessons_' + studentId).value = '';
       document.getElementById(idPrefix + 'paynote_' + studentId).value = '';
-      if (idPrefix === 'detail_') { renderStudentDetailPayment(); } else { renderPaymentList(); }
+      renderStudentDetailPayment();
       alert('✅ 已登記繳費！');
     }
 
@@ -2515,20 +2417,8 @@
       if (confirm('確定要刪除這筆繳費紀錄嗎？')) {
         paymentRecords = paymentRecords.filter(p => p.id !== recordId);
         savePaymentToMemory();
-        if (idPrefix === 'detail_') { renderStudentDetailPayment(); } else { renderPaymentList(); }
+        renderStudentDetailPayment();
       }
-    }
-
-    let currentPaymentFilter = 'all'; // 'all' | 'owed' | 'prepaid' | 'settled'
-
-    function setPaymentFilter(filter) {
-      currentPaymentFilter = filter;
-      document.querySelectorAll('.payment-filter-btn').forEach(btn => {
-        let active = btn.dataset.filter === filter;
-        btn.style.backgroundColor = active ? '#8C9C8A' : '#E2E8DF';
-        btn.style.color = active ? 'white' : '#333';
-      });
-      renderPaymentList();
     }
 
     // 單一學生卡片的完整 HTML，篩選/排序完成後每個分組都呼叫這個函式產生卡片，不用重複寫三份
@@ -2582,46 +2472,6 @@
         </div>`;
     }
 
-    function renderPaymentList() {
-      let query = (document.getElementById('payment-search').value || '').trim().toLowerCase();
-
-      let owed = [], prepaid = [], settled = [];
-      students.forEach(s => {
-        if (query && !s.name.toLowerCase().includes(query)) return;
-        let debit = getStudentDebit(s.id);
-        let credit = getStudentCredit(s.id);
-        let balance = Number((debit - credit).toFixed(2));
-        let fee = Number(s.fee) || 0;
-        let entry = { s, debit, credit, balance, fee };
-        if (balance > 0) owed.push(entry);
-        else if (balance < 0) prepaid.push(entry);
-        else settled.push(entry);
-      });
-
-      owed.sort((a, b) => b.balance - a.balance); // 尚未繳費：堂數多到少
-      prepaid.sort((a, b) => Math.abs(a.balance) - Math.abs(b.balance)); // 預繳剩餘：堂數少到多
-
-      let sectionHTML = (label, list) => {
-        if (list.length === 0) return '';
-        let cards = list.map(e => buildPaymentCardHTML(e.s, e.debit, e.credit, e.balance, e.fee)).join('');
-        return label ? `<h3 style="font-size:14px; color:#888; text-align:left; margin:18px 0 8px 0;">${label}（${list.length}）</h3>${cards}` : cards;
-      };
-
-      let html = '';
-      if (currentPaymentFilter === 'owed') {
-        html = sectionHTML('', owed);
-      } else if (currentPaymentFilter === 'prepaid') {
-        html = sectionHTML('', prepaid);
-      } else if (currentPaymentFilter === 'settled') {
-        html = sectionHTML('', settled);
-      } else {
-        html = sectionHTML('⚠️ 尚未繳費', owed) + sectionHTML('🟢 預繳剩餘', prepaid) + sectionHTML('已結清', settled);
-      }
-
-      document.getElementById('payment-list').innerHTML = html || (query ? '<p style="color:#888;">沒有符合搜尋的學生。</p>' : '<p style="color:#888;">尚無學生資料，請先到「學生名單管理」新增學生。</p>');
-    }
-
-    // 主選單顯示目前有幾位學生尚未繳費（差額 > 0），方便一眼看到需要追繳的人數
     // ============ 手機版首頁 Dashboard ============
     let currentDashboardTodayItems = [];
 
@@ -3296,7 +3146,6 @@
     // 待辦事項可能同時顯示在待辦頁面、也可能顯示在某位學生的待辦視窗，資料一變兩邊都要跟著更新
     function refreshTodoViews() {
       if (document.getElementById('todo-page').style.display === 'block') renderTodoPage();
-      if (document.getElementById('student-todo-modal').style.display === 'flex' && currentTodoStudentId) renderStudentTodoList(currentTodoStudentId);
       if (document.getElementById('student-detail-page').style.display === 'block' && currentDetailStudentId) renderStudentDetailTodos();
       if (document.getElementById('dashboard-page').style.display === 'block') renderDashboardTodos();
     }
@@ -3323,46 +3172,6 @@
 
     function toggleTodoDoneList() {
       let el = document.getElementById('todo-done-list'); let btn = document.getElementById('todo-toggle-btn');
-      if (el.style.display === 'none') { el.style.display = 'block'; btn.innerText = '🔺 隱藏已完成'; } else { el.style.display = 'none'; btn.innerText = '👁️ 顯示已完成'; }
-    }
-
-    // 學生卡片上「📝 待辦」視窗：只看得到、只能新增綁定這位學生的待辦
-    function openStudentTodoModal(studentId) {
-      let s = students.find(x => x.id === studentId);
-      if (!s) return;
-      currentTodoStudentId = studentId;
-      document.getElementById('student-todo-name').innerText = s.name;
-      document.getElementById('student-todo-text').value = '';
-      document.getElementById('student-todo-due').value = '';
-      document.getElementById('student-todo-done').style.display = 'none';
-      document.getElementById('student-todo-toggle-btn').innerText = '👁️ 顯示已完成';
-      renderStudentTodoList(studentId);
-      document.getElementById('student-todo-modal').style.display = 'flex';
-    }
-
-    function closeStudentTodoModal() { document.getElementById('student-todo-modal').style.display = 'none'; currentTodoStudentId = null; }
-
-    function renderStudentTodoList(studentId) {
-      let sorted = todos.filter(t => t.studentId === studentId).sort((a, b) => (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99'));
-      document.getElementById('student-todo-pending').innerHTML = renderTodoItems(sorted.filter(t => !t.done));
-      document.getElementById('student-todo-done').innerHTML = renderTodoItems(sorted.filter(t => t.done));
-    }
-
-    function submitStudentTodo() {
-      let s = students.find(x => x.id === currentTodoStudentId);
-      if (!s) return;
-      let text = document.getElementById('student-todo-text').value.trim();
-      if (!text) { alert('請輸入待辦內容！'); return; }
-      let due = document.getElementById('student-todo-due').value;
-      todos.push({ id: generateId(), text: text, studentId: s.id, studentName: s.name, dueDate: due, done: false, createdAt: new Date().toISOString() });
-      saveTodosToMemory();
-      document.getElementById('student-todo-text').value = '';
-      document.getElementById('student-todo-due').value = '';
-      renderStudentTodoList(currentTodoStudentId);
-    }
-
-    function toggleStudentTodoDone() {
-      let el = document.getElementById('student-todo-done'); let btn = document.getElementById('student-todo-toggle-btn');
       if (el.style.display === 'none') { el.style.display = 'block'; btn.innerText = '🔺 隱藏已完成'; } else { el.style.display = 'none'; btn.innerText = '👁️ 顯示已完成'; }
     }
 
@@ -3453,7 +3262,7 @@
       records.forEach(record => {
         if (record.status === 'active') {
           activeCount++;
-          activeHTML += `<div class="card makeup-card"><div style="font-size:12px; color:#888;">產生於: ${record.dateGen}</div>${buildMakeupScheduleHTML(record, 'detail_')}<button class="small-btn" style="margin-top:10px; color:#888; background:transparent; text-decoration:underline;" onclick="cancelMakeupRecord('${record.id}', 'detail_')">取消這筆紀錄</button></div>`;
+          activeHTML += `<div class="card makeup-card"><div style="font-size:12px; color:#888;">產生於: ${record.dateGen}</div>${buildMakeupScheduleHTML(record, 'detail_')}<button class="small-btn" style="margin-top:10px; color:#888; background:transparent; text-decoration:underline;" onclick="cancelMakeupRecord('${record.id}')">取消這筆紀錄</button></div>`;
         } else {
           historyCount++;
           historyHTML += `<div class="card history-card"><div style="font-size:12px; color:#aaa;">已結清</div><div class="student-detail" style="margin-bottom:0;">總補課: ${record.totalOwed} 堂 (產生於 ${record.dateGen})</div></div>`;
