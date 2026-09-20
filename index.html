@@ -638,17 +638,21 @@
     <input type="text" id="manage-search" class="form-control" style="width:90%; margin:15px auto 0 auto; display:block;" placeholder="🔍 搜尋學生姓名" oninput="renderManageList()">
 
     <div style="width:90%; margin:12px auto 0 auto;">
-      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
-        <button class="small-btn manage-filter-btn" data-dim="payment" data-val="all" style="padding:6px 10px; font-size:12px; background-color:#8C9C8A; color:white;" onclick="setManageFilter('payment','all')">繳費：不篩選</button>
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+        <span style="font-size:13px; color:#666; font-weight:bold;">地點：</span>
+        <div id="manage-location-filter-row" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+        <span style="font-size:13px; color:#666; font-weight:bold;">繳費狀態：</span>
         <button class="small-btn manage-filter-btn" data-dim="payment" data-val="owed" style="padding:6px 10px; font-size:12px; background-color:#E2E8DF; color:#333;" onclick="setManageFilter('payment','owed')">⚠️ 尚未繳費</button>
         <button class="small-btn manage-filter-btn" data-dim="payment" data-val="prepaid" style="padding:6px 10px; font-size:12px; background-color:#E2E8DF; color:#333;" onclick="setManageFilter('payment','prepaid')">🟢 預繳剩餘</button>
         <button class="small-btn manage-filter-btn" data-dim="payment" data-val="settled" style="padding:6px 10px; font-size:12px; background-color:#E2E8DF; color:#333;" onclick="setManageFilter('payment','settled')">已結清</button>
       </div>
-      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+        <span style="font-size:13px; color:#666; font-weight:bold;">其他事件：</span>
         <button class="small-btn manage-filter-btn" data-dim="makeup" data-val="on" style="padding:6px 10px; font-size:12px; background-color:#E2E8DF; color:#333;" onclick="toggleManageFilter('makeup')">🔄 需要排補課</button>
         <button class="small-btn manage-filter-btn" data-dim="todo" data-val="on" style="padding:6px 10px; font-size:12px; background-color:#E2E8DF; color:#333;" onclick="toggleManageFilter('todo')">📝 有待辦事項</button>
       </div>
-      <div id="manage-location-filter-row" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
     </div>
 
     <div id="manage-list"></div>
@@ -1248,12 +1252,7 @@
       
       if(pageId === 'manage-page') {
         resetManageFilters();
-        document.querySelectorAll('.manage-filter-btn[data-dim="payment"]').forEach(btn => {
-          let active = btn.dataset.val === 'all';
-          btn.style.backgroundColor = active ? '#8C9C8A' : '#E2E8DF';
-          btn.style.color = active ? 'white' : '#333';
-        });
-        document.querySelectorAll('.manage-filter-btn[data-dim="makeup"], .manage-filter-btn[data-dim="todo"]').forEach(btn => {
+        document.querySelectorAll('.manage-filter-btn[data-dim="payment"], .manage-filter-btn[data-dim="makeup"], .manage-filter-btn[data-dim="todo"]').forEach(btn => {
           btn.style.backgroundColor = '#E2E8DF'; btn.style.color = '#333';
         });
         renderManageList();
@@ -2543,16 +2542,18 @@
     // ============ 繳費管理結束 ============
 
     // ============ 學生名單管理的疊加式篩選：繳費狀態／補課／待辦／地點，四個維度可以同時使用 ============
-    let manageFilters = { payment: 'all', makeup: false, todo: false, location: 'all' };
+    let manageFilters = { payment: null, makeup: false, todo: false, location: null };
 
     function resetManageFilters() {
-      manageFilters = { payment: 'all', makeup: false, todo: false, location: 'all' };
+      manageFilters = { payment: null, makeup: false, todo: false, location: null };
     }
 
+    // 繳費狀態／地點這兩個維度是「單選式切換」：點一個按鈕會選中它（同一排其他按鈕自動取消），
+    // 再點一次目前已選中的按鈕，就會取消選取、回到「這個維度不篩選」，不需要另外一顆「不篩選」按鈕。
     function setManageFilter(dim, val) {
-      manageFilters[dim] = val;
+      manageFilters[dim] = (manageFilters[dim] === val) ? null : val;
       document.querySelectorAll('.manage-filter-btn[data-dim="' + dim + '"]').forEach(btn => {
-        let active = btn.dataset.val === val;
+        let active = btn.dataset.val === manageFilters[dim];
         btn.style.backgroundColor = active ? '#8C9C8A' : '#E2E8DF';
         btn.style.color = active ? 'white' : '#333';
       });
@@ -2571,14 +2572,14 @@
     function renderManageLocationFilterRow() {
       let locations = [...new Set(students.filter(s => !s.endDate && s.location).map(s => s.location))].sort();
       let row = document.getElementById('manage-location-filter-row');
-      let allBtn = `<button class="small-btn manage-filter-btn" data-dim="location" data-val="all" style="padding:6px 10px; font-size:12px; background-color:${manageFilters.location === 'all' ? '#8C9C8A' : '#E2E8DF'}; color:${manageFilters.location === 'all' ? 'white' : '#333'};" onclick="setManageFilter('location','all')">📍 不篩選</button>`;
-      let locBtns = locations.map(loc => `<button class="small-btn manage-filter-btn" data-dim="location" data-val="${loc}" style="padding:6px 10px; font-size:12px; background-color:${manageFilters.location === loc ? '#8C9C8A' : '#E2E8DF'}; color:${manageFilters.location === loc ? 'white' : '#333'};" onclick="setManageFilter('location','${loc}')">${loc}</button>`).join('');
-      row.innerHTML = allBtn + locBtns;
+      row.innerHTML = locations.length > 0
+        ? locations.map(loc => `<button class="small-btn manage-filter-btn" data-dim="location" data-val="${loc}" style="padding:6px 10px; font-size:12px; background-color:${manageFilters.location === loc ? '#8C9C8A' : '#E2E8DF'}; color:${manageFilters.location === loc ? 'white' : '#333'};" onclick="setManageFilter('location','${loc}')">${loc}</button>`).join('')
+        : '<span style="font-size:12px; color:#aaa;">尚無學生填寫上課地點</span>';
     }
 
-    // 一位學生要不要出現在清單裡：四個維度都要通過（AND），沒開的維度直接算通過
+    // 一位學生要不要出現在清單裡：四個維度都要通過（AND），沒開的維度（null 或 false）直接算通過
     function studentPassesManageFilters(s) {
-      if (manageFilters.payment !== 'all') {
+      if (manageFilters.payment) {
         let balance = getStudentBalance(s.id);
         if (manageFilters.payment === 'owed' && !(balance > 0)) return false;
         if (manageFilters.payment === 'prepaid' && !(balance < 0)) return false;
@@ -2592,7 +2593,7 @@
         let hasPendingTodo = todos.some(t => t.studentId === s.id && !t.done);
         if (!hasPendingTodo) return false;
       }
-      if (manageFilters.location !== 'all' && (s.location || '') !== manageFilters.location) return false;
+      if (manageFilters.location && (s.location || '') !== manageFilters.location) return false;
       return true;
     }
     // ============ 篩選邏輯結束 ============
