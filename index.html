@@ -778,7 +778,18 @@
         <div id="student-detail-progress-list"></div>
       </div>
       <div id="growth-subtab-achievement" style="display:none;">
-        <p style="color:#aaa; font-size:13px;">這個區塊還在建置中，下一輪會做。</p>
+        <div class="card" style="text-align:left;">
+          <div class="form-group"><label>類型</label><div class="radio-group">
+            <label><input type="radio" name="detail-achievement-type" value="比賽" checked> 比賽</label>
+            <label><input type="radio" name="detail-achievement-type" value="檢定"> 檢定</label>
+            <label><input type="radio" name="detail-achievement-type" value="表演"> 表演</label>
+          </div></div>
+          <input type="text" id="detail-achievement-name" class="form-control" placeholder="項目/名稱（例如：台中市音樂比賽、英國皇家檢定5級）" style="margin-bottom:8px;">
+          <input type="date" id="detail-achievement-date" class="form-control" style="margin-bottom:8px;">
+          <input type="text" id="detail-achievement-result" class="form-control" placeholder="結果（例如：特優、通過、優等）" style="margin-bottom:8px;">
+          <button class="small-btn" style="width:100%; padding:8px; background-color:#8C9C8A; color:white;" onclick="submitDetailAchievement()">➕ 新增成就記錄</button>
+        </div>
+        <div id="student-detail-achievement-list"></div>
       </div>
     </div>
   </div>
@@ -924,6 +935,7 @@
     let todos = JSON.parse(localStorage.getItem('jess_todos_v1')) || []; // 待辦事項：可綁學生也可以不綁，可以設日期也可以不設
     let lessonNotes = JSON.parse(localStorage.getItem('jess_lessonnotes_v1')) || []; // 課堂記錄：一定綁學生，記某一天上課的狀況（自由書寫）
     let progressNotes = JSON.parse(localStorage.getItem('jess_progressnotes_v1')) || []; // 學習進度：一定綁學生，記某個里程碑（自由書寫），不綁定特定一堂課
+    let achievements = JSON.parse(localStorage.getItem('jess_achievements_v1')) || []; // 成就記錄：一定綁學生，記比賽/檢定/表演，有類型、項目名稱、日期、結果
     let calendar; 
     let currentModalEvent = null; 
     let editingIndex = null; // 目前正在編輯的學生索引（null = 沒有開啟編輯視窗）
@@ -1314,7 +1326,7 @@
       if (document.getElementById('salary-page').style.display === 'block') calculateDynamicRevenue();
       if (document.getElementById('todo-page').style.display === 'block') renderTodoPage();
       if (document.getElementById('student-detail-page').style.display === 'block' && currentDetailStudentId) {
-        renderStudentDetailBasicInfo(); renderStudentDetailPayment(); renderStudentDetailMakeup(); renderStudentDetailTodos(); renderStudentDetailLessonNotes(); renderStudentDetailProgress();
+        renderStudentDetailBasicInfo(); renderStudentDetailPayment(); renderStudentDetailMakeup(); renderStudentDetailTodos(); renderStudentDetailLessonNotes(); renderStudentDetailProgress(); renderStudentDetailAchievements();
       }
       if (document.getElementById('dashboard-page').style.display === 'block') renderDashboard();
       if (calendar) calendar.refetchEvents();
@@ -1961,6 +1973,7 @@
     function saveTodosToMemory() { localStorage.setItem('jess_todos_v1', JSON.stringify(todos)); pushToCloud(); }
     function saveLessonNotesToMemory() { localStorage.setItem('jess_lessonnotes_v1', JSON.stringify(lessonNotes)); pushToCloud(); }
     function saveProgressNotesToMemory() { localStorage.setItem('jess_progressnotes_v1', JSON.stringify(progressNotes)); pushToCloud(); }
+    function saveAchievementsToMemory() { localStorage.setItem('jess_achievements_v1', JSON.stringify(achievements)); pushToCloud(); }
 
     // 找出某個日期＋時間有沒有已經被別人卡住（固定/隔週課、排定的補課、其他臨時課），
     // 回傳卡住的那個人的姓名；已經延期／轉補課／取消的紀錄不算卡位，沒有衝突則回傳 null。
@@ -3331,6 +3344,7 @@
       renderStudentDetailTodos();
       renderStudentDetailLessonNotes();
       renderStudentDetailProgress();
+      renderStudentDetailAchievements();
       showStudentDetailTab('basic');
       showPage('student-detail-page');
     }
@@ -3466,6 +3480,48 @@
       renderStudentDetailProgress();
     }
     // ============ 學習進度結束 ============
+
+    // ============ 成長記錄：成就記錄 ============
+    function renderStudentDetailAchievements() {
+      let sorted = achievements.filter(a => a.studentId === currentDetailStudentId).sort((a, b) => b.date.localeCompare(a.date));
+      let typeIcon = { '比賽': '🏆', '檢定': '📜', '表演': '🎤' };
+      let html = sorted.length === 0
+        ? '<p style="color:#aaa; font-size:13px;">目前沒有成就記錄。</p>'
+        : sorted.map(a => `
+          <div class="pay-history-row" style="align-items:flex-start; flex-direction:column; padding:10px 0;">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+              <span style="font-size:12px; color:#8C9C8A; font-weight:bold;">${a.date} ・ ${typeIcon[a.type] || ''}${a.type}</span>
+              <button class="small-btn del-btn" style="padding:2px 8px; font-size:11px;" onclick="deleteAchievement('${a.id}')">刪除</button>
+            </div>
+            <div style="margin-top:4px; text-align:left; font-weight:bold;">${a.name}</div>
+            ${a.result ? `<div style="margin-top:2px; text-align:left; color:#666; font-size:13px;">結果：${a.result}</div>` : ''}
+          </div>`).join('');
+      document.getElementById('student-detail-achievement-list').innerHTML = html;
+    }
+
+    function submitDetailAchievement() {
+      let s = students.find(x => x.id === currentDetailStudentId);
+      if (!s) return;
+      let type = document.querySelector('input[name="detail-achievement-type"]:checked').value;
+      let name = document.getElementById('detail-achievement-name').value.trim();
+      if (!name) { alert('請輸入項目/名稱！'); return; }
+      let date = document.getElementById('detail-achievement-date').value || formatDate(new Date());
+      let result = document.getElementById('detail-achievement-result').value.trim();
+      achievements.push({ id: generateId(), studentId: s.id, studentName: s.name, type: type, name: name, date: date, result: result, createdAt: new Date().toISOString() });
+      saveAchievementsToMemory();
+      document.getElementById('detail-achievement-name').value = '';
+      document.getElementById('detail-achievement-date').value = '';
+      document.getElementById('detail-achievement-result').value = '';
+      renderStudentDetailAchievements();
+    }
+
+    function deleteAchievement(id) {
+      if (!confirm('確定要刪除這筆成就記錄嗎？')) return;
+      achievements = achievements.filter(a => a.id !== id);
+      saveAchievementsToMemory();
+      renderStudentDetailAchievements();
+    }
+    // ============ 成就記錄結束 ============
 
     // 繳費分頁：用跟「繳費管理」頁面完全一樣的卡片渲染邏輯，只是只畫這一位學生、id 加上 detail_ 前綴避免跟繳費管理頁面同時存在時衝突
     function renderStudentDetailPayment() {
