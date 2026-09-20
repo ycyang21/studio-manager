@@ -153,6 +153,14 @@
     <button class="button" onclick="showPage('manage-page')">💳 繳費管理</button>
     <button class="button" onclick="showPage('todo-page')">📝 待辦事項</button>
     <div id="payment-badge" style="display:none; font-size:13px; color:#E08E79; font-weight:bold; margin:-10px auto 5px auto; width:90%; text-align:center;"></div>
+    <button class="button btn-secondary logout-btn" style="display:none; font-size:13px; padding:8px; margin-top:5px;" onclick="doLogout()">登出</button>
+
+    <div style="display:flex; gap:8px; width:90%; margin:15px auto 0 auto;">
+      <button class="small-btn" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="exportBackup()">📤 匯出備份</button>
+      <button class="small-btn" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('import-file-input').click()">📥 匯入備份</button>
+      <button class="small-btn" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="openHistoryModal()">🕐 歷史版本</button>
+    </div>
+    <button class="small-btn" style="width:90%; margin:8px auto 0 auto; display:block; padding:8px; background-color:#FFF9F5; color:#B08A8A;" onclick="openCleanupModal()">🗑️ 清除舊資料</button>
   </div>
 
   <div id="dashboard-page" style="display: none;">
@@ -185,7 +193,7 @@
   <div id="more-page" style="display: none;">
     <h2 style="font-weight: 300;">⚙️ 更多</h2>
     <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">‹ 返回首頁</button>
-    <button class="button btn-secondary" id="logout-btn" style="display:none; width:90%; margin:0 auto 15px auto;" onclick="doLogout()">登出</button>
+    <button class="button btn-secondary logout-btn" style="display:none; width:90%; margin:0 auto 15px auto;" onclick="doLogout()">登出</button>
 
     <div style="display:flex; gap:8px; width:90%; margin:0 auto;">
       <button class="small-btn" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;" onclick="exportBackup()">📤 匯出備份</button>
@@ -1121,7 +1129,7 @@
         if (user) {
           document.getElementById('login-screen').style.display = 'none';
           document.getElementById('app-root').style.display = 'block';
-          document.getElementById('logout-btn').style.display = 'block';
+          document.querySelectorAll('.logout-btn').forEach(btn => { btn.style.display = 'block'; });
           document.getElementById('login-error').style.display = 'none';
           startCloudListener();
         } else {
