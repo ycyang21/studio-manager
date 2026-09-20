@@ -123,10 +123,10 @@
     <h1>Jess Music Studio</h1>
     <p>工作室管理系統</p>
     <button class="button" onclick="showPage('calendar-page')">📅 月曆與點名簿</button>
-    <button class="button" onclick="showPage('makeup-page')">🔄 補課存摺管理</button>
+    <button class="button" onclick="showPage('manage-page')">🔄 補課存摺管理</button>
     <button class="button" onclick="showPage('manage-page')">⚙️ 學生名單管理</button>
     <button class="button" onclick="showPage('salary-page')">💰 每月學費自動結算</button>
-    <button class="button" onclick="showPage('payment-page')">💳 繳費管理</button>
+    <button class="button" onclick="showPage('manage-page')">💳 繳費管理</button>
     <button class="button" onclick="showPage('todo-page')">📝 待辦事項</button>
     <div id="payment-badge" style="display:none; font-size:13px; color:#E08E79; font-weight:bold; margin:-10px auto 5px auto; width:90%; text-align:center;"></div>
     <button class="button btn-secondary" id="logout-btn" style="display:none; font-size:13px; padding:8px; margin-top:5px;" onclick="doLogout()">登出</button>
@@ -636,6 +636,21 @@
       </div>
     </div>
     <input type="text" id="manage-search" class="form-control" style="width:90%; margin:15px auto 0 auto; display:block;" placeholder="🔍 搜尋學生姓名" oninput="renderManageList()">
+
+    <div style="width:90%; margin:12px auto 0 auto;">
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
+        <button class="small-btn manage-filter-btn" data-dim="payment" data-val="all" style="padding:6px 10px; font-size:12px; background-color:#8C9C8A; color:white;" onclick="setManageFilter('payment','all')">繳費：不篩選</button>
+        <button class="small-btn manage-filter-btn" data-dim="payment" data-val="owed" style="padding:6px 10px; font-size:12px; background-color:#E2E8DF; color:#333;" onclick="setManageFilter('payment','owed')">⚠️ 尚未繳費</button>
+        <button class="small-btn manage-filter-btn" data-dim="payment" data-val="prepaid" style="padding:6px 10px; font-size:12px; background-color:#E2E8DF; color:#333;" onclick="setManageFilter('payment','prepaid')">🟢 預繳剩餘</button>
+        <button class="small-btn manage-filter-btn" data-dim="payment" data-val="settled" style="padding:6px 10px; font-size:12px; background-color:#E2E8DF; color:#333;" onclick="setManageFilter('payment','settled')">已結清</button>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
+        <button class="small-btn manage-filter-btn" data-dim="makeup" data-val="on" style="padding:6px 10px; font-size:12px; background-color:#E2E8DF; color:#333;" onclick="toggleManageFilter('makeup')">🔄 需要排補課</button>
+        <button class="small-btn manage-filter-btn" data-dim="todo" data-val="on" style="padding:6px 10px; font-size:12px; background-color:#E2E8DF; color:#333;" onclick="toggleManageFilter('todo')">📝 有待辦事項</button>
+      </div>
+      <div id="manage-location-filter-row" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+    </div>
+
     <div id="manage-list"></div>
 
     <button class="reset-btn" id="toggle-withdrawn-btn" onclick="toggleWithdrawnList()" style="width: 90%; margin: 20px auto; display: block;">👁️ 顯示已結案</button>
@@ -1231,7 +1246,18 @@
       const pages = ['main-menu', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'makeup-page', 'payment-page', 'todo-page'];
       pages.forEach(p => document.getElementById(p).style.display = 'none');
       
-      if(pageId === 'manage-page') renderManageList();
+      if(pageId === 'manage-page') {
+        resetManageFilters();
+        document.querySelectorAll('.manage-filter-btn[data-dim="payment"]').forEach(btn => {
+          let active = btn.dataset.val === 'all';
+          btn.style.backgroundColor = active ? '#8C9C8A' : '#E2E8DF';
+          btn.style.color = active ? 'white' : '#333';
+        });
+        document.querySelectorAll('.manage-filter-btn[data-dim="makeup"], .manage-filter-btn[data-dim="todo"]').forEach(btn => {
+          btn.style.backgroundColor = '#E2E8DF'; btn.style.color = '#333';
+        });
+        renderManageList();
+      }
       if(pageId === 'salary-page') {
         let now = new Date();
         document.getElementById('salary-month-picker').value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
@@ -2516,13 +2542,70 @@
     }
     // ============ 繳費管理結束 ============
 
+    // ============ 學生名單管理的疊加式篩選：繳費狀態／補課／待辦／地點，四個維度可以同時使用 ============
+    let manageFilters = { payment: 'all', makeup: false, todo: false, location: 'all' };
+
+    function resetManageFilters() {
+      manageFilters = { payment: 'all', makeup: false, todo: false, location: 'all' };
+    }
+
+    function setManageFilter(dim, val) {
+      manageFilters[dim] = val;
+      document.querySelectorAll('.manage-filter-btn[data-dim="' + dim + '"]').forEach(btn => {
+        let active = btn.dataset.val === val;
+        btn.style.backgroundColor = active ? '#8C9C8A' : '#E2E8DF';
+        btn.style.color = active ? 'white' : '#333';
+      });
+      renderManageList();
+    }
+
+    function toggleManageFilter(dim) {
+      manageFilters[dim] = !manageFilters[dim];
+      let btn = document.querySelector('.manage-filter-btn[data-dim="' + dim + '"]');
+      if (btn) { btn.style.backgroundColor = manageFilters[dim] ? '#8C9C8A' : '#E2E8DF'; btn.style.color = manageFilters[dim] ? 'white' : '#333'; }
+      renderManageList();
+    }
+
+    // 地點篩選的選項是動態算出來的（掃目前在學學生實際用過哪些地點），不是寫死那三間工作室，
+    // 這樣就算她填了自訂地點（例如家教），一樣篩得到。
+    function renderManageLocationFilterRow() {
+      let locations = [...new Set(students.filter(s => !s.endDate && s.location).map(s => s.location))].sort();
+      let row = document.getElementById('manage-location-filter-row');
+      let allBtn = `<button class="small-btn manage-filter-btn" data-dim="location" data-val="all" style="padding:6px 10px; font-size:12px; background-color:${manageFilters.location === 'all' ? '#8C9C8A' : '#E2E8DF'}; color:${manageFilters.location === 'all' ? 'white' : '#333'};" onclick="setManageFilter('location','all')">📍 不篩選</button>`;
+      let locBtns = locations.map(loc => `<button class="small-btn manage-filter-btn" data-dim="location" data-val="${loc}" style="padding:6px 10px; font-size:12px; background-color:${manageFilters.location === loc ? '#8C9C8A' : '#E2E8DF'}; color:${manageFilters.location === loc ? 'white' : '#333'};" onclick="setManageFilter('location','${loc}')">${loc}</button>`).join('');
+      row.innerHTML = allBtn + locBtns;
+    }
+
+    // 一位學生要不要出現在清單裡：四個維度都要通過（AND），沒開的維度直接算通過
+    function studentPassesManageFilters(s) {
+      if (manageFilters.payment !== 'all') {
+        let balance = getStudentBalance(s.id);
+        if (manageFilters.payment === 'owed' && !(balance > 0)) return false;
+        if (manageFilters.payment === 'prepaid' && !(balance < 0)) return false;
+        if (manageFilters.payment === 'settled' && balance !== 0) return false;
+      }
+      if (manageFilters.makeup) {
+        let hasUnscheduled = makeupBank.some(r => r.studentId === s.id && r.status === 'active' && r.remaining > 0);
+        if (!hasUnscheduled) return false;
+      }
+      if (manageFilters.todo) {
+        let hasPendingTodo = todos.some(t => t.studentId === s.id && !t.done);
+        if (!hasPendingTodo) return false;
+      }
+      if (manageFilters.location !== 'all' && (s.location || '') !== manageFilters.location) return false;
+      return true;
+    }
+    // ============ 篩選邏輯結束 ============
+
     function renderManageList() {
+      renderManageLocationFilterRow();
       let query = (document.getElementById('manage-search').value || '').trim().toLowerCase();
-      let listHTML = '';
       let withdrawnHTML = '';
       let withdrawnCount = 0;
+      let activeEntries = []; // {s, i, displayTime} — i 是原本在 students 陣列裡的索引，排序/篩選後按鈕才不會點錯人
+
       students.forEach((s, i) => {
-        if (query && !s.name.toLowerCase().includes(query)) return; // 不符合搜尋關鍵字就跳過，但 i 還是原本在 students 陣列裡的索引，按鈕不會點錯人
+        if (query && !s.name.toLowerCase().includes(query)) return; // 不符合搜尋關鍵字就跳過
         let displayTime;
         if (s.freq === 'appointment') {
           displayTime = '約課（無固定時間）';
@@ -2541,15 +2624,28 @@
           let balanceNote = (s.endReason !== 'planChanged' && balance > 0) ? ('<br> ⚠️ 呆帳未收：' + balance + ' 堂') : '';
           withdrawnHTML += `<div class="card history-card" style="display: flex; justify-content: space-between; align-items: center;"><div><div class="student-title" style="color:#888;">${s.name} (${s.instrument})</div><div class="student-detail" style="margin-bottom:0;">🕒 ${displayTime} <br> ${reasonNote}${balanceNote}</div></div><button class="small-btn del-btn" onclick="deleteStudent(${i})">永久刪除</button></div>`;
         } else {
-          let startNote = s.startDate ? (' <br> 🌱 開始上課：' + s.startDate) : '';
-          let locationNote = s.location ? (' <br> 📍 ' + s.location) : '';
-          let hasOwed = getStudentBalance(s.id) > 0;
-          let hasUnscheduledMakeup = makeupBank.some(r => r.studentId === s.id && r.status === 'active' && r.remaining > 0);
-          let statusBadges = (hasOwed ? '⚠️ ' : '') + (hasUnscheduledMakeup ? '🔄 ' : '');
-          listHTML += `<div class="card"><div class="student-title" style="font-size: 16px;">${statusBadges}${s.name} (${s.instrument})</div><div class="student-detail">🕒 ${displayTime}${locationNote}${startNote} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div><div style="display:flex; flex-wrap:wrap; gap:6px;"><button class="small-btn" style="background-color:#5d705b; color:white;" onclick="openStudentDetail('${s.id}')">📋 詳細資料</button><button class="small-btn" style="background-color:#E2E8DF; color:#333;" onclick="openEditModal(${i})">編輯</button><button class="small-btn" style="background-color:#7C93B3; color:white;" onclick="openPlanChangeModal('${s.id}')">🔁 課程方案異動</button><button class="small-btn" style="background-color:#8C9C8A; color:white;" onclick="openStudentTodoModal('${s.id}')">📝 待辦</button><button class="small-btn" style="background-color:#B08A8A; color:white;" onclick="openWithdrawModal('${s.id}')">退班</button><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
+          if (!studentPassesManageFilters(s)) return; // 篩選器只套用在在學學生，已退班的不受影響
+          activeEntries.push({ s, i, displayTime });
         }
       });
-      document.getElementById('manage-list').innerHTML = listHTML || (query ? '<p style="color:#888;">沒有符合搜尋的在學學生。</p>' : '<p style="color:#888;">目前沒有在學學生，請在上面新增。</p>');
+
+      // 繳費篩選開著「尚未繳費／預繳剩餘」的時候，比照繳費管理頁面的排序邏輯，把最需要處理的排前面
+      if (manageFilters.payment === 'owed') {
+        activeEntries.sort((a, b) => getStudentBalance(b.s.id) - getStudentBalance(a.s.id));
+      } else if (manageFilters.payment === 'prepaid') {
+        activeEntries.sort((a, b) => Math.abs(getStudentBalance(a.s.id)) - Math.abs(getStudentBalance(b.s.id)));
+      }
+
+      let listHTML = activeEntries.map(({ s, i, displayTime }) => {
+        let startNote = s.startDate ? (' <br> 🌱 開始上課：' + s.startDate) : '';
+        let locationNote = s.location ? (' <br> 📍 ' + s.location) : '';
+        let hasOwed = getStudentBalance(s.id) > 0;
+        let hasUnscheduledMakeup = makeupBank.some(r => r.studentId === s.id && r.status === 'active' && r.remaining > 0);
+        let statusBadges = (hasOwed ? '⚠️ ' : '') + (hasUnscheduledMakeup ? '🔄 ' : '');
+        return `<div class="card"><div class="student-title" style="font-size: 16px;">${statusBadges}${s.name} (${s.instrument})</div><div class="student-detail">🕒 ${displayTime}${locationNote}${startNote} <br> 💰 ${s.fee}元 / 堂 <br> 📞 ${s.phone}</div><div style="display:flex; flex-wrap:wrap; gap:6px;"><button class="small-btn" style="background-color:#5d705b; color:white;" onclick="openStudentDetail('${s.id}')">📋 詳細資料</button><button class="small-btn" style="background-color:#E2E8DF; color:#333;" onclick="openEditModal(${i})">編輯</button><button class="small-btn" style="background-color:#7C93B3; color:white;" onclick="openPlanChangeModal('${s.id}')">🔁 課程方案異動</button><button class="small-btn" style="background-color:#8C9C8A; color:white;" onclick="openStudentTodoModal('${s.id}')">📝 待辦</button><button class="small-btn" style="background-color:#B08A8A; color:white;" onclick="openWithdrawModal('${s.id}')">退班</button><button class="small-btn del-btn" onclick="deleteStudent(${i})">刪除</button></div></div>`;
+      }).join('');
+
+      document.getElementById('manage-list').innerHTML = listHTML || (query ? '<p style="color:#888;">沒有符合搜尋／篩選條件的在學學生。</p>' : '<p style="color:#888;">沒有符合篩選條件的在學學生。</p>');
       document.getElementById('manage-withdrawn-list').innerHTML = withdrawnCount === 0 ? '<p style="color:#aaa; font-size:12px;">尚無已退班學生</p>' : withdrawnHTML;
     }
     
