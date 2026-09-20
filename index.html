@@ -71,7 +71,9 @@
     #calendar.calendar-compact .fc-event.event-makeup-conv,
     #calendar.calendar-compact .fc-event.event-rescheduled { height: 6px !important; min-height: 6px !important; }
     /* 其他（出席、缺席收費、待上課、補課、臨時課…）都算「確定排定」，用這個小標籤顯示學生姓名 */
-    #calendar.calendar-compact .fc-compact-name { font-size: 9px; line-height: 15px; padding: 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white; font-weight: 600; }
+    #calendar.calendar-compact .fc-compact-name { padding: 1px 3px; color: white; line-height: 1.15; }
+    #calendar.calendar-compact .fc-compact-loc { font-size: 7px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #calendar.calendar-compact .fc-compact-namepart { font-size: 9px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* 學生詳細頁的橫向分頁籤：基本資料／繳費／補課 */
     .detail-tab-btn { flex: 1; padding: 10px 0; background: none; border: none; border-bottom: 3px solid transparent; font-size: 14px; color: #999; cursor: pointer; }
@@ -1419,8 +1421,8 @@
             if (isNoName) return { html: '' };
             let name = arg.event.extendedProps.name || '';
             let abbr = arg.event.extendedProps.locationAbbr || '';
-            let label = (abbr ? abbr + '・' : '') + name;
-            return { html: '<div class="fc-compact-name">' + label + '</div>' };
+            let inner = (abbr ? '<div class="fc-compact-loc">' + abbr + '</div>' : '') + '<div class="fc-compact-namepart">' + name + '</div>';
+            return { html: '<div class="fc-compact-name">' + inner + '</div>' };
           };
         }
 
