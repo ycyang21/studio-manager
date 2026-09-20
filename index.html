@@ -94,6 +94,12 @@
     .bottom-tab-btn.active { color: #8C9C8A; }
     .bottom-tab-icon { font-size: 20px; line-height: 1; }
     .bottom-tab-label { font-size: 10px; }
+
+    .dashboard-count-card { text-align: center; padding: 14px 8px; }
+    .dashboard-today-row, .dashboard-todo-row { padding: 7px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; cursor: pointer; }
+    .dashboard-today-row:last-child, .dashboard-todo-row:last-child { border-bottom: none; }
+    .dashboard-today-time { color: #8C9C8A; font-weight: bold; margin-right: 6px; }
+    .dashboard-todo-date { color: #E08E79; font-weight: bold; }
     #calendar.calendar-compact .fc-daygrid-more-link { font-size: 10px !important; padding: 0 2px !important; }
     #calendar.calendar-compact .fc-daygrid-day-number { font-size: 13px; }
     #calendar.calendar-compact .fc-daygrid-day.calendar-day-selected { background-color: #F4F6F3; }
@@ -137,7 +143,7 @@
   </div>
 
   <div id="app-root">
-  <div id="main-menu">
+  <div id="main-menu" style="display: none;">
     <h1>Jess Music Studio</h1>
     <p>工作室管理系統</p>
     <button class="button" onclick="showPage('calendar-page')">📅 月曆與點名簿</button>
@@ -147,6 +153,33 @@
     <button class="button" onclick="showPage('manage-page')">💳 繳費管理</button>
     <button class="button" onclick="showPage('todo-page')">📝 待辦事項</button>
     <div id="payment-badge" style="display:none; font-size:13px; color:#E08E79; font-weight:bold; margin:-10px auto 5px auto; width:90%; text-align:center;"></div>
+  </div>
+
+  <div id="dashboard-page" style="display: none;">
+    <h1 style="margin-bottom:0;">Jess Music Studio</h1>
+    <p style="margin-top:4px;">工作室管理系統</p>
+
+    <div style="width:90%; margin:0 auto 12px auto; display:flex; gap:10px;">
+      <div class="card dashboard-count-card" style="flex:1; margin:0; cursor:pointer;" onclick="goToManageFiltered('owed')">
+        <div style="font-size:22px; font-weight:bold; color:#E08E79;" id="dashboard-owed-count">0</div>
+        <div style="font-size:12px; color:#888;">⚠️ 尚未繳費</div>
+      </div>
+      <div class="card dashboard-count-card" style="flex:1; margin:0; cursor:pointer;" onclick="goToManageFiltered('makeup')">
+        <div style="font-size:22px; font-weight:bold; color:#7C93B3;" id="dashboard-makeup-count">0</div>
+        <div style="font-size:12px; color:#888;">🔄 待排補課</div>
+      </div>
+    </div>
+
+    <div class="card" style="width:90%; margin:0 auto 12px auto; text-align:left;">
+      <h3 style="margin-top:0; font-size:15px;">📅 今日課程</h3>
+      <div id="dashboard-today-content"></div>
+    </div>
+
+    <div class="card" style="width:90%; margin:0 auto 12px auto; text-align:left;">
+      <h3 style="margin-top:0; font-size:15px;">📝 待辦事項</h3>
+      <div id="dashboard-todo-content"></div>
+      <button class="small-btn" style="width:100%; margin-top:8px; padding:8px; background-color:#E2E8DF; color:#333;" onclick="showPage('todo-page')">查看全部待辦事項</button>
+    </div>
   </div>
 
   <div id="more-page" style="display: none;">
@@ -163,10 +196,10 @@
     <input type="file" id="import-file-input" accept="application/json" style="display:none;" onchange="importBackup(event)">
   </div>
 
-  <div id="bottom-tab-bar" style="display:none;">
-    <button class="bottom-tab-btn" data-tab="home" onclick="showPage('main-menu')"><span class="bottom-tab-icon">🏠</span><span class="bottom-tab-label">首頁</span></button>
+  <div id="bottom-tab-bar">
     <button class="bottom-tab-btn" data-tab="students" onclick="showPage('manage-page')"><span class="bottom-tab-icon">👥</span><span class="bottom-tab-label">學生管理</span></button>
     <button class="bottom-tab-btn" data-tab="calendar" onclick="showPage('calendar-page')"><span class="bottom-tab-icon">📅</span><span class="bottom-tab-label">月曆</span></button>
+    <button class="bottom-tab-btn" data-tab="home" onclick="showPage('dashboard-page')"><span class="bottom-tab-icon">🏠</span><span class="bottom-tab-label">首頁</span></button>
     <button class="bottom-tab-btn" data-tab="salary" onclick="showPage('salary-page')"><span class="bottom-tab-icon">💰</span><span class="bottom-tab-label">結算</span></button>
     <button class="bottom-tab-btn" data-tab="more" onclick="showPage('more-page')"><span class="bottom-tab-icon">⚙️</span><span class="bottom-tab-label">更多</span></button>
   </div>
@@ -915,10 +948,13 @@
     })();
     updateMainMenuBadge();
 
-    // 底部分頁列只在手機寬度才啟用，只判斷這一次（跟月曆的精簡模式用同一個門檻），桌面版完全不受影響
+    // 底部分頁列只在手機寬度才啟用，只判斷這一次（跟月曆的精簡模式用同一個門檻）；
+    // 手機版的首頁改成真正的 Dashboard，桌面版完全不動、還是原本的主選單。
     if (window.innerWidth <= 700) {
       document.body.classList.add('mobile-tabs');
-      updateBottomTabHighlight('main-menu'); // 首頁本來就是預設畫面，不會經過 showPage()，這裡手動點亮一次
+      showPage('dashboard-page');
+    } else {
+      showPage('main-menu');
     }
 
 
@@ -1285,7 +1321,7 @@
 
     // 底部分頁列的燈號要跟目前顯示的頁面對起來；不在對照表裡的頁面（例如待辦事項）就先不亮任何一個分頁
     function updateBottomTabHighlight(pageId) {
-      const tabMap = { 'main-menu': 'home', 'manage-page': 'students', 'student-detail-page': 'students', 'calendar-page': 'calendar', 'salary-page': 'salary', 'more-page': 'more' };
+      const tabMap = { 'main-menu': 'home', 'dashboard-page': 'home', 'manage-page': 'students', 'student-detail-page': 'students', 'calendar-page': 'calendar', 'salary-page': 'salary', 'more-page': 'more' };
       let activeTab = tabMap[pageId] || null;
       document.querySelectorAll('.bottom-tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === activeTab);
@@ -1293,10 +1329,11 @@
     }
 
     function showPage(pageId) {
-      const pages = ['main-menu', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'makeup-page', 'payment-page', 'todo-page', 'more-page'];
+      const pages = ['main-menu', 'dashboard-page', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'makeup-page', 'payment-page', 'todo-page', 'more-page'];
       pages.forEach(p => document.getElementById(p).style.display = 'none');
       updateBottomTabHighlight(pageId);
       
+      if(pageId === 'dashboard-page') { renderDashboard(); }
       if(pageId === 'manage-page') {
         resetManageFilters();
         document.querySelectorAll('.manage-filter-btn[data-dim="payment"], .manage-filter-btn[data-dim="makeup"], .manage-filter-btn[data-dim="todo"]').forEach(btn => {
@@ -2575,6 +2612,65 @@
     }
 
     // 主選單顯示目前有幾位學生尚未繳費（差額 > 0），方便一眼看到需要追繳的人數
+    // ============ 手機版首頁 Dashboard ============
+    let currentDashboardTodayItems = [];
+
+    function renderDashboard() {
+      renderDashboardCounts();
+      renderDashboardToday();
+      renderDashboardTodos();
+    }
+
+    function renderDashboardCounts() {
+      let owedCount = students.filter(s => !s.endDate && getStudentBalance(s.id) > 0).length;
+      let makeupCount = students.filter(s => !s.endDate && makeupBank.some(r => r.studentId === s.id && r.status === 'active' && r.remaining > 0)).length;
+      document.getElementById('dashboard-owed-count').innerText = owedCount;
+      document.getElementById('dashboard-makeup-count').innerText = makeupCount;
+    }
+
+    // 今日課程直接重用月曆算事件的同一套邏輯（getEventsForDate），確保跟月曆、學生詳細頁看到的資料永遠一致
+    function renderDashboardToday() {
+      let today = formatDate(new Date());
+      let items = getEventsForDate(today);
+      currentDashboardTodayItems = items;
+      let content = document.getElementById('dashboard-today-content');
+      if (items.length === 0) {
+        content.innerHTML = '<p style="color:#aaa; font-size:13px;">今天沒有排課。</p>';
+      } else {
+        content.innerHTML = items.map((it, idx) => {
+          let timeLabel = it.allDay ? '' : it.time;
+          return `<div class="dashboard-today-row" onclick="openDashboardTodayItem(${idx})">${timeLabel ? '<span class="dashboard-today-time">' + timeLabel + '</span>' : ''}${it.title}</div>`;
+        }).join('');
+      }
+    }
+
+    function openDashboardTodayItem(idx) {
+      let it = currentDashboardTodayItems[idx];
+      if (!it) return;
+      openModalForCalendarEvent(it.props, it.title, it.props.dateStr, it.time, it.allDay);
+    }
+
+    function renderDashboardTodos() {
+      let pending = todos.filter(t => !t.done).sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
+      let content = document.getElementById('dashboard-todo-content');
+      if (pending.length === 0) {
+        content.innerHTML = '<p style="color:#aaa; font-size:13px;">目前沒有待辦事項。</p>';
+        return;
+      }
+      let shown = pending.slice(0, 5);
+      let html = shown.map(t => `<div class="dashboard-todo-row">${t.dueDate ? '<span class="dashboard-todo-date">' + t.dueDate + '</span> ' : ''}${t.text}${t.studentName ? ' <span style="color:#aaa;">(' + t.studentName + ')</span>' : ''}</div>`).join('');
+      if (pending.length > shown.length) { html += `<p style="font-size:12px; color:#8C9C8A; margin-top:6px;">還有 ${pending.length - shown.length} 筆，點下方查看全部</p>`; }
+      content.innerHTML = html;
+    }
+
+    // 首頁的兩張數字卡片點下去，直接跳到學生管理並套用對應篩選；showPage 本身會先重置篩選，所以要在那之後再設定
+    function goToManageFiltered(kind) {
+      showPage('manage-page');
+      if (kind === 'owed') setManageFilter('payment', 'owed');
+      else if (kind === 'makeup') toggleManageFilter('makeup');
+    }
+    // ============ 首頁 Dashboard 結束 ============
+
     function updateMainMenuBadge() {
       let badge = document.getElementById('payment-badge');
       if (!badge) return;
