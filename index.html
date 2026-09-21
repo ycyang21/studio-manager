@@ -1736,6 +1736,15 @@
       document.getElementById('attendance-modal').style.display = 'none';
       unlockBodyScroll();
       refreshDayPanelIfNeeded();
+      if (isMobileCalendarMode && selectedCalendarDate) {
+        // 點名完月曆重新整理後，上面幾週的格子高度可能會變（打勾後顯示方式不一樣），
+        // 原本記住的捲動位置會對不準新版面，所以改成直接把下方清單「重新捲到看得見」，而不是回頭比對舊座標。
+        // 延遲一點執行，確保月曆自己的重新整理已經跑完，不然清單的實際位置可能還沒定下來。
+        setTimeout(() => {
+          let panel = document.getElementById('calendar-day-panel');
+          if (panel) panel.scrollIntoView({ block: 'nearest' });
+        }, 80);
+      }
     }
 
     // 一般課點名視窗的三層選單：main（出席/課堂異動/學生異動入口）、lesson（延期/轉補課/調課/恢復未點名）、student（課程方案異動/退班）
