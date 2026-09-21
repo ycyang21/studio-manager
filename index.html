@@ -1002,6 +1002,7 @@
     let achievements = JSON.parse(localStorage.getItem('jess_achievements_v1')) || []; // 成就記錄：一定綁學生，記比賽/檢定/表演，有類型、項目名稱、日期、結果
     let calendar; 
     let currentModalEvent = null; 
+    let savedScrollY = 0; // 開點名視窗時，把整個畫面「釘住」在這個捲動位置，關視窗再放開、還原回這裡
     let editingIndex = null; // 目前正在編輯的學生索引（null = 沒有開啟編輯視窗）
     let convertingTempId = null; // 正在轉為正式學生的臨時課 id（null = 沒有開啟轉正視窗）
     let withdrawingStudentId = null; // 正在辦理退班的學生 id（null = 沒有開啟退班視窗）
@@ -1626,6 +1627,27 @@
     }
 
     // 開啟點名視窗的核心邏輯：桌面版直接點月曆上的事件、手機版點下方清單裡的項目，都共用這個函式
+    // 手機瀏覽器對「全螢幕固定視窗」開關常常會自己亂跳捲動位置，光是事後補拉回去常常會跟瀏覽器自己的動作打架、時間點對不準。
+    // 比較可靠的做法是：開視窗的當下，直接把整個 body 釘死在目前這個捲動位置（用 position:fixed + 負的 top 位移模擬），
+    // 讓背景畫面在視窗開著的期間根本不會被瀏覽器誤判成「可以滑動、可以跳位置」；關視窗時再放開、還原回原本的位置。
+    function lockBodyScroll() {
+      savedScrollY = window.scrollY || window.pageYOffset || 0;
+      document.body.style.position = 'fixed';
+      document.body.style.top = '-' + savedScrollY + 'px';
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
+    }
+
+    function unlockBodyScroll() {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.width = '';
+      window.scrollTo(0, savedScrollY);
+    }
+
     function openModalForCalendarEvent(props, title, dateStr, timeStr, allDay) {
       currentModalEvent = props;
 
@@ -1701,6 +1723,7 @@
       document.getElementById('modal-lessonnote-input').value = '';
       document.getElementById('modal-notes-section-body').style.display = 'none';
       document.getElementById('modal-notes-toggle-arrow').innerText = '▸ 展開';
+      lockBodyScroll();
       document.getElementById('attendance-modal').style.display = 'flex';
     }
 
@@ -1711,6 +1734,7 @@
 
     function closeModal() {
       document.getElementById('attendance-modal').style.display = 'none';
+      unlockBodyScroll();
       refreshDayPanelIfNeeded();
     }
 
