@@ -1002,6 +1002,7 @@
     let achievements = JSON.parse(localStorage.getItem('jess_achievements_v1')) || []; // 成就記錄：一定綁學生，記比賽/檢定/表演，有類型、項目名稱、日期、結果
     let calendar; 
     let currentModalEvent = null; 
+    let savedScrollY = 0; // 開點名視窗前滑到哪個位置，關視窗時要還原回去，避免手機瀏覽器自動跳回頂端
     let editingIndex = null; // 目前正在編輯的學生索引（null = 沒有開啟編輯視窗）
     let convertingTempId = null; // 正在轉為正式學生的臨時課 id（null = 沒有開啟轉正視窗）
     let withdrawingStudentId = null; // 正在辦理退班的學生 id（null = 沒有開啟退班視窗）
@@ -1701,6 +1702,7 @@
       document.getElementById('modal-lessonnote-input').value = '';
       document.getElementById('modal-notes-section-body').style.display = 'none';
       document.getElementById('modal-notes-toggle-arrow').innerText = '▸ 展開';
+      savedScrollY = window.scrollY || window.pageYOffset || 0; // 記住開視窗前滑到哪，關視窗時要把畫面還原到這裡，不然手機瀏覽器常常會自己跳回最上面
       document.getElementById('attendance-modal').style.display = 'flex';
     }
 
@@ -1711,6 +1713,7 @@
 
     function closeModal() {
       document.getElementById('attendance-modal').style.display = 'none';
+      setTimeout(() => { window.scrollTo(0, savedScrollY); }, 0); // 延遲一點點再還原，確保排在瀏覽器自己那次「跳回頂端」的動作之後
       refreshDayPanelIfNeeded();
     }
 
