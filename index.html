@@ -152,6 +152,7 @@
     <button class="button" onclick="showPage('salary-page')">💰 每月學費自動結算</button>
     <button class="button" onclick="showPage('manage-page')">💳 繳費管理</button>
     <button class="button" onclick="showPage('todo-page')">📝 待辦事項</button>
+    <button class="button" onclick="showPage('inventory-page')">📦 庫存與進貨管理</button>
     <div id="payment-badge" style="display:none; font-size:13px; color:#E08E79; font-weight:bold; margin:-10px auto 5px auto; width:90%; text-align:center;"></div>
     <button class="button btn-secondary logout-btn" style="display:none; font-size:13px; padding:8px; margin-top:5px;" onclick="doLogout()">登出</button>
 
@@ -1005,6 +1006,42 @@
   </div>
   </div>
 
+  <div id="inventory-page" style="display: none;">
+    <h2 style="font-weight: 300;">📦 庫存與進貨管理</h2>
+    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">返回主選單</button>
+
+    <div class="card" style="background-color: #F4F6F3; border: 1px solid #8C9C8A;">
+      <h3 style="margin-top:0; font-size: 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="toggleAddInventoryForm()">➕ 新增商品 / 進貨登記 <span id="add-inventory-toggle-arrow" style="font-size:13px; color:#8C9C8A;">▸ 展開</span></h3>
+      <div id="add-inventory-form-body" style="display:none; margin-top:10px;">
+        <p style="font-size:12px; color:#888; margin-top:0;">系統將自動以「先進先出(FIFO)」計算銷售成本毛利。</p>
+        <div class="form-group"><div class="radio-group">
+          <label><input type="radio" name="inventory-mode" value="restock" checked onclick="checkInventoryMode()"> 現有商品進貨</label>
+          <label><input type="radio" name="inventory-mode" value="new" onclick="checkInventoryMode()"> 建立新商品</label>
+        </div></div>
+
+        <div id="inventory-restock-group">
+          <div class="form-group">
+            <label>選擇商品</label>
+            <select id="restock-item" class="form-control"></select>
+          </div>
+        </div>
+
+        <div id="inventory-new-group" style="display:none;">
+          <div class="form-group"><label>商品名稱</label><input type="text" id="new-item-name" class="form-control" placeholder="例如：拜爾鋼琴教本上冊"></div>
+          <div class="form-group"><label>預設銷售價 (元)</label><input type="number" id="new-item-price" class="form-control" placeholder="賣給學生的定價"></div>
+        </div>
+
+        <div class="form-group"><label>本次進貨數量</label><input type="number" id="restock-qty" class="form-control" min="1" value="1"></div>
+        <div class="form-group"><label>本次進貨總花費 (元)</label><input type="number" id="restock-cost" class="form-control" placeholder="進這批貨總共付了多少錢"></div>
+        
+        <button class="button" style="width:100%; margin:10px 0 0 0;" onclick="submitInventory()">💾 確認進貨</button>
+      </div>
+    </div>
+
+    <h3 style="font-size: 16px; text-align: left; padding-left: 20px; margin-top: 20px;">📋 目前庫存清單</h3>
+    <div id="inventory-list"></div>
+  </div>
+  
   <script>
     let students = JSON.parse(localStorage.getItem('jess_students_v4')) || [];
     let makeupBank = JSON.parse(localStorage.getItem('jess_makeup_v2')) || [];
@@ -1431,7 +1468,8 @@
     }
 
     function showPage(pageId) {
-      const pages = ['main-menu', 'dashboard-page', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'todo-page', 'more-page'];
+      
+      const pages = ['main-menu', 'dashboard-page', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'todo-page', 'more-page', 'inventory-page'];
       pages.forEach(p => document.getElementById(p).style.display = 'none');
       updateBottomTabHighlight(pageId);
       
@@ -1456,6 +1494,12 @@
         document.getElementById('todo-toggle-btn').innerText = '👁️ 顯示已完成';
         renderTodoPage();
       }
+
+      
+      if(pageId === 'inventory-page') {
+        renderInventoryPage();
+      }
+
       if(pageId === 'main-menu') updateMainMenuBadge();
       
       document.getElementById(pageId).style.display = 'block';
@@ -1467,13 +1511,6 @@
         renderCalendar();
       }
     }
-
-    let isMobileCalendarMode = false; // 是否用手機精簡版月曆（第一次畫月曆時判斷一次，畫面寬度窄於門檻就開啟，桌面版完全不受影響）
-    let selectedCalendarDate = null; // 手機版目前展開的是哪一天
-    let currentDayPanelItems = []; // 手機版下方清單目前對應那一天有哪些事件，點清單項目時要用
-
-    // 算出「這一天」所有事件的清單（一般課、補課、臨時課），回傳統一格式 {title, className, time, allDay, props}。
-    // 月曆生成事件的迴圈、跟手機版點某一天展開的清單，都共用這個函式，邏輯只需要維護一份，不會兩邊兜不起來。
     function getEventsForDate(dateStr) {
       let dayOfWeek = new Date(dateStr + 'T00:00:00').getDay().toString();
       let items = [];
@@ -4240,6 +4277,111 @@
         console.error('Firebase 連線失敗，暫時只使用本機儲存：', err);
       }
     })();
+    // ============ 進銷存管理系統 ============
+    function saveInventoryToMemory() { localStorage.setItem('jess_inventory_v1', JSON.stringify(inventoryItems)); pushToCloud(); }
+    function savePurchasesToMemory() { localStorage.setItem('jess_purchases_v1', JSON.stringify(purchaseBatches)); pushToCloud(); }
+    function saveSalesToMemory() { localStorage.setItem('jess_sales_v1', JSON.stringify(salesRecords)); pushToCloud(); }
+
+    function checkInventoryMode() {
+      let mode = document.querySelector('input[name="inventory-mode"]:checked').value;
+      document.getElementById('inventory-restock-group').style.display = (mode === 'restock') ? 'block' : 'none';
+      document.getElementById('inventory-new-group').style.display = (mode === 'new') ? 'block' : 'none';
+    }
+
+    function toggleAddInventoryForm() {
+      let body = document.getElementById('add-inventory-form-body');
+      let arrow = document.getElementById('add-inventory-toggle-arrow');
+      if (body.style.display === 'none') {
+        body.style.display = 'block';
+        arrow.innerText = '▾ 收合';
+        populateRestockDropdown();
+      } else {
+        body.style.display = 'none';
+        arrow.innerText = '▸ 展開';
+      }
+    }
+
+    function populateRestockDropdown() {
+      let select = document.getElementById('restock-item');
+      if (inventoryItems.length === 0) {
+        select.innerHTML = '<option value="">(目前無商品，請切換至「建立新商品」)</option>';
+        document.querySelector('input[name="inventory-mode"][value="new"]').checked = true;
+        checkInventoryMode();
+      } else {
+        select.innerHTML = inventoryItems.map(item => `<option value="${item.id}">${item.name} (庫存: ${item.stock})</option>`).join('');
+      }
+    }
+
+    function renderInventoryPage() {
+      let listEl = document.getElementById('inventory-list');
+      if (inventoryItems.length === 0) {
+        listEl.innerHTML = '<p style="color:#aaa; font-size:13px;">目前沒有任何商品，請從上方新增。</p>';
+        return;
+      }
+      
+      listEl.innerHTML = inventoryItems.map(item => {
+        return `<div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <span style="font-weight:bold; font-size:16px;">${item.name}</span>
+            <span style="color:${item.stock > 0 ? '#8C9C8A' : '#E08E79'}; font-weight:bold;">庫存: ${item.stock}</span>
+          </div>
+          <div style="font-size:13px; color:#888;">預設銷售價：NT$ ${item.price}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // 處理進貨與新商品
+    function submitInventory() {
+      let mode = document.querySelector('input[name="inventory-mode"]:checked').value;
+      let qty = parseInt(document.getElementById('restock-qty').value, 10);
+      let totalCost = parseInt(document.getElementById('restock-cost').value, 10);
+      let dateStr = formatDate(new Date());
+
+      if (isNaN(qty) || qty <= 0) { alert('進貨數量必須大於 0'); return; }
+      if (isNaN(totalCost) || totalCost < 0) { alert('進貨總花費不可為空白或負數'); return; }
+
+      let itemId;
+      if (mode === 'new') {
+        let name = document.getElementById('new-item-name').value.trim();
+        let price = parseInt(document.getElementById('new-item-price').value, 10);
+        if (!name) { alert('請輸入商品名稱'); return; }
+        if (isNaN(price) || price < 0) { alert('請輸入合理的預設銷售價'); return; }
+        
+        itemId = generateId();
+        inventoryItems.push({ id: itemId, name: name, price: price, stock: 0 });
+      } else {
+        itemId = document.getElementById('restock-item').value;
+        if (!itemId) { alert('請選擇要進貨的商品'); return; }
+      }
+
+      // FIFO核心：建立獨立的「進貨批次」
+      purchaseBatches.push({
+        id: generateId(),
+        itemId: itemId,
+        date: dateStr,
+        qty: qty,           // 這批總共進幾個
+        remainingQty: qty,  // 這批還剩幾個沒賣掉 (未來FIFO扣除用)
+        totalCost: totalCost,
+        unitCost: totalCost / qty // 單件成本，備查用
+      });
+
+      // 更新商品總庫存數量
+      let item = inventoryItems.find(i => i.id === itemId);
+      if (item) item.stock += qty;
+
+      saveInventoryToMemory();
+      savePurchasesToMemory();
+      
+      // 清空表單
+      document.getElementById('new-item-name').value = '';
+      document.getElementById('new-item-price').value = '';
+      document.getElementById('restock-qty').value = '1';
+      document.getElementById('restock-cost').value = '';
+      
+      alert('✅ 進貨紀錄已更新！');
+      renderInventoryPage();
+      populateRestockDropdown();
+    }
   </script>
 </body>
 </html>
