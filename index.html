@@ -152,7 +152,7 @@
     <button class="button" onclick="showPage('salary-page')">💰 每月學費自動結算</button>
     <button class="button" onclick="showPage('manage-page')">💳 繳費管理</button>
     <button class="button" onclick="showPage('todo-page')">📝 待辦事項</button>
-    <button class="button" onclick="showPage('inventory-page')">📦 庫存與進貨管理</button>
+    <button class="button" onclick="openInventoryPage()">📦 進銷存管理</button>
     <div id="payment-badge" style="display:none; font-size:13px; color:#E08E79; font-weight:bold; margin:-10px auto 5px auto; width:90%; text-align:center;"></div>
     <button class="button btn-secondary logout-btn" style="display:none; font-size:13px; padding:8px; margin-top:5px;" onclick="doLogout()">登出</button>
 
@@ -193,7 +193,8 @@
 
   <div id="more-page" style="display: none;">
     <h2 style="font-weight: 300;">⚙️ 更多</h2>
-    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">‹ 返回首頁</button>
+    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="goHome()">‹ 返回首頁</button>
+    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E08E79; color:white;" onclick="openInventoryPage()">📦 進銷存管理</button>
     <button class="button btn-secondary logout-btn" style="display:none; width:90%; margin:0 auto 15px auto;" onclick="doLogout()">登出</button>
 
     <div style="display:flex; gap:8px; width:90%; margin:0 auto;">
@@ -231,7 +232,7 @@
     <div style="display:flex; gap:8px; width:90%; margin:0 auto 15px auto;">
       <button class="small-btn" style="flex:1; padding:10px; background-color:#7C93B3; color:white;" onclick="openTempLessonModal()">➕ 新增臨時課</button>
       <button class="small-btn" style="flex:1; padding:10px; background-color:#E08E79; color:white;" onclick="openNewMakeupModal()">🔄 新增補課</button>
-      <button class="small-btn" style="flex:1; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">返回主選單</button>
+      <button class="small-btn" style="flex:1; padding:10px; background-color:#E2E8DF; color:#333;" onclick="goHome()">返回首頁</button>
     </div>
     <div id="calendar"></div>
     <div id="calendar-day-panel" style="display:none; margin-top:12px; background-color:white; border-radius:8px; padding:12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
@@ -514,40 +515,24 @@
       <p id="modal-date" style="color: #666; font-size: 14px; margin-bottom: 20px;">2026-09-11 18:00</p>
       <div id="modal-balance-info" style="display:none; font-size:13px; margin: -10px 0 16px 0; padding:8px 10px; border-radius:6px; text-align:left; line-height:1.4;"></div>
       <div style="text-align:left; margin-bottom:16px;">
-            <h4 style="margin:0; font-size:14px; color:#666; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="toggleModalNotesSection()">📝 待辦 / 紀錄 / 購買 <span id="modal-notes-toggle-arrow" style="font-size:12px; color:#8C9C8A;">▸ 展開</span></h4>
-            
-            <div id="modal-notes-section-body" style="display:none; margin-top:10px;">
-              <div id="modal-todo-wrap" style="margin-bottom:12px;">
-                <div style="display:flex; gap:6px;">
-                  <input type="text" id="modal-todo-input" class="form-control" placeholder="✏️ 記一筆待辦（例如：買樂譜）" style="flex:1;">
-                  <button class="small-btn" style="padding:0 14px; background-color:#8C9C8A; color:white;" onclick="submitModalTodo()">➕</button>
-                </div>
-                <input type="date" id="modal-todo-due" class="form-control" style="margin-top:6px; font-size:13px;">
-              </div>
+        <h4 style="margin:0; font-size:14px; color:#666; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="toggleModalNotesSection()">📝 待辦 / 課堂記錄 <span id="modal-notes-toggle-arrow" style="font-size:12px; color:#8C9C8A;">▸ 展開</span></h4>
+        <div id="modal-notes-section-body" style="display:none; margin-top:10px;">
+          <div id="modal-todo-wrap" style="margin-bottom:12px;">
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="modal-todo-input" class="form-control" placeholder="✏️ 幫這堂課記一筆待辦（例如：買樂譜）" style="flex:1;">
+              <button class="small-btn" style="padding:0 14px; background-color:#8C9C8A; color:white;" onclick="submitModalTodo()">➕</button>
+            </div>
+            <input type="date" id="modal-todo-due" class="form-control" style="margin-top:6px; font-size:13px;">
+          </div>
 
-              <div id="modal-lessonnote-wrap" style="margin-bottom:12px;">
-                <div style="display:flex; gap:6px;">
-                  <input type="text" id="modal-lessonnote-input" class="form-control" placeholder="📔 記課堂狀況（例如：注意力不集中）" style="flex:1;">
-                  <button class="small-btn" style="padding:0 14px; background-color:#7C93B3; color:white;" onclick="submitModalLessonNote()">➕</button>
-                </div>
-              </div>
-
-              <!-- 🌟 新增：記一筆購買區塊 -->
-              <div id="modal-sales-wrap" style="padding-top:12px; border-top:1px dashed #ccc;">
-                <div style="display:flex; gap:6px; margin-bottom:6px;">
-                  <select id="modal-sales-item" class="form-control" style="flex:1;" onchange="updateModalSalesPrice()">
-                     <option value="">🛒 選擇要購買的商品...</option>
-                     <!-- 這裡的選項之後會由 JavaScript 動態載入 -->
-                  </select>
-                  <input type="number" id="modal-sales-qty" class="form-control" placeholder="數量" value="1" min="1" style="width:70px;" oninput="updateModalSalesPrice()">
-                </div>
-                <div style="display:flex; gap:6px; align-items:center;">
-                   <input type="number" id="modal-sales-price" class="form-control" placeholder="實收總計 (元)" style="flex:1;">
-                   <button class="small-btn" style="padding:10px 14px; background-color:#B5A886; color:white;" onclick="submitModalSales()">紀錄購買</button>
-                </div>
-              </div>
+          <div id="modal-lessonnote-wrap">
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="modal-lessonnote-input" class="form-control" placeholder="📔 記一筆今天的課堂狀況（例如：注意力比較不集中）" style="flex:1;">
+              <button class="small-btn" style="padding:0 14px; background-color:#7C93B3; color:white;" onclick="submitModalLessonNote()">➕</button>
             </div>
           </div>
+        </div>
+      </div>
       
       <div id="modal-normal-actions">
         <div id="modal-normal-paid-wrap">
@@ -690,7 +675,7 @@
 
   <div id="manage-page" style="display: none;">
     <h2 style="font-weight: 300;">⚙️ 學生名單管理</h2>
-    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">返回主選單</button>
+    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="goHome()">返回首頁</button>
     <div class="card" style="background-color: #F4F6F3; border: 1px solid #8C9C8A;">
       <h3 style="margin-top:0; font-size: 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="toggleAddStudentForm()">➕ 新增學生資料 <span id="add-student-toggle-arrow" style="font-size:13px; color:#8C9C8A;">▸ 展開</span></h3>
       <div id="add-student-form-body" style="display:none;">
@@ -851,7 +836,7 @@
 
   <div id="salary-page" style="display: none;">
     <h2 style="font-weight: 300;">💰 自動結算系統</h2>
-    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">返回主選單</button>
+    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="goHome()">返回首頁</button>
     <div style="width: 90%; margin: 0 auto;">
       <div class="form-group">
         <label>選擇結算月份</label>
@@ -870,9 +855,75 @@
     </div>
   </div>
 
+  <div id="inventory-page" style="display: none;">
+    <h2 style="font-weight: 300;">📦 進銷存管理</h2>
+    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="goHome()">返回首頁</button>
+
+    <h3 style="font-size: 16px; text-align: left; padding-left: 20px; margin-top: 10px;">📊 目前庫存</h3>
+    <div id="inventory-stock-overview" style="width:90%; margin:0 auto;"></div>
+
+    <div style="display:flex; gap:6px; width:90%; margin:20px auto 12px auto;">
+      <button class="small-btn inventory-subtab-btn" data-subtab="purchase" onclick="showInventorySubtab('purchase')" style="flex:1; padding:8px; background-color:#8C9C8A; color:white;">📦 進貨</button>
+      <button class="small-btn inventory-subtab-btn" data-subtab="sale" onclick="showInventorySubtab('sale')" style="flex:1; padding:8px; background-color:#E2E8DF; color:#333;">💰 銷售</button>
+    </div>
+
+    <datalist id="inventory-item-names"></datalist>
+
+    <div id="inventory-subtab-purchase" style="width:90%; margin:0 auto;">
+      <div class="card" style="text-align:left;">
+        <div class="form-group"><input type="text" id="purchase-item" class="form-control" list="inventory-item-names" placeholder="品項名稱（例如：拜爾鋼琴教本）"></div>
+        <div class="form-group"><label>日期</label><input type="date" id="purchase-date" class="form-control"></div>
+        <div class="form-group"><label>數量</label><input type="number" id="purchase-quantity" class="form-control" value="1" min="1" step="1"></div>
+        <div class="form-group"><label>每件成本（元，確切金額）</label><input type="number" id="purchase-cost" class="form-control" min="0" step="1"></div>
+        <div class="form-group"><input type="text" id="purchase-note" class="form-control" placeholder="備註（選填）"></div>
+        <button class="button" style="width:100%; margin:0; background-color:#8C9C8A;" onclick="submitPurchase()">➕ 新增進貨</button>
+      </div>
+      <h4 style="font-size: 14px; text-align: left; padding-left: 5px; color:#888;">進貨紀錄</h4>
+      <div id="purchase-list"></div>
+    </div>
+
+    <div id="inventory-subtab-sale" style="width:90%; margin:0 auto; display:none;">
+      <div class="card" style="text-align:left;">
+        <div class="form-group"><label style="display:flex; gap:16px; font-weight:normal;">
+          <label style="font-weight:normal; display:flex; align-items:center; gap:4px;"><input type="radio" name="sale-mode" value="inventory" checked onchange="checkSaleMode()" style="width:auto;"> 庫存品項</label>
+          <label style="font-weight:normal; display:flex; align-items:center; gap:4px;"><input type="radio" name="sale-mode" value="other" onchange="checkSaleMode()" style="width:auto;"> 其他（不連動庫存）</label>
+        </label></div>
+        <div id="sale-inventory-item-wrap" class="form-group searchable-select" id="sale-item-picker">
+          <label>品項（可以搜尋庫存裡的東西）</label>
+          <input type="text" id="sale-item-input" class="form-control" placeholder="搜尋 / 選擇品項" autocomplete="off" oninput="filterSaleItemPicker()" onfocus="filterSaleItemPicker()">
+          <input type="hidden" id="sale-item-value">
+          <div id="sale-item-dropdown" class="searchable-dropdown" style="display:none;"></div>
+        </div>
+        <div id="sale-other-item-wrap" class="form-group" style="display:none;">
+          <label>品項名稱</label>
+          <input type="text" id="sale-other-item-input" class="form-control" placeholder="例如：琴房租借">
+        </div>
+        <div class="form-group searchable-select" id="sale-buyer-picker">
+          <label>買家（可選現有學生，也可以直接輸入名字）</label>
+          <input type="text" id="sale-buyer-input" class="form-control" placeholder="搜尋學生，或直接輸入名字" autocomplete="off" oninput="filterSaleBuyerPicker()" onfocus="filterSaleBuyerPicker()">
+          <input type="hidden" id="sale-buyer-value">
+          <div id="sale-buyer-dropdown" class="searchable-dropdown" style="display:none;"></div>
+        </div>
+        <div class="form-group"><label>日期</label><input type="date" id="sale-date" class="form-control"></div>
+        <div class="form-group"><label>數量</label><input type="number" id="sale-quantity" class="form-control" value="1" min="1" step="1" oninput="updateSaleCostPreview()"></div>
+        <p id="sale-cost-preview" style="font-size:13px; margin:-8px 0 12px 0;"></p>
+        <div id="sale-cost-manual-wrap" class="form-group" style="display:none;">
+          <label>成本（元，沒有庫存成本可抓，請自行輸入；沒有成本可填 0）</label>
+          <input type="number" id="sale-manual-cost" class="form-control" min="0" step="1" placeholder="0">
+        </div>
+        <div class="form-group"><label>這筆總售價（元）</label><input type="number" id="sale-price" class="form-control" min="0" step="1"></div>
+        <div class="form-group"><input type="text" id="sale-note" class="form-control" placeholder="備註（選填）"></div>
+        <button class="button" style="width:100%; margin:0; background-color:#E08E79;" onclick="submitSale()">➕ 新增銷售</button>
+      </div>
+      <p style="font-size:12px; color:#888; text-align:left; margin:0 0 10px 0;">💡 庫存品項的成本會自動從最早一批還有剩的進貨紀錄抓，利潤（售價−成本）會自動記一筆額外收入。</p>
+      <h4 style="font-size: 14px; text-align: left; padding-left: 5px; color:#888;">銷售紀錄</h4>
+      <div id="sale-list"></div>
+    </div>
+  </div>
+
   <div id="todo-page" style="display: none;">
     <h2 style="font-weight: 300;">📝 待辦事項</h2>
-    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">返回主選單</button>
+    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="goHome()">返回首頁</button>
     <div class="card" style="background-color: #F4F6F3; border: 1px solid #8C9C8A;">
       <h3 style="margin-top:0; font-size: 16px;">➕ 新增待辦事項</h3>
       <div class="form-group">
@@ -1006,42 +1057,6 @@
   </div>
   </div>
 
-  <div id="inventory-page" style="display: none;">
-    <h2 style="font-weight: 300;">📦 庫存與進貨管理</h2>
-    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="showPage('main-menu')">返回主選單</button>
-
-    <div class="card" style="background-color: #F4F6F3; border: 1px solid #8C9C8A;">
-      <h3 style="margin-top:0; font-size: 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="toggleAddInventoryForm()">➕ 新增商品 / 進貨登記 <span id="add-inventory-toggle-arrow" style="font-size:13px; color:#8C9C8A;">▸ 展開</span></h3>
-      <div id="add-inventory-form-body" style="display:none; margin-top:10px;">
-        <p style="font-size:12px; color:#888; margin-top:0;">系統將自動以「先進先出(FIFO)」計算銷售成本毛利。</p>
-        <div class="form-group"><div class="radio-group">
-          <label><input type="radio" name="inventory-mode" value="restock" checked onclick="checkInventoryMode()"> 現有商品進貨</label>
-          <label><input type="radio" name="inventory-mode" value="new" onclick="checkInventoryMode()"> 建立新商品</label>
-        </div></div>
-
-        <div id="inventory-restock-group">
-          <div class="form-group">
-            <label>選擇商品</label>
-            <select id="restock-item" class="form-control"></select>
-          </div>
-        </div>
-
-        <div id="inventory-new-group" style="display:none;">
-          <div class="form-group"><label>商品名稱</label><input type="text" id="new-item-name" class="form-control" placeholder="例如：拜爾鋼琴教本上冊"></div>
-          <div class="form-group"><label>預設銷售價 (元)</label><input type="number" id="new-item-price" class="form-control" placeholder="賣給學生的定價"></div>
-        </div>
-
-        <div class="form-group"><label>本次進貨數量</label><input type="number" id="restock-qty" class="form-control" min="1" value="1"></div>
-        <div class="form-group"><label>本次進貨總花費 (元)</label><input type="number" id="restock-cost" class="form-control" placeholder="進這批貨總共付了多少錢"></div>
-        
-        <button class="button" style="width:100%; margin:10px 0 0 0;" onclick="submitInventory()">💾 確認進貨</button>
-      </div>
-    </div>
-
-    <h3 style="font-size: 16px; text-align: left; padding-left: 20px; margin-top: 20px;">📋 目前庫存清單</h3>
-    <div id="inventory-list"></div>
-  </div>
-  
   <script>
     let students = JSON.parse(localStorage.getItem('jess_students_v4')) || [];
     let makeupBank = JSON.parse(localStorage.getItem('jess_makeup_v2')) || [];
@@ -1053,9 +1068,8 @@
     let lessonNotes = JSON.parse(localStorage.getItem('jess_lessonnotes_v1')) || []; // 課堂記錄：一定綁學生，記某一天上課的狀況（自由書寫）
     let progressNotes = JSON.parse(localStorage.getItem('jess_progressnotes_v1')) || []; // 學習進度：一定綁學生，記某個里程碑（自由書寫），不綁定特定一堂課
     let achievements = JSON.parse(localStorage.getItem('jess_achievements_v1')) || []; // 成就記錄：一定綁學生，記比賽/檢定/表演，有類型、項目名稱、日期、結果
-    let inventoryItems = JSON.parse(localStorage.getItem('jess_inventory_v1')) || []; // 商品目錄
-    let purchaseBatches = JSON.parse(localStorage.getItem('jess_purchases_v1')) || []; // 進貨批次 (FIFO用)
-    let salesRecords = JSON.parse(localStorage.getItem('jess_sales_v1')) || []; // 銷售紀錄
+    let materialPurchases = JSON.parse(localStorage.getItem('jess_material_purchases_v1')) || []; // 教材進貨：{id, itemName, date, quantity, costPerUnit, remaining, note}，remaining 隨銷售 FIFO 扣減，用來算目前庫存
+    let materialSales = JSON.parse(localStorage.getItem('jess_material_sales_v1')) || []; // 教材銷售：{id, itemName, studentId, buyerName, date, quantity, totalCost, salePrice, profit, note}，成本從進貨批次 FIFO 抓
     let calendar; 
     let currentModalEvent = null; 
     let savedScrollY = 0; // 開點名視窗時，把整個畫面「釘住」在這個捲動位置，關視窗再放開、還原回這裡
@@ -1310,6 +1324,11 @@
           extraIncome = data.extraIncome ? JSON.parse(data.extraIncome) : [];
           badDebt = data.badDebt ? JSON.parse(data.badDebt) : [];
           todos = data.todos ? JSON.parse(data.todos) : [];
+          lessonNotes = data.lessonNotes ? JSON.parse(data.lessonNotes) : [];
+          progressNotes = data.progressNotes ? JSON.parse(data.progressNotes) : [];
+          achievements = data.achievements ? JSON.parse(data.achievements) : [];
+          materialPurchases = data.materialPurchases ? JSON.parse(data.materialPurchases) : [];
+          materialSales = data.materialSales ? JSON.parse(data.materialSales) : [];
           localStorage.setItem('jess_students_v4', JSON.stringify(students));
           localStorage.setItem('jess_makeup_v2', JSON.stringify(makeupBank));
           localStorage.setItem('jess_payments_v1', JSON.stringify(paymentRecords));
@@ -1317,6 +1336,11 @@
           localStorage.setItem('jess_extra_income_v1', JSON.stringify(extraIncome));
           localStorage.setItem('jess_bad_debt_v1', JSON.stringify(badDebt));
           localStorage.setItem('jess_todos_v1', JSON.stringify(todos));
+          localStorage.setItem('jess_lessonnotes_v1', JSON.stringify(lessonNotes));
+          localStorage.setItem('jess_progressnotes_v1', JSON.stringify(progressNotes));
+          localStorage.setItem('jess_achievements_v1', JSON.stringify(achievements));
+          localStorage.setItem('jess_material_purchases_v1', JSON.stringify(materialPurchases));
+          localStorage.setItem('jess_material_sales_v1', JSON.stringify(materialSales));
           refreshCurrentView();
         } else {
           // 雲端還沒有資料：把這台裝置現有的資料（例如你原本存在這台裝置的學生名單）當作起點推上雲端
@@ -1340,9 +1364,11 @@
         extraIncome: JSON.stringify(extraIncome),
         badDebt: JSON.stringify(badDebt),
         todos: JSON.stringify(todos),
-        inventory: JSON.stringify(inventoryItems),
-        purchases: JSON.stringify(purchaseBatches),
-        sales: JSON.stringify(salesRecords),
+        lessonNotes: JSON.stringify(lessonNotes),
+        progressNotes: JSON.stringify(progressNotes),
+        achievements: JSON.stringify(achievements),
+        materialPurchases: JSON.stringify(materialPurchases),
+        materialSales: JSON.stringify(materialSales),
         updatedAt: new Date().toISOString()
       };
       let ref = cloudFns.doc(cloudDb, 'studioData', 'main');
@@ -1356,6 +1382,11 @@
           extraIncome: payload.extraIncome,
           badDebt: payload.badDebt,
           todos: payload.todos,
+          lessonNotes: payload.lessonNotes,
+          progressNotes: payload.progressNotes,
+          achievements: payload.achievements,
+          materialPurchases: payload.materialPurchases,
+          materialSales: payload.materialSales,
           savedAt: Date.now()
         });
       }).then(function() {
@@ -1425,6 +1456,11 @@
         extraIncome = data.extraIncome ? JSON.parse(data.extraIncome) : [];
         badDebt = data.badDebt ? JSON.parse(data.badDebt) : [];
         todos = data.todos ? JSON.parse(data.todos) : [];
+        lessonNotes = data.lessonNotes ? JSON.parse(data.lessonNotes) : [];
+        progressNotes = data.progressNotes ? JSON.parse(data.progressNotes) : [];
+        achievements = data.achievements ? JSON.parse(data.achievements) : [];
+        materialPurchases = data.materialPurchases ? JSON.parse(data.materialPurchases) : [];
+        materialSales = data.materialSales ? JSON.parse(data.materialSales) : [];
         saveToMemory();
         saveMakeupToMemory();
         savePaymentToMemory();
@@ -1432,6 +1468,11 @@
         saveExtraIncomeToMemory();
         saveBadDebtToMemory();
         saveTodosToMemory();
+        saveLessonNotesToMemory();
+        saveProgressNotesToMemory();
+        saveAchievementsToMemory();
+        saveMaterialPurchasesToMemory();
+        saveMaterialSalesToMemory();
         closeHistoryModal();
         renderManageList();
         if (calendar) calendar.refetchEvents();
@@ -1467,9 +1508,17 @@
       });
     }
 
+    // 手機瀏覽時「返回首頁」要真的回到手機版首頁 Dashboard，不是桌面版那個主選單；桌面版維持原本的主選單不變。
+    function goHome() {
+      if (document.body.classList.contains('mobile-tabs')) {
+        showPage('dashboard-page');
+      } else {
+        showPage('main-menu');
+      }
+    }
+
     function showPage(pageId) {
-      
-      const pages = ['main-menu', 'dashboard-page', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'todo-page', 'more-page', 'inventory-page'];
+      const pages = ['main-menu', 'dashboard-page', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'inventory-page', 'todo-page', 'more-page'];
       pages.forEach(p => document.getElementById(p).style.display = 'none');
       updateBottomTabHighlight(pageId);
       
@@ -1494,12 +1543,6 @@
         document.getElementById('todo-toggle-btn').innerText = '👁️ 顯示已完成';
         renderTodoPage();
       }
-
-      
-      if(pageId === 'inventory-page') {
-        renderInventoryPage();
-      }
-
       if(pageId === 'main-menu') updateMainMenuBadge();
       
       document.getElementById(pageId).style.display = 'block';
@@ -1511,6 +1554,13 @@
         renderCalendar();
       }
     }
+
+    let isMobileCalendarMode = false; // 是否用手機精簡版月曆（第一次畫月曆時判斷一次，畫面寬度窄於門檻就開啟，桌面版完全不受影響）
+    let selectedCalendarDate = null; // 手機版目前展開的是哪一天
+    let currentDayPanelItems = []; // 手機版下方清單目前對應那一天有哪些事件，點清單項目時要用
+
+    // 算出「這一天」所有事件的清單（一般課、補課、臨時課），回傳統一格式 {title, className, time, allDay, props}。
+    // 月曆生成事件的迴圈、跟手機版點某一天展開的清單，都共用這個函式，邏輯只需要維護一份，不會兩邊兜不起來。
     function getEventsForDate(dateStr) {
       let dayOfWeek = new Date(dateStr + 'T00:00:00').getDay().toString();
       let items = [];
@@ -2122,6 +2172,318 @@
     function saveLessonNotesToMemory() { localStorage.setItem('jess_lessonnotes_v1', JSON.stringify(lessonNotes)); pushToCloud(); }
     function saveProgressNotesToMemory() { localStorage.setItem('jess_progressnotes_v1', JSON.stringify(progressNotes)); pushToCloud(); }
     function saveAchievementsToMemory() { localStorage.setItem('jess_achievements_v1', JSON.stringify(achievements)); pushToCloud(); }
+    function saveMaterialPurchasesToMemory() { localStorage.setItem('jess_material_purchases_v1', JSON.stringify(materialPurchases)); pushToCloud(); }
+    function saveMaterialSalesToMemory() { localStorage.setItem('jess_material_sales_v1', JSON.stringify(materialSales)); pushToCloud(); }
+
+    // ============ 教材買賣：庫存管理 ============
+    function openInventoryPage() {
+      renderInventoryStockOverview();
+      renderPurchaseList();
+      renderSaleList();
+      showInventorySubtab('purchase');
+      showPage('inventory-page');
+    }
+
+    function showInventorySubtab(tab) {
+      ['purchase', 'sale'].forEach(t => {
+        document.getElementById('inventory-subtab-' + t).style.display = (t === tab) ? 'block' : 'none';
+        let btn = document.querySelector('.inventory-subtab-btn[data-subtab="' + t + '"]');
+        btn.style.backgroundColor = (t === tab) ? '#8C9C8A' : '#E2E8DF';
+        btn.style.color = (t === tab) ? 'white' : '#333';
+      });
+    }
+
+    function getAllItemNames() {
+      let names = new Set();
+      materialPurchases.forEach(p => names.add(p.itemName));
+      materialSales.forEach(s => { if (s.fromInventory !== false) names.add(s.itemName); }); // 「其他」模式賣的東西不是庫存品項，不該出現在庫存總覽裡
+      return Array.from(names).sort();
+    }
+
+    // 這個品項目前還有幾件：把所有進貨批次「還沒被銷售扣完」的數量加總
+    function getItemStock(itemName) {
+      let total = materialPurchases.filter(p => p.itemName === itemName).reduce((sum, p) => sum + (Number(p.remaining) || 0), 0);
+      return Number(total.toFixed(2));
+    }
+
+    function renderInventoryStockOverview() {
+      let names = getAllItemNames();
+      document.getElementById('inventory-item-names').innerHTML = names.map(n => `<option value="${n}">`).join(''); // 給品項名稱欄位的輸入建議，減少打錯字變成新品項的風險
+      let html = names.length === 0
+        ? '<p style="color:#aaa; font-size:13px;">尚無任何進貨或銷售紀錄。</p>'
+        : names.map(name => {
+            let stock = getItemStock(name);
+            let color = stock <= 0 ? '#B08A8A' : '#5d705b';
+            return `<div class="pay-history-row"><span>${name}</span><span style="font-weight:bold; color:${color};">${stock}${stock <= 0 ? ' ⚠️缺貨' : ''}</span></div>`;
+          }).join('');
+      document.getElementById('inventory-stock-overview').innerHTML = html;
+    }
+
+    function renderPurchaseList() {
+      let sorted = [...materialPurchases].sort((a, b) => b.date.localeCompare(a.date));
+      let html = sorted.length === 0
+        ? '<p style="color:#aaa; font-size:13px;">尚無進貨紀錄。</p>'
+        : sorted.map(p => `
+          <div class="pay-history-row" style="align-items:flex-start; flex-direction:column; padding:10px 0;">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+              <span style="font-weight:bold;">${p.itemName}</span>
+              <button class="small-btn del-btn" style="padding:2px 8px; font-size:11px;" onclick="deletePurchase('${p.id}')">刪除</button>
+            </div>
+            <div style="font-size:13px; color:#666; margin-top:4px; text-align:left;">${p.date} ・ 數量 ${p.quantity}（剩 ${p.remaining}）・ 每件成本 ${p.costPerUnit} 元${p.note ? '<br>備註：' + p.note : ''}</div>
+          </div>`).join('');
+      document.getElementById('purchase-list').innerHTML = html;
+    }
+
+    function renderSaleList() {
+      let sorted = [...materialSales].sort((a, b) => b.date.localeCompare(a.date));
+      let html = sorted.length === 0
+        ? '<p style="color:#aaa; font-size:13px;">尚無銷售紀錄。</p>'
+        : sorted.map(s => `
+          <div class="pay-history-row" style="align-items:flex-start; flex-direction:column; padding:10px 0;">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+              <span style="font-weight:bold;">${s.itemName}</span>
+              <button class="small-btn del-btn" style="padding:2px 8px; font-size:11px;" onclick="deleteSale('${s.id}')">刪除</button>
+            </div>
+            <div style="font-size:13px; color:#666; margin-top:4px; text-align:left;">${s.date} ・ 買家 ${s.buyerName} ・ 數量 ${s.quantity}<br>售價 ${s.salePrice} 元 − 成本 ${s.totalCost} 元 ＝ 利潤 <span style="color:${s.profit >= 0 ? '#5d705b' : '#B08A8A'};">${s.profit} 元</span>${s.note ? '<br>備註：' + s.note : ''}</div>
+          </div>`).join('');
+      document.getElementById('sale-list').innerHTML = html;
+    }
+
+    function submitPurchase() {
+      let itemName = document.getElementById('purchase-item').value.trim();
+      if (!itemName) { alert('請輸入品項名稱！'); return; }
+      let date = document.getElementById('purchase-date').value || formatDate(new Date());
+      let quantity = Number(document.getElementById('purchase-quantity').value);
+      if (!quantity || quantity <= 0) { alert('請輸入大於 0 的數量！'); return; }
+      let costRaw = document.getElementById('purchase-cost').value;
+      let costPerUnit = Number(costRaw);
+      if (costRaw === '' || isNaN(costPerUnit) || costPerUnit < 0) { alert('請輸入每件成本！'); return; }
+      let note = document.getElementById('purchase-note').value.trim();
+
+      materialPurchases.push({ id: generateId(), itemName: itemName, date: date, quantity: quantity, costPerUnit: costPerUnit, remaining: quantity, note: note, createdAt: new Date().toISOString() });
+      saveMaterialPurchasesToMemory();
+
+      document.getElementById('purchase-item').value = '';
+      document.getElementById('purchase-date').value = '';
+      document.getElementById('purchase-quantity').value = 1;
+      document.getElementById('purchase-cost').value = '';
+      document.getElementById('purchase-note').value = '';
+
+      renderInventoryStockOverview();
+      renderPurchaseList();
+      alert('✅ 已新增進貨！');
+    }
+
+    function deletePurchase(id) {
+      let p = materialPurchases.find(x => x.id === id);
+      if (!p) return;
+      if (p.remaining < p.quantity) { alert('這批進貨已經有部分被銷售紀錄用掉成本了，沒辦法直接刪除。如果真的要刪，請先處理掉相關的銷售紀錄。'); return; }
+      if (!confirm('確定要刪除這筆進貨紀錄嗎？')) return;
+      materialPurchases = materialPurchases.filter(x => x.id !== id);
+      saveMaterialPurchasesToMemory();
+      renderInventoryStockOverview();
+      renderPurchaseList();
+    }
+
+    // 銷售模式切換：庫存品項要連動庫存抓成本；其他（例如琴房租借）不連動庫存，成本自己填
+    function checkSaleMode() {
+      let mode = document.querySelector('input[name="sale-mode"]:checked').value;
+      document.getElementById('sale-inventory-item-wrap').style.display = mode === 'inventory' ? 'block' : 'none';
+      document.getElementById('sale-other-item-wrap').style.display = mode === 'other' ? 'block' : 'none';
+      document.getElementById('sale-cost-manual-wrap').style.display = mode === 'other' ? 'block' : 'none';
+      document.getElementById('sale-cost-preview').innerText = mode === 'inventory' ? '' : '';
+      if (mode === 'inventory') updateSaleCostPreview();
+    }
+
+    // 品項搜尋選擇器：邏輯跟學生搜尋選擇器一樣，只是搜尋的對象換成庫存裡出現過的品項名稱
+    function filterSaleItemPicker() {
+      let input = document.getElementById('sale-item-input');
+      let dropdown = document.getElementById('sale-item-dropdown');
+      document.getElementById('sale-item-value').value = '';
+      let q = input.value.trim().toLowerCase();
+      let names = getAllItemNames().filter(n => !q || n.toLowerCase().includes(q));
+      if (names.length === 0) {
+        dropdown.innerHTML = '<div class="searchable-dropdown-empty">沒有符合的品項</div>';
+      } else {
+        dropdown.innerHTML = names.map(n => `<div class="searchable-dropdown-item" onclick="selectSaleItemPicker('${n.replace(/'/g, "\\'")}')">${n}（庫存 ${getItemStock(n)}）</div>`).join('');
+      }
+      dropdown.style.display = 'block';
+      updateSaleCostPreview();
+    }
+
+    function selectSaleItemPicker(itemName) {
+      document.getElementById('sale-item-input').value = itemName;
+      document.getElementById('sale-item-value').value = itemName;
+      document.getElementById('sale-item-dropdown').style.display = 'none';
+      updateSaleCostPreview();
+    }
+
+    // 算出「如果現在賣這個數量」成本會是多少，純粹預覽用，不會真的去扣庫存（真的扣庫存是送出銷售的時候才做）
+    function previewInventoryCost(itemName, qty) {
+      let batches = materialPurchases.filter(p => p.itemName === itemName && p.remaining > 0).sort((a, b) => a.date.localeCompare(b.date));
+      let totalStock = batches.reduce((sum, b) => sum + b.remaining, 0);
+      if (totalStock < qty) return null;
+      let left = qty;
+      let totalCost = 0;
+      batches.forEach(b => {
+        if (left <= 0) return;
+        let draw = Math.min(b.remaining, left);
+        totalCost += draw * b.costPerUnit;
+        left = Number((left - draw).toFixed(2));
+      });
+      return Number(totalCost.toFixed(2));
+    }
+
+    // 品項或數量一有變動，就即時把「目前庫存」跟「預估成本」秀出來，不用等送出才知道
+    function updateSaleCostPreview() {
+      let mode = document.querySelector('input[name="sale-mode"]:checked').value;
+      let preview = document.getElementById('sale-cost-preview');
+      if (mode !== 'inventory') { preview.innerText = ''; return; }
+      let itemName = document.getElementById('sale-item-value').value || document.getElementById('sale-item-input').value.trim();
+      let qty = Number(document.getElementById('sale-quantity').value) || 0;
+      if (!itemName || qty <= 0) { preview.innerText = ''; return; }
+      let stock = getItemStock(itemName);
+      let cost = previewInventoryCost(itemName, qty);
+      if (cost === null) {
+        preview.innerHTML = `📦 目前庫存：${stock}　⚠️ 庫存不夠這次要賣的數量，送出時會請你手動輸入成本`;
+        preview.style.color = '#B08A8A';
+      } else {
+        preview.innerHTML = `📦 目前庫存：${stock}　💰 預估成本：${cost} 元（自動從最舊的進貨批次抓）`;
+        preview.style.color = '#5d705b';
+      }
+    }
+
+    // 買家欄位：可以選現有學生，也可以直接輸入名字（跟補課的學生欄位不一樣，這裡不限定要是正式學生）
+    function filterSaleBuyerPicker() {
+      let input = document.getElementById('sale-buyer-input');
+      let dropdown = document.getElementById('sale-buyer-dropdown');
+      document.getElementById('sale-buyer-value').value = ''; // 只要她還在打字就先清掉，除非真的點選下拉選單裡的人
+      let q = input.value.trim().toLowerCase();
+      if (!q) { dropdown.style.display = 'none'; return; }
+      let matches = students.filter(s => !s.endDate && s.name.toLowerCase().includes(q));
+      if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+      dropdown.innerHTML = matches.map(s => `<div class="searchable-dropdown-item" onclick="selectSaleBuyerPicker('${s.id}')">${s.name}</div>`).join('');
+      dropdown.style.display = 'block';
+    }
+
+    function selectSaleBuyerPicker(studentId) {
+      let s = students.find(x => x.id === studentId);
+      if (!s) return;
+      document.getElementById('sale-buyer-input').value = s.name;
+      document.getElementById('sale-buyer-value').value = s.id;
+      document.getElementById('sale-buyer-dropdown').style.display = 'none';
+    }
+
+    // 從這個品項「還有剩」的進貨批次裡，照進貨日期先後（舊的先扣）算出這次賣出要算多少成本，
+    // 同時記下是從哪幾批扣的，之後如果這筆銷售被刪除，才能精準把庫存還原回正確的批次。
+    // 庫存不夠（或完全沒有進貨紀錄）就回傳 null，交給呼叫端處理。
+    function drawInventoryCost(itemName, qty) {
+      let batches = materialPurchases.filter(p => p.itemName === itemName && p.remaining > 0).sort((a, b) => a.date.localeCompare(b.date));
+      let totalStock = batches.reduce((sum, b) => sum + b.remaining, 0);
+      if (totalStock < qty) return null;
+
+      let left = qty;
+      let totalCost = 0;
+      let drawnFrom = [];
+      batches.forEach(b => {
+        if (left <= 0) return;
+        let draw = Math.min(b.remaining, left);
+        totalCost += draw * b.costPerUnit;
+        b.remaining = Number((b.remaining - draw).toFixed(2));
+        drawnFrom.push({ purchaseId: b.id, qty: draw });
+        left = Number((left - draw).toFixed(2));
+      });
+      return { totalCost: Number(totalCost.toFixed(2)), drawnFrom: drawnFrom };
+    }
+
+    function submitSale() {
+      let mode = document.querySelector('input[name="sale-mode"]:checked').value;
+      let buyerId = document.getElementById('sale-buyer-value').value || null;
+      let buyerName = document.getElementById('sale-buyer-input').value.trim();
+      if (!buyerName) { alert('請輸入買家！'); return; }
+      let date = document.getElementById('sale-date').value || formatDate(new Date());
+      let qty = Number(document.getElementById('sale-quantity').value) || 1;
+      let priceRaw = document.getElementById('sale-price').value;
+      let salePrice = Number(priceRaw);
+      if (priceRaw === '' || isNaN(salePrice) || salePrice < 0) { alert('請輸入售價！'); return; }
+      let note = document.getElementById('sale-note').value.trim();
+
+      let itemName, totalCost, drawnFrom, fromInventory;
+
+      if (mode === 'other') {
+        itemName = document.getElementById('sale-other-item-input').value.trim();
+        if (!itemName) { alert('請輸入品項名稱！'); return; }
+        let costRaw = document.getElementById('sale-manual-cost').value;
+        totalCost = costRaw === '' ? 0 : Number(costRaw);
+        if (isNaN(totalCost) || totalCost < 0) { alert('成本輸入有誤！'); return; }
+        drawnFrom = [];
+        fromInventory = false;
+      } else {
+        itemName = document.getElementById('sale-item-value').value || document.getElementById('sale-item-input').value.trim();
+        if (!itemName) { alert('請選擇或輸入品項名稱！'); return; }
+        fromInventory = true;
+        let draw = drawInventoryCost(itemName, qty);
+        if (draw === null) {
+          let ok = confirm(`⚠️「${itemName}」目前庫存不足這次要賣的數量（${qty}），可能是忘記登記進貨了。要不要繼續，並自己手動輸入這次的成本？`);
+          if (!ok) return;
+          let manualCost = prompt('請輸入這次賣出的總成本（元）：');
+          if (manualCost === null) return;
+          totalCost = Number(manualCost);
+          if (isNaN(totalCost) || totalCost < 0) { alert('成本輸入無效，已取消這筆銷售。'); return; }
+          drawnFrom = [];
+        } else {
+          totalCost = draw.totalCost;
+          drawnFrom = draw.drawnFrom;
+        }
+      }
+
+      let profit = Number((salePrice - totalCost).toFixed(2));
+      let extraIncomeId = generateId();
+      extraIncome.push({ id: extraIncomeId, date: date, amount: profit, note: '教材銷售：' + itemName + (note ? '（' + note + '）' : ''), studentId: buyerId, studentName: buyerId ? buyerName : null });
+
+      materialSales.push({ id: generateId(), itemName: itemName, studentId: buyerId, buyerName: buyerName, date: date, quantity: qty, totalCost: totalCost, salePrice: salePrice, profit: profit, note: note, drawnFrom: drawnFrom, fromInventory: fromInventory, extraIncomeId: extraIncomeId, createdAt: new Date().toISOString() });
+
+      saveMaterialPurchasesToMemory();
+      saveMaterialSalesToMemory();
+      saveExtraIncomeToMemory();
+
+      document.getElementById('sale-item-input').value = '';
+      document.getElementById('sale-item-value').value = '';
+      document.getElementById('sale-other-item-input').value = '';
+      document.getElementById('sale-manual-cost').value = '';
+      document.getElementById('sale-buyer-input').value = '';
+      document.getElementById('sale-buyer-value').value = '';
+      document.getElementById('sale-date').value = '';
+      document.getElementById('sale-quantity').value = 1;
+      document.getElementById('sale-price').value = '';
+      document.getElementById('sale-note').value = '';
+      document.getElementById('sale-cost-preview').innerText = '';
+
+      renderInventoryStockOverview();
+      renderPurchaseList();
+      renderSaleList();
+      alert('✅ 已記錄銷售！這次利潤 ' + profit + ' 元，已加進額外收入。');
+    }
+
+    function deleteSale(id) {
+      let sale = materialSales.find(s => s.id === id);
+      if (!sale) return;
+      if (!confirm('確定要刪除這筆銷售紀錄嗎？扣掉的庫存、對應的額外收入都會一併還原。')) return;
+      (sale.drawnFrom || []).forEach(d => {
+        let batch = materialPurchases.find(p => p.id === d.purchaseId);
+        if (batch) batch.remaining = Number((batch.remaining + d.qty).toFixed(2));
+      });
+      if (sale.extraIncomeId) extraIncome = extraIncome.filter(e => e.id !== sale.extraIncomeId);
+      materialSales = materialSales.filter(s => s.id !== id);
+      saveMaterialPurchasesToMemory();
+      saveMaterialSalesToMemory();
+      saveExtraIncomeToMemory();
+      renderInventoryStockOverview();
+      renderPurchaseList();
+      renderSaleList();
+    }
+    // ============ 教材買賣結束 ============
+
 
     // 找出某個日期＋時間有沒有已經被別人卡住（固定/隔週課、排定的補課、其他臨時課），
     // 回傳卡住的那個人的姓名；已經延期／轉補課／取消的紀錄不算卡位，沒有衝突則回傳 null。
@@ -4085,7 +4447,12 @@
         tempLessons: tempLessons,
         extraIncome: extraIncome,
         badDebt: badDebt,
-        todos: todos
+        todos: todos,
+        lessonNotes: lessonNotes,
+        progressNotes: progressNotes,
+        achievements: achievements,
+        materialPurchases: materialPurchases,
+        materialSales: materialSales
       };
       let blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
       let url = URL.createObjectURL(blob);
@@ -4127,6 +4494,11 @@
         extraIncome = Array.isArray(data.extraIncome) ? data.extraIncome : [];
         badDebt = Array.isArray(data.badDebt) ? data.badDebt : [];
         todos = Array.isArray(data.todos) ? data.todos : [];
+        lessonNotes = Array.isArray(data.lessonNotes) ? data.lessonNotes : [];
+        progressNotes = Array.isArray(data.progressNotes) ? data.progressNotes : [];
+        achievements = Array.isArray(data.achievements) ? data.achievements : [];
+        materialPurchases = Array.isArray(data.materialPurchases) ? data.materialPurchases : [];
+        materialSales = Array.isArray(data.materialSales) ? data.materialSales : [];
         saveToMemory();
         saveMakeupToMemory();
         savePaymentToMemory();
@@ -4134,6 +4506,11 @@
         saveExtraIncomeToMemory();
         saveBadDebtToMemory();
         saveTodosToMemory();
+        saveLessonNotesToMemory();
+        saveProgressNotesToMemory();
+        saveAchievementsToMemory();
+        saveMaterialPurchasesToMemory();
+        saveMaterialSalesToMemory();
         renderManageList();
         if (calendar) calendar.refetchEvents();
         updateMainMenuBadge();
@@ -4277,111 +4654,6 @@
         console.error('Firebase 連線失敗，暫時只使用本機儲存：', err);
       }
     })();
-    // ============ 進銷存管理系統 ============
-    function saveInventoryToMemory() { localStorage.setItem('jess_inventory_v1', JSON.stringify(inventoryItems)); pushToCloud(); }
-    function savePurchasesToMemory() { localStorage.setItem('jess_purchases_v1', JSON.stringify(purchaseBatches)); pushToCloud(); }
-    function saveSalesToMemory() { localStorage.setItem('jess_sales_v1', JSON.stringify(salesRecords)); pushToCloud(); }
-
-    function checkInventoryMode() {
-      let mode = document.querySelector('input[name="inventory-mode"]:checked').value;
-      document.getElementById('inventory-restock-group').style.display = (mode === 'restock') ? 'block' : 'none';
-      document.getElementById('inventory-new-group').style.display = (mode === 'new') ? 'block' : 'none';
-    }
-
-    function toggleAddInventoryForm() {
-      let body = document.getElementById('add-inventory-form-body');
-      let arrow = document.getElementById('add-inventory-toggle-arrow');
-      if (body.style.display === 'none') {
-        body.style.display = 'block';
-        arrow.innerText = '▾ 收合';
-        populateRestockDropdown();
-      } else {
-        body.style.display = 'none';
-        arrow.innerText = '▸ 展開';
-      }
-    }
-
-    function populateRestockDropdown() {
-      let select = document.getElementById('restock-item');
-      if (inventoryItems.length === 0) {
-        select.innerHTML = '<option value="">(目前無商品，請切換至「建立新商品」)</option>';
-        document.querySelector('input[name="inventory-mode"][value="new"]').checked = true;
-        checkInventoryMode();
-      } else {
-        select.innerHTML = inventoryItems.map(item => `<option value="${item.id}">${item.name} (庫存: ${item.stock})</option>`).join('');
-      }
-    }
-
-    function renderInventoryPage() {
-      let listEl = document.getElementById('inventory-list');
-      if (inventoryItems.length === 0) {
-        listEl.innerHTML = '<p style="color:#aaa; font-size:13px;">目前沒有任何商品，請從上方新增。</p>';
-        return;
-      }
-      
-      listEl.innerHTML = inventoryItems.map(item => {
-        return `<div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-            <span style="font-weight:bold; font-size:16px;">${item.name}</span>
-            <span style="color:${item.stock > 0 ? '#8C9C8A' : '#E08E79'}; font-weight:bold;">庫存: ${item.stock}</span>
-          </div>
-          <div style="font-size:13px; color:#888;">預設銷售價：NT$ ${item.price}</div>
-        </div>`;
-      }).join('');
-    }
-
-    // 處理進貨與新商品
-    function submitInventory() {
-      let mode = document.querySelector('input[name="inventory-mode"]:checked').value;
-      let qty = parseInt(document.getElementById('restock-qty').value, 10);
-      let totalCost = parseInt(document.getElementById('restock-cost').value, 10);
-      let dateStr = formatDate(new Date());
-
-      if (isNaN(qty) || qty <= 0) { alert('進貨數量必須大於 0'); return; }
-      if (isNaN(totalCost) || totalCost < 0) { alert('進貨總花費不可為空白或負數'); return; }
-
-      let itemId;
-      if (mode === 'new') {
-        let name = document.getElementById('new-item-name').value.trim();
-        let price = parseInt(document.getElementById('new-item-price').value, 10);
-        if (!name) { alert('請輸入商品名稱'); return; }
-        if (isNaN(price) || price < 0) { alert('請輸入合理的預設銷售價'); return; }
-        
-        itemId = generateId();
-        inventoryItems.push({ id: itemId, name: name, price: price, stock: 0 });
-      } else {
-        itemId = document.getElementById('restock-item').value;
-        if (!itemId) { alert('請選擇要進貨的商品'); return; }
-      }
-
-      // FIFO核心：建立獨立的「進貨批次」
-      purchaseBatches.push({
-        id: generateId(),
-        itemId: itemId,
-        date: dateStr,
-        qty: qty,           // 這批總共進幾個
-        remainingQty: qty,  // 這批還剩幾個沒賣掉 (未來FIFO扣除用)
-        totalCost: totalCost,
-        unitCost: totalCost / qty // 單件成本，備查用
-      });
-
-      // 更新商品總庫存數量
-      let item = inventoryItems.find(i => i.id === itemId);
-      if (item) item.stock += qty;
-
-      saveInventoryToMemory();
-      savePurchasesToMemory();
-      
-      // 清空表單
-      document.getElementById('new-item-name').value = '';
-      document.getElementById('new-item-price').value = '';
-      document.getElementById('restock-qty').value = '1';
-      document.getElementById('restock-cost').value = '';
-      
-      alert('✅ 進貨紀錄已更新！');
-      renderInventoryPage();
-      populateRestockDropdown();
-    }
   </script>
 </body>
 </html>
