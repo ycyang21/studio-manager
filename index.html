@@ -515,20 +515,44 @@
       <p id="modal-date" style="color: #666; font-size: 14px; margin-bottom: 20px;">2026-09-11 18:00</p>
       <div id="modal-balance-info" style="display:none; font-size:13px; margin: -10px 0 16px 0; padding:8px 10px; border-radius:6px; text-align:left; line-height:1.4;"></div>
       <div style="text-align:left; margin-bottom:16px;">
-        <h4 style="margin:0; font-size:14px; color:#666; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="toggleModalNotesSection()">📝 待辦 / 課堂記錄 <span id="modal-notes-toggle-arrow" style="font-size:12px; color:#8C9C8A;">▸ 展開</span></h4>
+        <h4 style="margin:0; font-size:14px; color:#666; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="toggleModalNotesSection()">📝 待辦 / 課堂記錄 / 銷售 <span id="modal-notes-toggle-arrow" style="font-size:12px; color:#8C9C8A;">▸ 展開</span></h4>
         <div id="modal-notes-section-body" style="display:none; margin-top:10px;">
-          <div id="modal-todo-wrap" style="margin-bottom:12px;">
-            <div style="display:flex; gap:6px;">
-              <input type="text" id="modal-todo-input" class="form-control" placeholder="✏️ 幫這堂課記一筆待辦（例如：買樂譜）" style="flex:1;">
-              <button class="small-btn" style="padding:0 14px; background-color:#8C9C8A; color:white;" onclick="submitModalTodo()">➕</button>
-            </div>
-            <input type="date" id="modal-todo-due" class="form-control" style="margin-top:6px; font-size:13px;">
+          <div style="display:flex; gap:6px; margin-bottom:10px;">
+            <button type="button" class="small-btn modal-notes-subtab-btn" data-subtab="todo" onclick="showModalNotesSubtab('todo')" style="flex:1; padding:6px; font-size:13px; background-color:#8C9C8A; color:white;">✏️待辦</button>
+            <button type="button" class="small-btn modal-notes-subtab-btn" data-subtab="lessonnote" onclick="showModalNotesSubtab('lessonnote')" style="flex:1; padding:6px; font-size:13px; background-color:#E2E8DF; color:#333;">📔課堂記錄</button>
+            <button type="button" class="small-btn modal-notes-subtab-btn" data-subtab="sale" onclick="showModalNotesSubtab('sale')" style="flex:1; padding:6px; font-size:13px; background-color:#E2E8DF; color:#333;">💰銷售</button>
           </div>
 
-          <div id="modal-lessonnote-wrap">
+          <div id="modal-notes-subtab-todo">
+            <div id="modal-todo-wrap">
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="modal-todo-input" class="form-control" placeholder="✏️ 幫這堂課記一筆待辦（例如：買樂譜）" style="flex:1;">
+                <button class="small-btn" style="padding:0 14px; background-color:#8C9C8A; color:white;" onclick="submitModalTodo()">➕</button>
+              </div>
+              <input type="date" id="modal-todo-due" class="form-control" style="margin-top:6px; font-size:13px;">
+            </div>
+          </div>
+
+          <div id="modal-notes-subtab-lessonnote" style="display:none;">
+            <div id="modal-lessonnote-wrap">
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="modal-lessonnote-input" class="form-control" placeholder="📔 記一筆今天的課堂狀況（例如：注意力比較不集中）" style="flex:1;">
+                <button class="small-btn" style="padding:0 14px; background-color:#7C93B3; color:white;" onclick="submitModalLessonNote()">➕</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="modal-notes-subtab-sale" style="display:none;">
+            <div class="form-group searchable-select" id="modal-sale-item-picker" style="margin-bottom:8px;">
+              <input type="text" id="modal-sale-item-input" class="form-control" placeholder="搜尋 / 選擇品項" autocomplete="off" oninput="filterModalSaleItemPicker()" onfocus="filterModalSaleItemPicker()">
+              <input type="hidden" id="modal-sale-item-value">
+              <div id="modal-sale-item-dropdown" class="searchable-dropdown" style="display:none;"></div>
+            </div>
+            <p id="modal-sale-preview" style="font-size:12px; margin:0 0 8px 0;"></p>
             <div style="display:flex; gap:6px;">
-              <input type="text" id="modal-lessonnote-input" class="form-control" placeholder="📔 記一筆今天的課堂狀況（例如：注意力比較不集中）" style="flex:1;">
-              <button class="small-btn" style="padding:0 14px; background-color:#7C93B3; color:white;" onclick="submitModalLessonNote()">➕</button>
+              <input type="number" id="modal-sale-qty" class="form-control" value="1" min="1" step="1" style="width:64px;" placeholder="數量" oninput="updateModalSalePreview()">
+              <input type="number" id="modal-sale-price" class="form-control" min="0" step="1" placeholder="這筆總售價" style="flex:1;">
+              <button class="small-btn" style="padding:0 14px; background-color:#E08E79; color:white;" onclick="submitModalSale()">➕</button>
             </div>
           </div>
         </div>
@@ -1831,6 +1855,12 @@
       document.getElementById('modal-todo-input').value = '';
       document.getElementById('modal-todo-due').value = props.dateStr || '';
       document.getElementById('modal-lessonnote-input').value = '';
+      document.getElementById('modal-sale-item-input').value = '';
+      document.getElementById('modal-sale-item-value').value = '';
+      document.getElementById('modal-sale-qty').value = 1;
+      document.getElementById('modal-sale-price').value = '';
+      document.getElementById('modal-sale-preview').innerText = '';
+      showModalNotesSubtab('todo');
       document.getElementById('modal-notes-section-body').style.display = 'none';
       document.getElementById('modal-notes-toggle-arrow').innerText = '▸ 展開';
       lockBodyScroll();
@@ -3584,6 +3614,16 @@
       arrow.innerText = opening ? '▾ 收起' : '▸ 展開';
     }
 
+    // 展開之後裡面再切小分頁（待辦／課堂記錄／銷售），同一時間只看得到一種表單，避免三個表單全部攤開太雜亂
+    function showModalNotesSubtab(tab) {
+      ['todo', 'lessonnote', 'sale'].forEach(t => {
+        document.getElementById('modal-notes-subtab-' + t).style.display = (t === tab) ? 'block' : 'none';
+        let btn = document.querySelector('.modal-notes-subtab-btn[data-subtab="' + t + '"]');
+        btn.style.backgroundColor = (t === tab) ? '#8C9C8A' : '#E2E8DF';
+        btn.style.color = (t === tab) ? 'white' : '#333';
+      });
+    }
+
     function toggleAddStudentForm() {
       let body = document.getElementById('add-student-form-body');
       let arrow = document.getElementById('add-student-toggle-arrow');
@@ -3852,25 +3892,32 @@
     // 點名「出席」時順手記一筆：共用同一個輸入框（在點名視窗裡），出席送出時如果有打字就自動建立一筆待辦
     // 點名視窗裡的「➕」：不管這堂課是還沒上、已經上過、固定課、臨時課還是補課，只要視窗裡看得到這位學生，
     // 都可以直接記一筆待辦，不綁定要先做點名動作——排定了課，才有待辦，跟出不出席無關。
+    // 從目前點名視窗代表的這堂課（固定課/補課/臨時課三種）取出背後對應的正式學生是誰，沒有正式學生就回傳 null。
+    // 待辦、課堂記錄、銷售這三個快速新增都要知道「這堂課是哪位學生」，共用同一份邏輯。
+    function getCurrentModalStudent() {
+      if (!currentModalEvent) return null;
+      if (currentModalEvent.type === 'normal') {
+        let s = students[currentModalEvent.stuIdx];
+        return s ? { id: s.id, name: s.name } : null;
+      } else if (currentModalEvent.type === 'makeup') {
+        let record = makeupBank.find(r => r.id === currentModalEvent.recordId);
+        return record ? { id: record.studentId, name: record.studentName } : null;
+      } else if (currentModalEvent.type === 'temp') {
+        let t = tempLessons.find(x => x.id === currentModalEvent.tempId);
+        return t ? { id: t.studentId, name: t.studentName } : null;
+      }
+      return null;
+    }
+
     function submitModalTodo() {
       if (!currentModalEvent) return;
       let input = document.getElementById('modal-todo-input');
       let text = input.value.trim();
       if (!text) { alert('請輸入待辦內容！'); return; }
 
-      let studentId = null, studentName = null;
-      if (currentModalEvent.type === 'normal') {
-        let s = students[currentModalEvent.stuIdx];
-        studentId = s.id; studentName = s.name;
-      } else if (currentModalEvent.type === 'makeup') {
-        let record = makeupBank.find(r => r.id === currentModalEvent.recordId);
-        if (record) { studentId = record.studentId; studentName = record.studentName; }
-      } else if (currentModalEvent.type === 'temp') {
-        let t = tempLessons.find(x => x.id === currentModalEvent.tempId);
-        if (t) { studentId = t.studentId; studentName = t.studentName; }
-      }
+      let stu = getCurrentModalStudent();
 
-      todos.push({ id: generateId(), text: text, studentId: studentId, studentName: studentName, dueDate: document.getElementById('modal-todo-due').value, done: false, createdAt: new Date().toISOString() });
+      todos.push({ id: generateId(), text: text, studentId: stu ? stu.id : null, studentName: stu ? stu.name : null, dueDate: document.getElementById('modal-todo-due').value, done: false, createdAt: new Date().toISOString() });
       saveTodosToMemory();
       input.value = '';
       alert('✅ 已新增待辦！');
@@ -3884,23 +3931,99 @@
       let text = input.value.trim();
       if (!text) { alert('請輸入課堂記錄內容！'); return; }
 
-      let studentId = null, studentName = null;
-      if (currentModalEvent.type === 'normal') {
-        let s = students[currentModalEvent.stuIdx];
-        studentId = s.id; studentName = s.name;
-      } else if (currentModalEvent.type === 'makeup') {
-        let record = makeupBank.find(r => r.id === currentModalEvent.recordId);
-        if (record) { studentId = record.studentId; studentName = record.studentName; }
-      } else if (currentModalEvent.type === 'temp') {
-        let t = tempLessons.find(x => x.id === currentModalEvent.tempId);
-        if (t) { studentId = t.studentId; studentName = t.studentName; }
-      }
-      if (!studentId) { alert('這堂課還沒有綁定正式學生，沒辦法記課堂記錄！'); return; }
+      let stu = getCurrentModalStudent();
+      if (!stu) { alert('這堂課還沒有綁定正式學生，沒辦法記課堂記錄！'); return; }
 
-      lessonNotes.push({ id: generateId(), studentId: studentId, studentName: studentName, date: currentModalEvent.dateStr, text: text, createdAt: new Date().toISOString() });
+      lessonNotes.push({ id: generateId(), studentId: stu.id, studentName: stu.name, date: currentModalEvent.dateStr, text: text, createdAt: new Date().toISOString() });
       saveLessonNotesToMemory();
       input.value = '';
       alert('✅ 已記錄！');
+    }
+
+    // 品項搜尋選擇器，邏輯跟進銷存管理頁面的銷售表單一樣，只是共用元件的 id 換一組（modal- 開頭）
+    function filterModalSaleItemPicker() {
+      let input = document.getElementById('modal-sale-item-input');
+      let dropdown = document.getElementById('modal-sale-item-dropdown');
+      document.getElementById('modal-sale-item-value').value = '';
+      let q = input.value.trim().toLowerCase();
+      let names = getAllItemNames().filter(n => !q || n.toLowerCase().includes(q));
+      if (names.length === 0) {
+        dropdown.innerHTML = '<div class="searchable-dropdown-empty">沒有符合的品項</div>';
+      } else {
+        dropdown.innerHTML = names.map(n => `<div class="searchable-dropdown-item" onclick="selectModalSaleItemPicker('${n.replace(/'/g, "\\'")}')">${n}（庫存 ${getItemStock(n)}）</div>`).join('');
+      }
+      dropdown.style.display = 'block';
+      updateModalSalePreview();
+    }
+
+    function selectModalSaleItemPicker(itemName) {
+      document.getElementById('modal-sale-item-input').value = itemName;
+      document.getElementById('modal-sale-item-value').value = itemName;
+      document.getElementById('modal-sale-item-dropdown').style.display = 'none';
+      updateModalSalePreview();
+    }
+
+    function updateModalSalePreview() {
+      let preview = document.getElementById('modal-sale-preview');
+      let itemName = document.getElementById('modal-sale-item-value').value || document.getElementById('modal-sale-item-input').value.trim();
+      let qty = Number(document.getElementById('modal-sale-qty').value) || 0;
+      if (!itemName || qty <= 0) { preview.innerText = ''; return; }
+      let stock = getItemStock(itemName);
+      let cost = previewInventoryCost(itemName, qty);
+      if (cost === null) {
+        preview.innerHTML = `📦 庫存 ${stock}　⚠️ 不夠這次要賣的數量，送出時會請你手動輸入成本`;
+        preview.style.color = '#B08A8A';
+      } else {
+        preview.innerHTML = `📦 庫存 ${stock}　💰 預估成本 ${cost} 元`;
+        preview.style.color = '#5d705b';
+      }
+    }
+
+    // 點名視窗裡的快速銷售：買家就是這堂課的學生本人，不用再選一次，比獨立頁面那邊的表單少一個欄位
+    function submitModalSale() {
+      if (!currentModalEvent) return;
+      let stu = getCurrentModalStudent();
+      if (!stu) { alert('這堂課還沒有綁定正式學生，沒辦法記銷售！'); return; }
+
+      let itemName = document.getElementById('modal-sale-item-value').value || document.getElementById('modal-sale-item-input').value.trim();
+      if (!itemName) { alert('請選擇或輸入品項名稱！'); return; }
+      let qty = Number(document.getElementById('modal-sale-qty').value) || 1;
+      let priceRaw = document.getElementById('modal-sale-price').value;
+      let salePrice = Number(priceRaw);
+      if (priceRaw === '' || isNaN(salePrice) || salePrice < 0) { alert('請輸入售價！'); return; }
+
+      let draw = drawInventoryCost(itemName, qty);
+      let totalCost, drawnFrom;
+      if (draw === null) {
+        let ok = confirm(`⚠️「${itemName}」目前庫存不足這次要賣的數量（${qty}），可能是忘記登記進貨了。要不要繼續，並自己手動輸入這次的成本？`);
+        if (!ok) return;
+        let manualCost = prompt('請輸入這次賣出的總成本（元）：');
+        if (manualCost === null) return;
+        totalCost = Number(manualCost);
+        if (isNaN(totalCost) || totalCost < 0) { alert('成本輸入無效，已取消這筆銷售。'); return; }
+        drawnFrom = [];
+      } else {
+        totalCost = draw.totalCost;
+        drawnFrom = draw.drawnFrom;
+      }
+
+      let date = currentModalEvent.dateStr;
+      let profit = Number((salePrice - totalCost).toFixed(2));
+      let extraIncomeId = generateId();
+      extraIncome.push({ id: extraIncomeId, date: date, amount: profit, note: '教材銷售：' + itemName, studentId: stu.id, studentName: stu.name });
+      materialSales.push({ id: generateId(), itemName: itemName, studentId: stu.id, buyerName: stu.name, date: date, quantity: qty, totalCost: totalCost, salePrice: salePrice, profit: profit, note: '', drawnFrom: drawnFrom, fromInventory: true, extraIncomeId: extraIncomeId, createdAt: new Date().toISOString() });
+
+      saveMaterialPurchasesToMemory();
+      saveMaterialSalesToMemory();
+      saveExtraIncomeToMemory();
+
+      document.getElementById('modal-sale-item-input').value = '';
+      document.getElementById('modal-sale-item-value').value = '';
+      document.getElementById('modal-sale-qty').value = 1;
+      document.getElementById('modal-sale-price').value = '';
+      document.getElementById('modal-sale-preview').innerText = '';
+
+      alert('✅ 已記錄銷售！這次利潤 ' + profit + ' 元，已加進額外收入。');
     }
     // 編輯待辦事項：內容、綁定的學生、日期都可以改，改完哪裡看到的都會一起更新
     function openEditTodoModal(id) {
