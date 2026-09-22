@@ -513,24 +513,40 @@
       <p id="modal-date" style="color: #666; font-size: 14px; margin-bottom: 20px;">2026-09-11 18:00</p>
       <div id="modal-balance-info" style="display:none; font-size:13px; margin: -10px 0 16px 0; padding:8px 10px; border-radius:6px; text-align:left; line-height:1.4;"></div>
       <div style="text-align:left; margin-bottom:16px;">
-        <h4 style="margin:0; font-size:14px; color:#666; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="toggleModalNotesSection()">📝 待辦 / 課堂記錄 <span id="modal-notes-toggle-arrow" style="font-size:12px; color:#8C9C8A;">▸ 展開</span></h4>
-        <div id="modal-notes-section-body" style="display:none; margin-top:10px;">
-          <div id="modal-todo-wrap" style="margin-bottom:12px;">
-            <div style="display:flex; gap:6px;">
-              <input type="text" id="modal-todo-input" class="form-control" placeholder="✏️ 幫這堂課記一筆待辦（例如：買樂譜）" style="flex:1;">
-              <button class="small-btn" style="padding:0 14px; background-color:#8C9C8A; color:white;" onclick="submitModalTodo()">➕</button>
-            </div>
-            <input type="date" id="modal-todo-due" class="form-control" style="margin-top:6px; font-size:13px;">
-          </div>
+            <h4 style="margin:0; font-size:14px; color:#666; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="toggleModalNotesSection()">📝 待辦 / 紀錄 / 購買 <span id="modal-notes-toggle-arrow" style="font-size:12px; color:#8C9C8A;">▸ 展開</span></h4>
+            
+            <div id="modal-notes-section-body" style="display:none; margin-top:10px;">
+              <div id="modal-todo-wrap" style="margin-bottom:12px;">
+                <div style="display:flex; gap:6px;">
+                  <input type="text" id="modal-todo-input" class="form-control" placeholder="✏️ 記一筆待辦（例如：買樂譜）" style="flex:1;">
+                  <button class="small-btn" style="padding:0 14px; background-color:#8C9C8A; color:white;" onclick="submitModalTodo()">➕</button>
+                </div>
+                <input type="date" id="modal-todo-due" class="form-control" style="margin-top:6px; font-size:13px;">
+              </div>
 
-          <div id="modal-lessonnote-wrap">
-            <div style="display:flex; gap:6px;">
-              <input type="text" id="modal-lessonnote-input" class="form-control" placeholder="📔 記一筆今天的課堂狀況（例如：注意力比較不集中）" style="flex:1;">
-              <button class="small-btn" style="padding:0 14px; background-color:#7C93B3; color:white;" onclick="submitModalLessonNote()">➕</button>
+              <div id="modal-lessonnote-wrap" style="margin-bottom:12px;">
+                <div style="display:flex; gap:6px;">
+                  <input type="text" id="modal-lessonnote-input" class="form-control" placeholder="📔 記課堂狀況（例如：注意力不集中）" style="flex:1;">
+                  <button class="small-btn" style="padding:0 14px; background-color:#7C93B3; color:white;" onclick="submitModalLessonNote()">➕</button>
+                </div>
+              </div>
+
+              <!-- 🌟 新增：記一筆購買區塊 -->
+              <div id="modal-sales-wrap" style="padding-top:12px; border-top:1px dashed #ccc;">
+                <div style="display:flex; gap:6px; margin-bottom:6px;">
+                  <select id="modal-sales-item" class="form-control" style="flex:1;" onchange="updateModalSalesPrice()">
+                     <option value="">🛒 選擇要購買的商品...</option>
+                     <!-- 這裡的選項之後會由 JavaScript 動態載入 -->
+                  </select>
+                  <input type="number" id="modal-sales-qty" class="form-control" placeholder="數量" value="1" min="1" style="width:70px;" oninput="updateModalSalesPrice()">
+                </div>
+                <div style="display:flex; gap:6px; align-items:center;">
+                   <input type="number" id="modal-sales-price" class="form-control" placeholder="實收總計 (元)" style="flex:1;">
+                   <button class="small-btn" style="padding:10px 14px; background-color:#B5A886; color:white;" onclick="submitModalSales()">紀錄購買</button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
       
       <div id="modal-normal-actions">
         <div id="modal-normal-paid-wrap">
@@ -1000,6 +1016,9 @@
     let lessonNotes = JSON.parse(localStorage.getItem('jess_lessonnotes_v1')) || []; // 課堂記錄：一定綁學生，記某一天上課的狀況（自由書寫）
     let progressNotes = JSON.parse(localStorage.getItem('jess_progressnotes_v1')) || []; // 學習進度：一定綁學生，記某個里程碑（自由書寫），不綁定特定一堂課
     let achievements = JSON.parse(localStorage.getItem('jess_achievements_v1')) || []; // 成就記錄：一定綁學生，記比賽/檢定/表演，有類型、項目名稱、日期、結果
+    let inventoryItems = JSON.parse(localStorage.getItem('jess_inventory_v1')) || []; // 商品目錄
+    let purchaseBatches = JSON.parse(localStorage.getItem('jess_purchases_v1')) || []; // 進貨批次 (FIFO用)
+    let salesRecords = JSON.parse(localStorage.getItem('jess_sales_v1')) || []; // 銷售紀錄
     let calendar; 
     let currentModalEvent = null; 
     let savedScrollY = 0; // 開點名視窗時，把整個畫面「釘住」在這個捲動位置，關視窗再放開、還原回這裡
@@ -1284,6 +1303,9 @@
         extraIncome: JSON.stringify(extraIncome),
         badDebt: JSON.stringify(badDebt),
         todos: JSON.stringify(todos),
+        inventory: JSON.stringify(inventoryItems),
+        purchases: JSON.stringify(purchaseBatches),
+        sales: JSON.stringify(salesRecords),
         updatedAt: new Date().toISOString()
       };
       let ref = cloudFns.doc(cloudDb, 'studioData', 'main');
