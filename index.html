@@ -530,6 +530,11 @@
                 <button class="small-btn" style="padding:0 14px; background-color:#8C9C8A; color:white;" onclick="submitModalTodo()">➕</button>
               </div>
               <input type="date" id="modal-todo-due" class="form-control" style="margin-top:6px; font-size:13px;">
+              <div class="radio-group" style="margin-top:6px; font-size:13px;">
+                <label><input type="radio" name="modal-todo-priority" value="high"> 🔴高</label>
+                <label><input type="radio" name="modal-todo-priority" value="medium" checked> 🟡中</label>
+                <label><input type="radio" name="modal-todo-priority" value="low"> 🟢低</label>
+              </div>
             </div>
           </div>
 
@@ -813,6 +818,11 @@
       <div class="card" style="text-align:left;">
         <input type="text" id="detail-todo-text" class="form-control" placeholder="待辦內容" style="margin-bottom:8px;">
         <input type="date" id="detail-todo-due" class="form-control" style="margin-bottom:8px;" placeholder="截止日期">
+        <div class="radio-group" style="margin-bottom:8px;">
+          <label><input type="radio" name="detail-todo-priority" value="high"> 🔴高</label>
+          <label><input type="radio" name="detail-todo-priority" value="medium" checked> 🟡中</label>
+          <label><input type="radio" name="detail-todo-priority" value="low"> 🟢低</label>
+        </div>
         <button class="small-btn" style="width:100%; padding:8px; background-color:#8C9C8A; color:white;" onclick="submitDetailTodo()">➕ 新增待辦</button>
       </div>
       <div id="student-detail-todo-pending"></div>
@@ -960,6 +970,11 @@
         <div id="todo-student-dropdown" class="searchable-dropdown" style="display:none;"></div>
       </div>
       <div class="form-group"><label>提醒/截止日期（選填）</label><input type="date" id="todo-due" class="form-control"></div>
+      <div class="form-group"><label>優先順序</label><div class="radio-group">
+        <label><input type="radio" name="todo-priority" value="high"> 🔴高</label>
+        <label><input type="radio" name="todo-priority" value="medium" checked> 🟡中</label>
+        <label><input type="radio" name="todo-priority" value="low"> 🟢低</label>
+      </div></div>
       <button class="button" style="width:100%; margin:0;" onclick="submitTodo()">確認新增</button>
     </div>
     <h3 style="font-size: 16px; text-align: left; padding-left: 20px; margin-top: 20px;">📋 待辦清單</h3>
@@ -980,6 +995,11 @@
         <button type="button" class="small-btn" style="margin-top:6px; background:transparent; color:#888; text-decoration:underline; padding:2px 6px;" onclick="resetStudentPicker('edit-todo-student')">清除綁定</button>
       </div>
       <div class="form-group"><label>提醒/截止日期（選填）</label><input type="date" id="edit-todo-due" class="form-control"></div>
+      <div class="form-group"><label>優先順序</label><div class="radio-group">
+        <label><input type="radio" name="edit-todo-priority" value="high"> 🔴高</label>
+        <label><input type="radio" name="edit-todo-priority" value="medium"> 🟡中</label>
+        <label><input type="radio" name="edit-todo-priority" value="low"> 🟢低</label>
+      </div></div>
       <button class="button" style="width:100%; margin:10px 0 0 0;" onclick="submitEditTodo()">💾 儲存修改</button>
       <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeEditTodoModal()">取消</button>
     </div>
@@ -1854,6 +1874,7 @@
       document.getElementById('modal-temp-mark-paid').checked = (props.type === 'temp') && defaultPaid;
       document.getElementById('modal-todo-input').value = '';
       document.getElementById('modal-todo-due').value = props.dateStr || '';
+      document.querySelector('input[name="modal-todo-priority"][value="medium"]').checked = true;
       document.getElementById('modal-lessonnote-input').value = '';
       document.getElementById('modal-sale-item-input').value = '';
       document.getElementById('modal-sale-item-value').value = '';
@@ -3211,7 +3232,7 @@
     }
 
     function renderDashboardTodos() {
-      let pending = todos.filter(t => !t.done).sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
+      let pending = todos.filter(t => !t.done).sort(compareTodos);
       let content = document.getElementById('dashboard-todo-content');
       if (pending.length === 0) {
         content.innerHTML = '<p style="color:#aaa; font-size:13px;">目前沒有待辦事項。</p>';
@@ -3831,10 +3852,12 @@
     // 把一組待辦渲染成 HTML；未完成/已完成兩邊共用同一份邏輯，checkbox 打勾就是完成、取消勾選就是復原
     function renderTodoItems(list) {
       if (list.length === 0) return '<p style="color:#aaa; font-size:12px;">目前沒有待辦事項</p>';
+      let priorityLabel = { high: '🔴高', medium: '🟡中', low: '🟢低' };
       return list.map(t => {
+        let priorityTag = `<span style="font-size:11px; margin-right:6px;">${priorityLabel[t.priority] || priorityLabel.medium}</span>`;
         let studentTag = t.studentName ? `<span style="font-size:11px; background:#F4F6F3; color:#4A6741; padding:2px 6px; border-radius:4px; margin-right:6px;">${t.studentName}</span>` : '';
         let dueTag = t.dueDate ? `<span style="font-size:11px; color:#B5651D;">⏰ ${t.dueDate}</span>` : '';
-        let tagRow = (studentTag || dueTag) ? `<div style="margin-bottom:3px;">${studentTag}${dueTag}</div>` : '';
+        let tagRow = `<div style="margin-bottom:3px;">${priorityTag}${studentTag}${dueTag}</div>`;
         let textStyle = t.done ? 'text-decoration:line-through; color:#aaa;' : '';
         return `<div class="pay-history-row" style="align-items:flex-start; padding:8px 0;">
           <label style="display:flex; align-items:flex-start; gap:8px; flex:1; cursor:pointer;">
@@ -3869,8 +3892,17 @@
       if (document.getElementById('dashboard-page').style.display === 'block') renderDashboardTodos();
     }
 
+    // 待辦排序：先比優先順序（高→中→低），同一個優先順序裡面再照原本的邏輯排日期（沒設日期的排最後）
+    const TODO_PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+    function compareTodos(a, b) {
+      let pa = TODO_PRIORITY_ORDER[a.priority] ?? 1;
+      let pb = TODO_PRIORITY_ORDER[b.priority] ?? 1;
+      if (pa !== pb) return pa - pb;
+      return (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99');
+    }
+
     function renderTodoPage() {
-      let sorted = [...todos].sort((a, b) => (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99'));
+      let sorted = [...todos].sort(compareTodos);
       document.getElementById('todo-pending-list').innerHTML = renderTodoItems(sorted.filter(t => !t.done));
       document.getElementById('todo-done-list').innerHTML = renderTodoItems(sorted.filter(t => t.done));
     }
@@ -3881,7 +3913,8 @@
       let studentId = document.getElementById('todo-student-value').value || null;
       let stu = studentId ? students.find(s => s.id === studentId) : null;
       let due = document.getElementById('todo-due').value;
-      todos.push({ id: generateId(), text: text, studentId: stu ? stu.id : null, studentName: stu ? stu.name : null, dueDate: due, done: false, createdAt: new Date().toISOString() });
+      let priority = document.querySelector('input[name="todo-priority"]:checked').value;
+      todos.push({ id: generateId(), text: text, studentId: stu ? stu.id : null, studentName: stu ? stu.name : null, dueDate: due, priority: priority, done: false, createdAt: new Date().toISOString() });
       saveTodosToMemory();
       document.getElementById('todo-text').value = '';
       resetStudentPicker('todo-student');
@@ -3921,8 +3954,9 @@
       if (!text) { alert('請輸入待辦內容！'); return; }
 
       let stu = getCurrentModalStudent();
+      let priority = document.querySelector('input[name="modal-todo-priority"]:checked').value;
 
-      todos.push({ id: generateId(), text: text, studentId: stu ? stu.id : null, studentName: stu ? stu.name : null, dueDate: document.getElementById('modal-todo-due').value, done: false, createdAt: new Date().toISOString() });
+      todos.push({ id: generateId(), text: text, studentId: stu ? stu.id : null, studentName: stu ? stu.name : null, dueDate: document.getElementById('modal-todo-due').value, priority: priority, done: false, createdAt: new Date().toISOString() });
       saveTodosToMemory();
       input.value = '';
       alert('✅ 已新增待辦！');
@@ -4037,6 +4071,7 @@
       editingTodoId = id;
       document.getElementById('edit-todo-text').value = t.text;
       document.getElementById('edit-todo-due').value = t.dueDate || '';
+      document.querySelector('input[name="edit-todo-priority"][value="' + (t.priority || 'medium') + '"]').checked = true;
       if (t.studentId) {
         document.getElementById('edit-todo-student-input').value = t.studentName || '';
         document.getElementById('edit-todo-student-value').value = t.studentId;
@@ -4060,6 +4095,7 @@
       t.studentId = stu ? stu.id : null;
       t.studentName = stu ? stu.name : null;
       t.dueDate = document.getElementById('edit-todo-due').value;
+      t.priority = document.querySelector('input[name="edit-todo-priority"]:checked').value;
 
       saveTodosToMemory();
       closeEditTodoModal();
@@ -4118,7 +4154,7 @@
 
     // 待辦分頁：邏輯跟原本學生卡片上「📝 待辦」那個彈出視窗一樣，只是整合進詳細頁裡，不用再另外開視窗
     function renderStudentDetailTodos() {
-      let sorted = todos.filter(t => t.studentId === currentDetailStudentId).sort((a, b) => (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99'));
+      let sorted = todos.filter(t => t.studentId === currentDetailStudentId).sort(compareTodos);
       document.getElementById('student-detail-todo-pending').innerHTML = renderTodoItems(sorted.filter(t => !t.done));
       document.getElementById('student-detail-todo-done').innerHTML = renderTodoItems(sorted.filter(t => t.done));
     }
@@ -4129,7 +4165,8 @@
       let text = document.getElementById('detail-todo-text').value.trim();
       if (!text) { alert('請輸入待辦內容！'); return; }
       let due = document.getElementById('detail-todo-due').value;
-      todos.push({ id: generateId(), text: text, studentId: s.id, studentName: s.name, dueDate: due, done: false, createdAt: new Date().toISOString() });
+      let priority = document.querySelector('input[name="detail-todo-priority"]:checked').value;
+      todos.push({ id: generateId(), text: text, studentId: s.id, studentName: s.name, dueDate: due, priority: priority, done: false, createdAt: new Date().toISOString() });
       saveTodosToMemory();
       document.getElementById('detail-todo-text').value = '';
       document.getElementById('detail-todo-due').value = '';
