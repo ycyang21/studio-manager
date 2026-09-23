@@ -1873,6 +1873,11 @@
     }
 
     function closeModal() {
+      // 關視窗前先主動放開焦點：如果剛剛點的按鈕（或任何輸入框）還拿著焦點，視窗一被隱藏，
+      // 那個拿著焦點的東西就整個消失了，手機瀏覽器常常會因此亂跳捲動位置。先手動 blur 讓瀏覽器自己乾淨地放手。
+      if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+      }
       document.getElementById('attendance-modal').style.display = 'none';
       unlockBodyScroll();
       refreshDayPanelIfNeeded();
