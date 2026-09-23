@@ -3859,13 +3859,13 @@
         let dueTag = t.dueDate ? `<span style="font-size:11px; color:#B5651D;">⏰ ${t.dueDate}</span>` : '';
         let tagRow = `<div style="margin-bottom:3px;">${priorityTag}${studentTag}${dueTag}</div>`;
         let textStyle = t.done ? 'text-decoration:line-through; color:#aaa;' : '';
+        let restoreBtn = t.done ? `<button class="small-btn" style="padding:2px 8px; font-size:11px; margin-left:8px; background-color:#7C93B3; color:white; flex-shrink:0;" onclick="toggleTodoDone('${t.id}')">↩️ 恢復未完成</button>` : '';
         return `<div class="pay-history-row" style="align-items:flex-start; padding:8px 0;">
-          <label style="display:flex; align-items:flex-start; gap:8px; flex:1; cursor:pointer;">
-            <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodoDone('${t.id}')" style="margin-top:3px;">
-            <span>${tagRow}<span style="${textStyle}">${t.text}</span></span>
-          </label>
-          <button class="small-btn" style="padding:2px 8px; font-size:11px; margin-left:8px; background-color:#E2E8DF; color:#333;" onclick="openEditTodoModal('${t.id}')">編輯</button>
-          <button class="small-btn del-btn" style="padding:2px 8px; font-size:11px; margin-left:4px;" onclick="deleteTodo('${t.id}')">刪除</button>
+          <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodoDone('${t.id}')" style="margin-top:3px; flex-shrink:0; width:18px; height:18px;">
+          <span style="flex:1; margin-left:8px;">${tagRow}<span style="${textStyle}">${t.text}</span></span>
+          ${restoreBtn}
+          <button class="small-btn" style="padding:2px 8px; font-size:11px; margin-left:8px; background-color:#E2E8DF; color:#333; flex-shrink:0;" onclick="openEditTodoModal('${t.id}')">編輯</button>
+          <button class="small-btn del-btn" style="padding:2px 8px; font-size:11px; margin-left:4px; flex-shrink:0;" onclick="deleteTodo('${t.id}')">刪除</button>
         </div>`;
       }).join('');
     }
