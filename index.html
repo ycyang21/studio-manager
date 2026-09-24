@@ -1905,6 +1905,8 @@
     // 手機版：如果下方目前正展開著某一天的清單，資料異動後順便刷新，不用手動重新點一次日期就能看到最新狀態
     function refreshDayPanelIfNeeded() {
       if (isMobileCalendarMode && selectedCalendarDate) selectCalendarDay(selectedCalendarDate);
+      // 從首頁「今日課程」點進來點名／調課的話，首頁清單也要跟著更新，不然會一直顯示舊狀態
+      if (document.getElementById('dashboard-page').style.display === 'block') renderDashboard();
     }
 
     function closeModal() {
@@ -2057,7 +2059,7 @@
         saveMakeupToMemory();
       }
       if (paymentChanged) savePaymentToMemory();
-      saveToMemory(); calendar.refetchEvents(); closeModal();
+      saveToMemory(); if (calendar) calendar.refetchEvents(); closeModal();
     }
 
     function markMakeupStatus(status) {
@@ -2098,7 +2100,7 @@
           record.status = 'active';
         }
         if (paymentChanged) savePaymentToMemory();
-        saveMakeupToMemory(); calendar.refetchEvents();
+        saveMakeupToMemory(); if (calendar) calendar.refetchEvents();
       }
       closeModal();
     }
@@ -2144,7 +2146,7 @@
         if (!t.studentId) t.paid = false;
       }
       if (paymentChanged) savePaymentToMemory();
-      saveTempToMemory(); calendar.refetchEvents(); closeModal();
+      saveTempToMemory(); if (calendar) calendar.refetchEvents(); closeModal();
     }
 
     function deleteTempLesson() {
@@ -2152,7 +2154,7 @@
       if (!confirm('確定要刪除這筆臨時課紀錄嗎？此動作無法復原。')) return;
       tempLessons = tempLessons.filter(x => x.id !== tempId);
       saveTempToMemory();
-      calendar.refetchEvents();
+      if (calendar) calendar.refetchEvents();
       closeModal();
     }
 
