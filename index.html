@@ -157,6 +157,7 @@
     <button class="button" onclick="showPage('manage-page')">💳 繳費管理</button>
     <button class="button" onclick="showPage('todo-page')">📝 待辦事項</button>
     <button class="button" onclick="openInventoryPage()">📦 進銷存管理</button>
+    <button class="button" onclick="openUnmarkedPage()">🔍 未點名檢查</button>
     <div id="payment-badge" style="display:none; font-size:13px; color:#E08E79; font-weight:bold; margin:-10px auto 5px auto; width:90%; text-align:center;"></div>
     <button class="button btn-secondary logout-btn" style="display:none; font-size:13px; padding:8px; margin-top:5px;" onclick="doLogout()">登出</button>
 
@@ -182,6 +183,7 @@
         <div style="font-size:12px; color:#888;">🔄 待排補課</div>
       </div>
     </div>
+    <div id="dashboard-unmarked-alert" class="card" style="display:none; margin:0 auto 12px auto; cursor:pointer; background-color:#FFF4EE; border:1px solid #E08E79; font-size:13px; color:#B5651D; font-weight:bold;" onclick="openUnmarkedPage()"></div>
 
     <div class="card" style="width:90%; margin:0 auto 12px auto; text-align:left;">
       <h3 style="margin-top:0; font-size:15px;">📅 今日課程</h3>
@@ -880,6 +882,7 @@
         <label>選擇結算月份</label>
         <input type="month" id="salary-month-picker" class="form-control" onchange="calculateDynamicRevenue()">
       </div>
+      <div id="salary-unmarked-status" style="display:none; font-size:13px; line-height:1.5; padding:8px 10px; border-radius:6px; text-align:left;"></div>
       <div class="card" style="margin-top: 20px;">
         <div class="pay-history-row"><span>教學收入</span><span id="revenue-teaching">NT$ 0</span></div>
         <div class="pay-history-row"><span>額外收入</span><span id="revenue-extra">NT$ 0</span></div>
@@ -956,6 +959,19 @@
       <p style="font-size:12px; color:#888; text-align:left; margin:0 0 10px 0;">💡 庫存品項的成本會自動從最早一批還有剩的進貨紀錄抓，利潤（售價−成本）會自動記一筆額外收入。</p>
       <h4 style="font-size: 14px; text-align: left; padding-left: 5px; color:#888;">銷售紀錄</h4>
       <div id="sale-list"></div>
+    </div>
+  </div>
+
+  <div id="unmarked-page" style="display: none;">
+    <h2 style="font-weight: 300;">🔍 未點名檢查</h2>
+    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="goHome()">返回首頁</button>
+    <div style="width: 90%; margin: 0 auto; text-align:left;">
+      <div class="form-group">
+        <label>檢查月份</label>
+        <input type="month" id="unmarked-month-picker" class="form-control" onchange="renderUnmarkedPage()">
+      </div>
+      <div id="unmarked-summary" style="font-size:13px; line-height:1.6; padding:10px 12px; border-radius:8px; margin-bottom:12px;"></div>
+      <div id="unmarked-list"></div>
     </div>
   </div>
 
@@ -1542,6 +1558,7 @@
         renderStudentDetailBasicInfo(); renderStudentDetailPayment(); renderStudentDetailMakeup(); renderStudentDetailTodos(); renderStudentDetailLessonNotes(); renderStudentDetailProgress(); renderStudentDetailAchievements();
       }
       if (document.getElementById('dashboard-page').style.display === 'block') renderDashboard();
+      if (document.getElementById('unmarked-page').style.display === 'block') renderUnmarkedPage();
       if (calendar) calendar.refetchEvents();
       updateMainMenuBadge();
     }
@@ -1566,11 +1583,16 @@
     }
 
     function showPage(pageId) {
-      const pages = ['main-menu', 'dashboard-page', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'inventory-page', 'todo-page', 'more-page'];
+      const pages = ['main-menu', 'dashboard-page', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'inventory-page', 'unmarked-page', 'todo-page', 'more-page'];
       pages.forEach(p => document.getElementById(p).style.display = 'none');
       updateBottomTabHighlight(pageId);
       
       if(pageId === 'dashboard-page') { renderDashboard(); }
+      if(pageId === 'unmarked-page') {
+        let picker = document.getElementById('unmarked-month-picker');
+        if (!picker.value) { let now = new Date(); picker.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0'); }
+        renderUnmarkedPage();
+      }
       if(pageId === 'manage-page') {
         resetManageFilters();
         document.querySelectorAll('.manage-filter-btn[data-dim="payment"], .manage-filter-btn[data-dim="makeup"], .manage-filter-btn[data-dim="todo"]').forEach(btn => {
@@ -1907,6 +1929,8 @@
       if (isMobileCalendarMode && selectedCalendarDate) selectCalendarDay(selectedCalendarDate);
       // 從首頁「今日課程」點進來點名／調課的話，首頁清單也要跟著更新，不然會一直顯示舊狀態
       if (document.getElementById('dashboard-page').style.display === 'block') renderDashboard();
+      // 從未點名檢查清單點進去處理完，清單要馬上更新，處理好的那堂就會消失
+      if (document.getElementById('unmarked-page').style.display === 'block') renderUnmarkedPage();
     }
 
     function closeModal() {
@@ -2793,6 +2817,7 @@
     function calculateDynamicRevenue() {
       let monthStr = document.getElementById('salary-month-picker').value; 
       if (!monthStr) return;
+      renderSalaryUnmarkedStatus(monthStr);
       let teaching = 0;
 
       students.forEach(s => {
@@ -3235,8 +3260,167 @@
     // ============ 手機版首頁 Dashboard ============
     let currentDashboardTodayItems = [];
 
+    // ============ 未點名檢查 ============
+    // 找出「時間已經過了、但還沒做任何處理」的課：固定課沒有出席/延期/缺席收費/轉補/調課任何一種紀錄，
+    // 補課還沒出席、臨時課還沒出席也沒取消。直接用月曆本身的資料來源 getEventsForDate，所以跟月曆上看到的一定一致。
+    function isLessonItemUnmarked(it, dateStr) {
+      let p = it.props;
+      if (p.type === 'normal') {
+        let s = students[p.stuIdx];
+        if (!s) return false;
+        return ![s.attendedDates, s.canceledDates, s.makeupConvertedDates, s.absentChargedDates, s.rescheduledDates].some(arr => (arr || []).includes(dateStr));
+      }
+      if (p.type === 'makeup') {
+        let r = makeupBank.find(x => x.id === p.recordId);
+        let sch = r ? r.schedules[p.schIdx] : null;
+        return !!sch && !sch.attended;
+      }
+      if (p.type === 'temp') {
+        let t = tempLessons.find(x => x.id === p.tempId);
+        return !!t && !t.attended && !t.canceled;
+      }
+      return false;
+    }
+
+    // 這堂如果按了出席，會計入多少學費——計算方式跟結算頁的教學收入完全一樣，只是拿來估算漏掉的金額
+    function estimateUnmarkedFee(it) {
+      let p = it.props;
+      if (p.type === 'normal') {
+        let s = students[p.stuIdx];
+        return s ? (Number(s.fee) || 0) : 0;
+      }
+      if (p.type === 'makeup') {
+        let r = makeupBank.find(x => x.id === p.recordId);
+        let sch = r ? r.schedules[p.schIdx] : null;
+        let stu = r ? (students.find(s => s.id === r.studentId) || students.find(s => s.name === r.studentName)) : null;
+        return (stu ? (Number(stu.fee) || 0) : 0) * (sch ? (Number(sch.amount) || 0) : 0);
+      }
+      if (p.type === 'temp') {
+        let t = tempLessons.find(x => x.id === p.tempId);
+        if (!t) return 0;
+        let amt = Number(t.amount) || 1;
+        if (t.studentId) {
+          let stu = students.find(s => s.id === t.studentId);
+          return (stu ? (Number(stu.fee) || 0) : 0) * amt;
+        }
+        return (Number(t.manualFee) || 0) * amt;
+      }
+      return 0;
+    }
+
+    // 某個月份（'YYYY-MM'）裡，到現在為止還沒處理的課；未來的日期不算，今天的課要等下課時間過了才算
+    function getUnmarkedLessons(monthStr) {
+      if (!monthStr) return [];
+      let parts = monthStr.split('-').map(Number);
+      let lastDay = new Date(parts[0], parts[1], 0).getDate();
+      let now = new Date();
+      let today = formatDate(now);
+      let nowMin = now.getHours() * 60 + now.getMinutes();
+      let out = [];
+      for (let d = 1; d <= lastDay; d++) {
+        let dateStr = monthStr + '-' + String(d).padStart(2, '0');
+        if (dateStr > today) break;
+        getEventsForDate(dateStr).forEach(it => {
+          if (!isLessonItemUnmarked(it, dateStr)) return;
+          if (dateStr === today) {
+            if (it.allDay) return;
+            let endMin = timeToMinutes(it.time) + getDurationForProps(it.props);
+            if (endMin > nowMin) return; // 今天還沒下課的先不算
+          }
+          it.dateStr = dateStr;
+          it.fee = estimateUnmarkedFee(it);
+          out.push(it);
+        });
+      }
+      return out;
+    }
+
+    function getCurrentMonthStr() {
+      let now = new Date();
+      return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    }
+
+    function openUnmarkedPage(monthStr) {
+      document.getElementById('unmarked-month-picker').value = monthStr || getCurrentMonthStr();
+      showPage('unmarked-page');
+    }
+
+    let currentUnmarkedItems = [];
+
+    function renderUnmarkedPage() {
+      let monthStr = document.getElementById('unmarked-month-picker').value;
+      let summary = document.getElementById('unmarked-summary');
+      let list = document.getElementById('unmarked-list');
+      if (monthStr > getCurrentMonthStr()) {
+        currentUnmarkedItems = [];
+        summary.style.backgroundColor = '#F4F6F3'; summary.style.color = '#666';
+        summary.innerText = '這個月份還沒開始，沒有需要檢查的課。';
+        list.innerHTML = '';
+        return;
+      }
+      let items = getUnmarkedLessons(monthStr);
+      currentUnmarkedItems = items;
+      if (items.length === 0) {
+        summary.style.backgroundColor = '#EEF3EC'; summary.style.color = '#4A6741';
+        summary.innerHTML = '✅ ' + monthStr + ' 已經過去的課都處理好了，沒有漏點名。';
+        list.innerHTML = '';
+        return;
+      }
+      let totalFee = items.reduce((sum, it) => sum + it.fee, 0);
+      summary.style.backgroundColor = '#FFF4EE'; summary.style.color = '#B5651D';
+      summary.innerHTML = '⚠️ 有 <b>' + items.length + '</b> 堂已經過去的課還沒處理，合計約 <b>NT$ ' + Math.round(totalFee).toLocaleString() + '</b> 還沒計入學費。<br><span style="color:#888;">點每一堂，選擇出席、延期、缺席收費、轉補課或調課，處理完就會從清單消失。</span>';
+
+      let html = '';
+      let lastDate = '';
+      items.forEach((it, idx) => {
+        if (it.dateStr !== lastDate) {
+          let d = new Date(it.dateStr + 'T00:00:00');
+          html += '<div style="font-size:13px; font-weight:bold; color:#666; margin:12px 0 6px 0;">' + it.dateStr + '（' + getDayName(d.getDay().toString()) + '）</div>';
+          lastDate = it.dateStr;
+        }
+        let timeCol = it.allDay ? '' : '<div class="day-panel-time"><div>' + it.time + '</div><div class="day-panel-time-end">' + it.endTime + '</div></div>';
+        html += '<div class="day-panel-item ' + it.className + '" onclick="openUnmarkedItem(' + idx + ')">' + timeCol + '<div class="day-panel-title">' + (it.shortTitle || it.title) + '</div></div>';
+      });
+      list.innerHTML = html;
+    }
+
+    function openUnmarkedItem(idx) {
+      let it = currentUnmarkedItems[idx];
+      if (!it) return;
+      openModalForCalendarEvent(it.props, it.title, it.dateStr, it.time, it.allDay);
+    }
+
+    // 首頁提醒：只看這個月，有漏的才出現
+    function renderDashboardUnmarked() {
+      let el = document.getElementById('dashboard-unmarked-alert');
+      let items = getUnmarkedLessons(getCurrentMonthStr());
+      if (items.length === 0) { el.style.display = 'none'; return; }
+      el.innerHTML = '⚠️ 本月有 ' + items.length + ' 堂已經過去的課還沒點名，點這裡檢查 ›';
+      el.style.display = 'block';
+    }
+
+    // 結算頁：結算某個月之前，先提醒那個月還有沒有漏點名的課
+    function renderSalaryUnmarkedStatus(monthStr) {
+      let el = document.getElementById('salary-unmarked-status');
+      if (!monthStr || monthStr > getCurrentMonthStr()) { el.style.display = 'none'; return; }
+      let items = getUnmarkedLessons(monthStr);
+      if (items.length === 0) {
+        el.style.backgroundColor = '#EEF3EC'; el.style.color = '#4A6741';
+        el.innerHTML = '✅ 這個月已經過去的課都處理好了';
+        el.onclick = null; el.style.cursor = 'default';
+      } else {
+        let totalFee = items.reduce((sum, it) => sum + it.fee, 0);
+        el.style.backgroundColor = '#FFF4EE'; el.style.color = '#B5651D';
+        el.innerHTML = '⚠️ 這個月還有 ' + items.length + ' 堂課沒處理（約 NT$ ' + Math.round(totalFee).toLocaleString() + ' 還沒計入），下面的教學收入可能偏低。<b>點這裡檢查 ›</b>';
+        el.onclick = () => openUnmarkedPage(monthStr); el.style.cursor = 'pointer';
+      }
+      el.style.display = 'block';
+    }
+    // ============ 未點名檢查結束 ============
+
     function renderDashboard() {
       renderDashboardCounts();
+      renderDashboardUnmarked();
       renderDashboardToday();
       renderDashboardTodos();
     }
