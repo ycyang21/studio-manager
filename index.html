@@ -1112,6 +1112,29 @@
     </div>
   </div>
 
+  <div id="edit-expense-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="modal-content" style="text-align: left; max-height: 85vh; overflow-y: auto;">
+      <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">✏️ 編輯支出</h3>
+      <div class="form-group"><label>日期</label><input type="date" id="edit-expense-date" class="form-control"></div>
+      <div class="form-group"><label>類別</label>
+        <select id="edit-expense-category" class="form-control" onchange="checkEditExpenseCategory()">
+          <option value="租金">租金</option>
+          <option value="水電">水電</option>
+          <option value="交通">交通</option>
+          <option value="耗材／維修">耗材／維修</option>
+          <option value="雜支">雜支</option>
+          <option value="__custom">其他（自己輸入）</option>
+        </select>
+        <input type="text" id="edit-expense-category-custom" class="form-control" placeholder="輸入類別名稱" style="display:none; margin-top:6px;">
+      </div>
+      <div class="form-group"><label>項目</label><input type="text" id="edit-expense-item" class="form-control"></div>
+      <div class="form-group"><label>金額（元）</label><input type="number" id="edit-expense-amount" class="form-control" min="0" step="1"></div>
+      <div class="form-group"><label>備註（選填）</label><input type="text" id="edit-expense-note" class="form-control"></div>
+      <button class="button" style="width:100%; margin:10px 0 0 0;" onclick="submitEditExpense()">💾 儲存修改</button>
+      <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeEditExpenseModal()">取消</button>
+    </div>
+  </div>
+
   <div id="edit-makeup-schedule-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
     <div class="modal-content" style="text-align: left;">
       <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">✏️ 編輯補課時間</h3>
@@ -1147,6 +1170,11 @@
     <div class="modal-content" style="text-align: left;">
       <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">✏️ 編輯臨時課</h3>
       <p id="edit-temp-student-name" style="font-size:15px; font-weight:bold; color:#333; margin-bottom:10px;"></p>
+      <div class="form-group" id="edit-temp-kind-group"><label>這堂課是</label><div class="radio-group">
+        <label><input type="radio" name="edit-temp-kind" value="temp"> 臨時課</label>
+        <label><input type="radio" name="edit-temp-kind" value="reschedule"> 調課</label>
+      </div></div>
+      <p id="edit-temp-labelonly-note" style="display:none; font-size:12px; color:#B5651D; margin:-6px 0 10px 0; line-height:1.5;">這堂已經出席，只能修改類型（只影響收支總表的備註，不影響學費）。要改時間或堂數，請先「恢復為未點名」。</p>
       <div class="form-group"><label>日期</label><input type="date" id="edit-temp-date" class="form-control"></div>
       <div class="form-group">
         <label>時間 (24小時制)</label>
@@ -1210,6 +1238,10 @@
     let editingMakeupSchIdx = null; // 正在編輯時間的補課紀錄裡，第幾筆排課
     let editingMakeupBaseDuration = 60; // 正在編輯的補課，背後綁定學生的正常時長，用來換算堂數
     let editingTempLessonId = null; // 正在編輯的臨時課 id（null = 沒有開啟編輯視窗）
+    let editingTempLabelOnly = false; // 已出席的臨時課只能改「臨時課／調課」標籤
+
+    // 這堂臨時課是不是調課產生的（上一版曾經用 'makeup' 存，一併視為調課）
+    function isRescheduleTemp(t) { return !!t && (t.kind === 'reschedule' || t.kind === 'makeup'); }
     let cloudDb = null, cloudAuth = null, cloudFns = null, unsubscribeCloud = null; // Firebase 雲端同步用
 
     // 資料遷移：確保每位學生都有唯一 id，補課存摺改用 id 對應學生（避免同名學生互相干擾、改名後也不會對不到人）
@@ -2267,9 +2299,17 @@
       if (!currentModalEvent || currentModalEvent.type !== 'temp') return;
       let t = tempLessons.find(x => x.id === currentModalEvent.tempId);
       if (!t) return;
-      if (t.attended) { alert('這堂已經出席了，請先「恢復為未點名」，才能編輯時間或堂數。'); return; }
+      if (t.attended && !t.studentId) { alert('這堂已經出席了，請先「恢復為未點名」，才能編輯時間或堂數。'); return; }
 
       editingTempLessonId = t.id;
+      // 已經出席的課：只開放修改「臨時課／補課」這個標籤，時間、堂數維持鎖住（跟原本的規則一樣）
+      editingTempLabelOnly = !!t.attended;
+      ['edit-temp-date', 'edit-temp-time', 'edit-temp-duration', 'edit-temp-amount'].forEach(id => {
+        document.getElementById(id).closest('.form-group').style.display = editingTempLabelOnly ? 'none' : '';
+      });
+      document.getElementById('edit-temp-labelonly-note').style.display = editingTempLabelOnly ? 'block' : 'none';
+      document.getElementById('edit-temp-kind-group').style.display = t.studentId ? 'block' : 'none'; // 體驗生沒有「調課」這回事
+      document.querySelector('input[name="edit-temp-kind"][value="' + (isRescheduleTemp(t) ? 'reschedule' : 'temp') + '"]').checked = true;
       document.getElementById('edit-temp-student-name').innerText = t.studentName;
       document.getElementById('edit-temp-date').value = t.date;
       setTimeValue('edit-temp-time', t.time || '00:00');
@@ -2307,6 +2347,17 @@
       let t = tempLessons.find(x => x.id === editingTempLessonId);
       if (!t) { closeEditTempLessonModal(); return; }
 
+      let kindInput = document.querySelector('input[name="edit-temp-kind"]:checked');
+      let newKind = (t.studentId && kindInput && kindInput.value === 'reschedule') ? 'reschedule' : 'temp';
+      if (editingTempLabelOnly) {
+        t.kind = newKind;
+        saveTempToMemory();
+        closeEditTempLessonModal();
+        if (calendar) calendar.refetchEvents();
+        alert('✅ 已更新這堂課的類型！');
+        return;
+      }
+
       let newDate = document.getElementById('edit-temp-date').value;
       let newTime = getTimeValue('edit-temp-time');
       let newDuration = Number(document.getElementById('edit-temp-duration').value) || 60;
@@ -2330,6 +2381,7 @@
       t.time = newTime;
       t.duration = newDuration;
       t.amount = newAmount;
+      t.kind = newKind;
 
       saveTempToMemory();
       closeEditTempLessonModal();
@@ -2927,7 +2979,11 @@
           let fee;
           if (t.studentId) { let stuData = students.find(s => s.id === t.studentId); fee = (stuData ? (Number(stuData.fee) || 0) : 0) * amt; }
           else { fee = (Number(t.manualFee) || 0) * amt; }
-          teachingRows.push({ date: t.date, time: t.time || '', duration: t.duration || 60, name: t.studentName, note: (t.studentId ? '臨時課' : '體驗課') + (amt !== 1 ? ' ' + amt + '堂' : ''), fee: fee });
+          let label;
+          if (!t.studentId) label = '體驗課';
+          else if (isRescheduleTemp(t)) label = '調課' + (t.rescheduledFrom ? '（原' + t.rescheduledFrom.slice(5).replace('-', '/') + '）' : '');
+          else label = '臨時課';
+          teachingRows.push({ date: t.date, time: t.time || '', duration: t.duration || 60, name: t.studentName, note: label + (amt !== 1 ? ' ' + amt + '堂' : ''), fee: fee });
         }
       });
       teachingRows.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
@@ -3056,13 +3112,68 @@
       let rows = r.expenseRows.slice().reverse().map(e => {
         let action = e.auto
           ? '<span style="font-size:11px; color:#aaa;">自動帶入</span>'
-          : '<button class="small-btn del-btn" style="padding:2px 8px; font-size:11px;" onclick="deleteExpense(\'' + e.id + '\')">刪除</button>';
+          : '<button class="small-btn" style="padding:2px 8px; font-size:11px; background-color:#E2E8DF; color:#333; margin-right:4px;" onclick="openEditExpenseModal(\'' + e.id + '\')">編輯</button><button class="small-btn del-btn" style="padding:2px 8px; font-size:11px;" onclick="deleteExpense(\'' + e.id + '\')">刪除</button>';
         return '<div class="pay-history-row" style="align-items:flex-start; padding:8px 0;">' +
           '<div style="flex:1; text-align:left;"><div style="font-size:11px; color:#888;">' + e.date + '・' + escHTML(e.category) + '</div>' +
           '<div style="color:#333; font-size:13px;">' + escHTML(e.item) + (e.note ? '<span style="color:#888;">（' + escHTML(e.note) + '）</span>' : '') + '</div></div>' +
           '<div style="text-align:right; margin-left:8px;"><div style="font-weight:bold; color:#333;">NT$ ' + e.amount.toLocaleString() + '</div>' + action + '</div></div>';
       }).join('');
       document.getElementById('expense-list').innerHTML = '<p style="font-size:12px; color:#888; margin:0 0 4px 0;">標「自動帶入」的是進銷存管理裡的進貨，要修改請到進銷存管理。</p>' + rows;
+    }
+    let editingExpenseId = null;
+    const EXPENSE_PRESET_OPTIONS = ['租金', '水電', '交通', '耗材／維修', '雜支'];
+
+    function openEditExpenseModal(id) {
+      let e = expenses.find(x => x.id === id);
+      if (!e) return;
+      editingExpenseId = id;
+      document.getElementById('edit-expense-date').value = e.date || '';
+      let isPreset = EXPENSE_PRESET_OPTIONS.includes(e.category);
+      document.getElementById('edit-expense-category').value = isPreset ? e.category : '__custom';
+      document.getElementById('edit-expense-category-custom').value = isPreset ? '' : (e.category || '');
+      checkEditExpenseCategory();
+      document.getElementById('edit-expense-item').value = e.item || '';
+      document.getElementById('edit-expense-amount').value = e.amount;
+      document.getElementById('edit-expense-note').value = e.note || '';
+      document.getElementById('edit-expense-modal').style.display = 'flex';
+    }
+
+    function checkEditExpenseCategory() {
+      let isCustom = document.getElementById('edit-expense-category').value === '__custom';
+      document.getElementById('edit-expense-category-custom').style.display = isCustom ? 'block' : 'none';
+    }
+
+    function closeEditExpenseModal() {
+      document.getElementById('edit-expense-modal').style.display = 'none';
+      editingExpenseId = null;
+    }
+
+    function submitEditExpense() {
+      let e = expenses.find(x => x.id === editingExpenseId);
+      if (!e) { closeEditExpenseModal(); return; }
+      let date = document.getElementById('edit-expense-date').value;
+      if (!date) { alert('請選擇日期！'); return; }
+      let category = document.getElementById('edit-expense-category').value;
+      if (category === '__custom') {
+        category = document.getElementById('edit-expense-category-custom').value.trim();
+        if (!category) { alert('請輸入類別名稱！'); return; }
+      }
+      let item = document.getElementById('edit-expense-item').value.trim();
+      if (!item) { alert('請輸入項目！'); return; }
+      let amountRaw = document.getElementById('edit-expense-amount').value;
+      let amount = Number(amountRaw);
+      if (amountRaw === '' || isNaN(amount) || amount < 0) { alert('請輸入金額！'); return; }
+      e.date = date;
+      e.category = category;
+      e.item = item;
+      e.amount = amount;
+      e.note = document.getElementById('edit-expense-note').value.trim();
+      saveExpensesToMemory();
+      closeEditExpenseModal();
+      document.getElementById('expense-month-picker').value = date.slice(0, 7); // 改了日期的話，跳到新的那個月
+      renderExpensePage();
+      if (document.getElementById('salary-page').style.display === 'block') calculateDynamicRevenue();
+      alert('✅ 已更新支出！');
     }
     // ============ 支出紀錄頁面結束 ============
 
@@ -4349,9 +4460,11 @@
 
       if (!confirm('確定要把「' + s.name + '」這堂課調到 ' + newDate + ' ' + newTime + ' 嗎？原本的時段會標記為調課。')) return;
 
+      let originalDate = currentModalEvent.dateStr;
       markStatus('rescheduled'); // 原本那堂標記為「已調課」（不是延期），跟延期用不同的樣式跟紀錄區分開來
 
-      tempLessons.push({ id: generateId(), studentId: s.id, studentName: s.name, date: newDate, time: newTime, duration: duration, amount: 1, attended: false, canceled: false });
+      // kind: 'reschedule' 讓收支總表的備註寫「調課（原 MM/DD）」，而不是「臨時課」；只是標籤，不影響學費計算
+      tempLessons.push({ id: generateId(), studentId: s.id, studentName: s.name, date: newDate, time: newTime, duration: duration, amount: 1, attended: false, canceled: false, kind: 'reschedule', rescheduledFrom: originalDate });
       saveTempToMemory();
 
       closeRescheduleModal();
