@@ -2918,6 +2918,12 @@
       if (!record) { alert('找不到這筆補課紀錄，請重新整理頁面再試一次！'); return false; }
       if (!amt || amt <= 0 || amt > record.remaining) { alert(`❌ 輸入錯誤！最多只能補 ${record.remaining} 堂`); return false; }
       if (!dateStr || !timeStr) { alert('❌ 請完整選擇補課的日期與時間！'); return false; }
+      // 衝堂檢查：跟其他所有排課入口（臨時課、調課、月曆新增補課…）一樣，時段重疊就先提醒
+      let conflictName = findScheduleConflict(dateStr, timeStr, duration || 60);
+      if (conflictName) {
+        let ok = confirm('⚠️ 這個時段（' + dateStr + ' ' + timeStr + '）已經有 ' + conflictName + ' 排課了，確定還要排在這裡嗎？');
+        if (!ok) return false;
+      }
       record.schedules.push({ date: dateStr, time: timeStr, amount: amt, duration: duration || 60, attended: false });
       record.remaining = Number((record.remaining - amt).toFixed(2));
       saveMakeupToMemory();
