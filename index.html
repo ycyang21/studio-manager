@@ -104,7 +104,11 @@
     #calendar.calendar-compact .fc-daygrid-day-number { font-size: 13px; }
     #calendar.calendar-compact .fc-daygrid-day.calendar-day-selected { background-color: #F4F6F3; }
 
-    .day-panel-item { border-radius: 6px; padding: 10px 12px; margin-bottom: 6px; text-align: left; cursor: pointer; font-size: 14px; font-weight: bold; }
+    .day-panel-item { border-radius: 6px; padding: 10px 12px; margin-bottom: 6px; text-align: left; cursor: pointer; font-size: 14px; font-weight: bold; display: flex; align-items: center; }
+    .day-panel-time { flex-shrink: 0; min-width: 44px; text-align: center; line-height: 1.3; }
+    .day-panel-time-end { font-size: 12px; font-weight: normal; opacity: 0.7; }
+    .day-panel-title { flex: 1; margin-left: 10px; padding-left: 10px; border-left: 2px solid currentColor; }
+    .day-panel-item > .day-panel-title:first-child { margin-left: 0; padding-left: 0; border-left: none; }
 
     /* 可搜尋的學生選擇器：點下去/打字時，下面浮出一個過濾後的名單可以直接點選 */
     .searchable-select { position: relative; }
@@ -1605,6 +1609,28 @@
 
     // 算出「這一天」所有事件的清單（一般課、補課、臨時課），回傳統一格式 {title, className, time, allDay, props}。
     // 月曆生成事件的迴圈、跟手機版點某一天展開的清單，都共用這個函式，邏輯只需要維護一份，不會兩邊兜不起來。
+    // 依事件類型（固定課/補課/臨時課）找出這堂課的時長，點名視窗、月曆下方清單、首頁今日課程共用同一份邏輯
+    function getDurationForProps(props) {
+      if (props.type === 'normal') {
+        let s0 = students[props.stuIdx];
+        return (s0 && s0.duration) || 60;
+      } else if (props.type === 'makeup') {
+        let record0 = makeupBank.find(r => r.id === props.recordId);
+        let sch0 = record0 ? record0.schedules[props.schIdx] : null;
+        return (sch0 && sch0.duration) || 60;
+      } else if (props.type === 'temp') {
+        let t0 = tempLessons.find(x => x.id === props.tempId);
+        return (t0 && t0.duration) || 60;
+      }
+      return 60;
+    }
+
+    function computeEndTime(timeStr, duration) {
+      if (!timeStr) return '';
+      let endMin = timeToMinutes(timeStr) + duration;
+      return String(Math.floor(endMin / 60) % 24).padStart(2, '0') + ':' + String(endMin % 60).padStart(2, '0');
+    }
+
     function getEventsForDate(dateStr) {
       let dayOfWeek = new Date(dateStr + 'T00:00:00').getDay().toString();
       let items = [];
@@ -1671,6 +1697,7 @@
         items.push({ title: displayTitle, className: eventClass, time: t.time, allDay: !t.time, name: t.studentName, locationAbbr: (tempStu && tempStu.locationAbbr) || '', props: { type: 'temp', tempId: t.id, dateStr: dateStr } });
       });
 
+      items.forEach(it => { it.endTime = it.allDay ? '' : computeEndTime(it.time, getDurationForProps(it.props)); });
       items.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
       return items;
     }
@@ -1766,8 +1793,8 @@
         list.innerHTML = '<p style="color:#aaa; font-size:13px;">這天沒有排課。</p>';
       } else {
         list.innerHTML = items.map((it, idx) => {
-          let timeLabel = it.allDay ? '' : (it.time + '　');
-          return `<div class="day-panel-item ${it.className}" onclick="openDayPanelItem(${idx})">${timeLabel}${it.title}</div>`;
+          let timeCol = it.allDay ? '' : `<div class="day-panel-time"><div>${it.time}</div><div class="day-panel-time-end">${it.endTime}</div></div>`;
+          return `<div class="day-panel-item ${it.className}" onclick="openDayPanelItem(${idx})">${timeCol}<div class="day-panel-title">${it.title}</div></div>`;
         }).join('');
       }
       document.getElementById('calendar-day-panel').style.display = 'block';
@@ -1808,24 +1835,8 @@
       let cleanTitle = title.replace(/💰 |✅ |❌ |🔄 |📌 |💸 |🔀 |\[補課\] |\[補\] /g, '').replace(/\s*\(延期\)|\s*\(轉補\)|\s*\(取消\)|\s*\(缺席收費\)|\s*\(已調課\)|\s*\([\d.]+堂\)/g, '').replace(/・.*$/, '');
       document.getElementById('modal-title').innerText = cleanTitle;
 
-      // 依事件類型找出這堂課的時長，用來算結束時間；只在點名視窗裡顯示完整區間，月曆格子本身維持原樣不動
-      let evtDuration = 60;
-      if (props.type === 'normal') {
-        let s0 = students[props.stuIdx];
-        if (s0) evtDuration = s0.duration || 60;
-      } else if (props.type === 'makeup') {
-        let record0 = makeupBank.find(r => r.id === props.recordId);
-        let sch0 = record0 ? record0.schedules[props.schIdx] : null;
-        if (sch0) evtDuration = sch0.duration || 60;
-      } else if (props.type === 'temp') {
-        let t0 = tempLessons.find(x => x.id === props.tempId);
-        if (t0) evtDuration = t0.duration || 60;
-      }
-      let endTimeStr = '';
-      if (!allDay) {
-        let endMin = timeToMinutes(timeStr) + evtDuration;
-        endTimeStr = String(Math.floor(endMin / 60) % 24).padStart(2, '0') + ':' + String(endMin % 60).padStart(2, '0');
-      }
+      // 依事件類型找出這堂課的時長，用來算結束時間（跟月曆下方清單、首頁共用同一份邏輯）
+      let endTimeStr = allDay ? '' : computeEndTime(timeStr, getDurationForProps(props));
       document.getElementById('modal-date').innerText = dateStr + (allDay ? '' : ' ' + timeStr + (endTimeStr ? ('-' + endTimeStr) : ''));
 
       document.getElementById('modal-normal-actions').style.display = 'none';
@@ -3219,7 +3230,7 @@
         content.innerHTML = '<p style="color:#aaa; font-size:13px;">今天沒有排課。</p>';
       } else {
         content.innerHTML = items.map((it, idx) => {
-          let timeLabel = it.allDay ? '' : it.time;
+          let timeLabel = it.allDay ? '' : (it.time + (it.endTime ? '–' + it.endTime : ''));
           return `<div class="dashboard-today-row" onclick="openDashboardTodayItem(${idx})">${timeLabel ? '<span class="dashboard-today-time">' + timeLabel + '</span>' : ''}${it.title}</div>`;
         }).join('');
       }
