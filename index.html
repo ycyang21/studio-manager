@@ -310,7 +310,7 @@
         <div id="newmakeup-student-dropdown" class="searchable-dropdown" style="display:none;"></div>
         <p id="newmakeup-remaining-info" style="display:none; font-size:13px; color:#E08E79; font-weight:bold; margin:6px 0 0 0;"></p>
       </div>
-      <div class="form-group"><label>這次要排幾堂</label><input type="number" id="newmakeup-amt" class="form-control" value="1" step="0.05" min="0.05"></div>
+      <div class="form-group"><label>這次要排幾堂（跟下面的時長會自動互相換算）</label><input type="number" id="newmakeup-amt" class="form-control" value="1" step="0.05" min="0.05" oninput="syncNewMakeupAmountDuration('amount')"></div>
       <div class="form-group"><label>日期</label><input type="date" id="newmakeup-date" class="form-control"></div>
       <div class="form-group">
         <label>時間 (24小時制)</label>
@@ -325,12 +325,12 @@
       <div class="form-group">
         <label>上課時長（分鐘）</label>
         <div style="display:flex; gap:6px; margin-bottom:6px;">
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('newmakeup-duration').value=30">30</button>
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('newmakeup-duration').value=50">50</button>
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('newmakeup-duration').value=60">60</button>
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('newmakeup-duration').value=90">90</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('newmakeup-duration').value=30; syncNewMakeupAmountDuration('duration')">30</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('newmakeup-duration').value=50; syncNewMakeupAmountDuration('duration')">50</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('newmakeup-duration').value=60; syncNewMakeupAmountDuration('duration')">60</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('newmakeup-duration').value=90; syncNewMakeupAmountDuration('duration')">90</button>
         </div>
-        <input type="number" id="newmakeup-duration" class="form-control" value="60" min="1" step="1" placeholder="分鐘">
+        <input type="number" id="newmakeup-duration" class="form-control" value="60" min="1" step="1" placeholder="分鐘" oninput="syncNewMakeupAmountDuration('duration')">
       </div>
       <button class="button" style="width:100%; margin:10px 0 0 0; background-color:#E08E79;" onclick="submitNewMakeupFromCalendar()">✅ 新增補課</button>
       <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeNewMakeupModal()">取消</button>
@@ -2658,6 +2658,23 @@
       info.innerText = '📓 ' + s.name + ' 目前還剩 ' + remaining + ' 堂還沒排定時間';
       info.style.display = 'block';
       document.getElementById('newmakeup-amt').value = Math.min(1, remaining);
+      syncNewMakeupAmountDuration('amount'); // 剩不到一堂（例如只剩 0.5 堂）時，時長也要跟著縮短
+    }
+
+    // 堂數跟時長互相換算，以這位學生自己的一堂課時長為基準（例如 50 分鐘的學生，0.5 堂 = 25 分鐘）；跟臨時課表單同一套規則
+    function syncNewMakeupAmountDuration(source) {
+      let studentId = document.getElementById('newmakeup-student-value').value;
+      let s = studentId ? students.find(x => x.id === studentId) : null;
+      let base = (s && s.duration) || 60;
+      let amtEl = document.getElementById('newmakeup-amt');
+      let durEl = document.getElementById('newmakeup-duration');
+      if (source === 'duration') {
+        let dur = Number(durEl.value) || 0;
+        amtEl.value = Number((dur / base).toFixed(2));
+      } else {
+        let amt = Number(amtEl.value) || 0;
+        durEl.value = Math.round(amt * base);
+      }
     }
 
     // 從這位學生「所有還在欠、還沒排完」的補課紀錄裡，照產生時間先後（舊的先扣）把這次要排的堂數扣掉；
