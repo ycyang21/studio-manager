@@ -104,6 +104,30 @@
     #calendar.calendar-compact .fc-daygrid-day-number { font-size: 13px; }
     #calendar.calendar-compact .fc-daygrid-day.calendar-day-selected { background-color: #F4F6F3; }
 
+    #print-report { display: none; }
+    @media print {
+      @page { size: A4; margin: 14mm 12mm; }
+      html, body { background: white !important; }
+      body { padding: 0 !important; margin: 0 !important; color: #000 !important; text-align: left !important; position: static !important; top: auto !important; }
+      body > *:not(#print-report) { display: none !important; }
+      #print-report { display: block !important; font-family: "Helvetica Neue", Arial, "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif; font-size: 10.5pt; color: #000; }
+      #print-report .pr-top { display: flex; justify-content: space-between; font-size: 9pt; color: #555; }
+      #print-report h1 { text-align: center; font-size: 17pt; margin: 6px 0 14px 0; }
+      #print-report h2 { font-size: 12pt; margin: 16px 0 6px 0; page-break-after: avoid; }
+      #print-report table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+      #print-report th, #print-report td { border: 1px solid #888; padding: 4px 6px; vertical-align: top; }
+      #print-report th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: bold; }
+      #print-report thead { display: table-header-group; }
+      #print-report tr { page-break-inside: avoid; }
+      #print-report .num { text-align: right; white-space: nowrap; }
+      #print-report .nowrap { white-space: nowrap; }
+      #print-report .sub td { background: #f6f6f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      #print-report .total td { font-weight: bold; background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      #print-report .empty { text-align: center; color: #777; }
+      #print-report .foot-note { font-size: 8.5pt; color: #555; margin: 2px 0 0 0; }
+      #print-report .summary td { font-size: 11pt; }
+      #print-report .summary .net td { font-size: 13pt; font-weight: bold; }
+    }
     .day-panel-item { border-radius: 6px; padding: 10px 12px; margin-bottom: 6px; text-align: left; cursor: pointer; font-size: 14px; font-weight: bold; display: flex; align-items: center; }
     .day-panel-time { flex-shrink: 0; min-width: 44px; text-align: center; line-height: 1.3; }
     .day-panel-time-end { font-size: 12px; font-weight: normal; opacity: 0.7; }
@@ -158,6 +182,7 @@
     <button class="button" onclick="showPage('todo-page')">📝 待辦事項</button>
     <button class="button" onclick="openInventoryPage()">📦 進銷存管理</button>
     <button class="button" onclick="openUnmarkedPage()">🔍 未點名檢查</button>
+    <button class="button" onclick="openExpensePage()">💸 支出紀錄</button>
     <div id="payment-badge" style="display:none; font-size:13px; color:#E08E79; font-weight:bold; margin:-10px auto 5px auto; width:90%; text-align:center;"></div>
     <button class="button btn-secondary logout-btn" style="display:none; font-size:13px; padding:8px; margin-top:5px;" onclick="doLogout()">登出</button>
 
@@ -201,6 +226,7 @@
     <h2 style="font-weight: 300;">⚙️ 更多</h2>
     <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="goHome()">‹ 返回首頁</button>
     <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E08E79; color:white;" onclick="openInventoryPage()">📦 進銷存管理</button>
+    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E08E79; color:white;" onclick="openExpensePage()">💸 支出紀錄</button>
     <button class="button btn-secondary logout-btn" style="display:none; width:90%; margin:0 auto 15px auto;" onclick="doLogout()">登出</button>
 
     <div style="display:flex; gap:8px; width:90%; margin:0 auto;">
@@ -886,13 +912,19 @@
       <div class="card" style="margin-top: 20px;">
         <div class="pay-history-row"><span>教學收入</span><span id="revenue-teaching">NT$ 0</span></div>
         <div class="pay-history-row"><span>額外收入</span><span id="revenue-extra">NT$ 0</span></div>
+        <div class="pay-history-row"><span>支出</span><span id="revenue-expense" style="color:#E08E79;">−NT$ 0</span></div>
         <div class="pay-history-row" style="border-bottom:none;"><span>呆帳</span><span id="revenue-baddebt" style="color:#E08E79;">−NT$ 0</span></div>
       </div>
       <div class="money-box" style="margin-top: 15px;">
-        <div class="money-title">本月總計</div>
+        <div class="money-title">本月淨收入</div>
         <div class="money-amount" id="dynamic-total-revenue">NT$ 0</div>
       </div>
-      <p style="font-size:12px; color:#888; text-align:left; line-height:1.5;">💡 教學收入是系統自動掃描月曆上所有打勾 ✅ 出席的紀錄計算出來的；額外收入／呆帳則來自「學生退班」時的結算紀錄。若教學收入金額有誤，請直接至月曆修改該堂課的出缺席狀態即可。</p>
+      <div style="display:flex; gap:8px; margin-top:15px;">
+        <button class="small-btn" style="flex:1; padding:10px; background-color:#E08E79; color:white;" onclick="openExpensePage(document.getElementById('salary-month-picker').value)">💸 支出紀錄</button>
+        <button class="small-btn" style="flex:1; padding:10px; background-color:#5d705b; color:white;" onclick="generateMonthlyReportPDF()">📄 產出收支總表</button>
+      </div>
+      <p style="font-size:12px; color:#888; text-align:left; line-height:1.5; margin-top:8px;">📄 產出收支總表後會進入列印畫面：<b>電腦</b>在「目的地」選「另存為 PDF」；<b>手機</b>在列印畫面點「分享」，再選「儲存到檔案」，就會存成 PDF。</p>
+      <p style="font-size:12px; color:#888; text-align:left; line-height:1.5;">💡 教學收入是依照月曆上打勾 ✅ 出席（含缺席收費、補課、臨時課）的紀錄自動計算的，金額有誤請直接到月曆修改那堂課的狀態。教材以現金進出計算：賣出時以售價算收入，進貨在買進那個月算支出。</p>
     </div>
   </div>
 
@@ -959,6 +991,35 @@
       <p style="font-size:12px; color:#888; text-align:left; margin:0 0 10px 0;">💡 庫存品項的成本會自動從最早一批還有剩的進貨紀錄抓，利潤（售價−成本）會自動記一筆額外收入。</p>
       <h4 style="font-size: 14px; text-align: left; padding-left: 5px; color:#888;">銷售紀錄</h4>
       <div id="sale-list"></div>
+    </div>
+  </div>
+
+  <div id="expense-page" style="display: none;">
+    <h2 style="font-weight: 300;">💸 支出紀錄</h2>
+    <button class="small-btn" style="width:90%; margin:0 auto 15px auto; display:block; padding:10px; background-color:#E2E8DF; color:#333;" onclick="goHome()">返回首頁</button>
+    <div style="width: 90%; margin: 0 auto; text-align:left;">
+      <div class="card" style="width:100%; box-sizing:border-box;">
+        <div class="form-group"><label>日期</label><input type="date" id="expense-date" class="form-control"></div>
+        <div class="form-group"><label>類別</label>
+          <select id="expense-category" class="form-control" onchange="checkExpenseCategory()">
+            <option value="租金">租金</option>
+            <option value="水電">水電</option>
+            <option value="交通">交通</option>
+            <option value="耗材／維修">耗材／維修</option>
+            <option value="雜支">雜支</option>
+            <option value="__custom">其他（自己輸入）</option>
+          </select>
+          <input type="text" id="expense-category-custom" class="form-control" placeholder="輸入類別名稱" style="display:none; margin-top:6px;">
+        </div>
+        <div class="form-group"><label>項目</label><input type="text" id="expense-item" class="form-control" placeholder="例如：九月琴房租金"></div>
+        <div class="form-group"><label>金額（元）</label><input type="number" id="expense-amount" class="form-control" min="0" step="1"></div>
+        <div class="form-group"><input type="text" id="expense-note" class="form-control" placeholder="備註（選填）"></div>
+        <button class="button" style="width:100%; margin:0; background-color:#E08E79;" onclick="submitExpense()">➕ 新增支出</button>
+        <p style="font-size:12px; color:#888; margin:8px 0 0 0; line-height:1.5;">💡 教材進貨請到「進銷存管理」登記，會自動算進支出，這裡不用重複記。</p>
+      </div>
+      <div class="form-group"><label>查看月份</label><input type="month" id="expense-month-picker" class="form-control" onchange="renderExpensePage()"></div>
+      <div id="expense-summary"></div>
+      <div id="expense-list"></div>
     </div>
   </div>
 
@@ -1121,6 +1182,8 @@
   </div>
   </div>
 
+  <div id="print-report"></div>
+
   <script>
     let students = JSON.parse(localStorage.getItem('jess_students_v4')) || [];
     let makeupBank = JSON.parse(localStorage.getItem('jess_makeup_v2')) || [];
@@ -1134,6 +1197,7 @@
     let achievements = JSON.parse(localStorage.getItem('jess_achievements_v1')) || []; // 成就記錄：一定綁學生，記比賽/檢定/表演，有類型、項目名稱、日期、結果
     let materialPurchases = JSON.parse(localStorage.getItem('jess_material_purchases_v1')) || []; // 教材進貨：{id, itemName, date, quantity, costPerUnit, remaining, note}，remaining 隨銷售 FIFO 扣減，用來算目前庫存
     let materialSales = JSON.parse(localStorage.getItem('jess_material_sales_v1')) || []; // 教材銷售：{id, itemName, studentId, buyerName, date, quantity, totalCost, salePrice, profit, note}，成本從進貨批次 FIFO 抓
+    let expenses = JSON.parse(localStorage.getItem('jess_expenses_v1')) || []; // 支出（進貨以外）：{id, date, category, item, amount, note}；進貨本身直接從 materialPurchases 算，不重複記
     let calendar; 
     let currentModalEvent = null; 
     let savedScrollY = 0; // 開點名視窗時，把整個畫面「釘住」在這個捲動位置，關視窗再放開、還原回這裡
@@ -1393,6 +1457,7 @@
           achievements = data.achievements ? JSON.parse(data.achievements) : [];
           materialPurchases = data.materialPurchases ? JSON.parse(data.materialPurchases) : [];
           materialSales = data.materialSales ? JSON.parse(data.materialSales) : [];
+          expenses = data.expenses ? JSON.parse(data.expenses) : [];
           localStorage.setItem('jess_students_v4', JSON.stringify(students));
           localStorage.setItem('jess_makeup_v2', JSON.stringify(makeupBank));
           localStorage.setItem('jess_payments_v1', JSON.stringify(paymentRecords));
@@ -1405,6 +1470,7 @@
           localStorage.setItem('jess_achievements_v1', JSON.stringify(achievements));
           localStorage.setItem('jess_material_purchases_v1', JSON.stringify(materialPurchases));
           localStorage.setItem('jess_material_sales_v1', JSON.stringify(materialSales));
+          localStorage.setItem('jess_expenses_v1', JSON.stringify(expenses));
           refreshCurrentView();
         } else {
           // 雲端還沒有資料：把這台裝置現有的資料（例如你原本存在這台裝置的學生名單）當作起點推上雲端
@@ -1433,6 +1499,7 @@
         achievements: JSON.stringify(achievements),
         materialPurchases: JSON.stringify(materialPurchases),
         materialSales: JSON.stringify(materialSales),
+        expenses: JSON.stringify(expenses),
         updatedAt: new Date().toISOString()
       };
       let ref = cloudFns.doc(cloudDb, 'studioData', 'main');
@@ -1451,6 +1518,7 @@
           achievements: payload.achievements,
           materialPurchases: payload.materialPurchases,
           materialSales: payload.materialSales,
+          expenses: payload.expenses,
           savedAt: Date.now()
         });
       }).then(function() {
@@ -1525,6 +1593,7 @@
         achievements = data.achievements ? JSON.parse(data.achievements) : [];
         materialPurchases = data.materialPurchases ? JSON.parse(data.materialPurchases) : [];
         materialSales = data.materialSales ? JSON.parse(data.materialSales) : [];
+        expenses = data.expenses ? JSON.parse(data.expenses) : [];
         saveToMemory();
         saveMakeupToMemory();
         savePaymentToMemory();
@@ -1537,6 +1606,7 @@
         saveAchievementsToMemory();
         saveMaterialPurchasesToMemory();
         saveMaterialSalesToMemory();
+        saveExpensesToMemory();
         closeHistoryModal();
         renderManageList();
         if (calendar) calendar.refetchEvents();
@@ -1559,6 +1629,7 @@
       }
       if (document.getElementById('dashboard-page').style.display === 'block') renderDashboard();
       if (document.getElementById('unmarked-page').style.display === 'block') renderUnmarkedPage();
+      if (document.getElementById('expense-page').style.display === 'block') renderExpensePage();
       if (calendar) calendar.refetchEvents();
       updateMainMenuBadge();
     }
@@ -1583,11 +1654,17 @@
     }
 
     function showPage(pageId) {
-      const pages = ['main-menu', 'dashboard-page', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'inventory-page', 'unmarked-page', 'todo-page', 'more-page'];
+      const pages = ['main-menu', 'dashboard-page', 'calendar-page', 'manage-page', 'student-detail-page', 'salary-page', 'inventory-page', 'expense-page', 'unmarked-page', 'todo-page', 'more-page'];
       pages.forEach(p => document.getElementById(p).style.display = 'none');
       updateBottomTabHighlight(pageId);
       
       if(pageId === 'dashboard-page') { renderDashboard(); }
+      if(pageId === 'expense-page') {
+        let picker = document.getElementById('expense-month-picker');
+        if (!picker.value) picker.value = getCurrentMonthStr();
+        document.getElementById('expense-date').value = formatDate(new Date());
+        renderExpensePage();
+      }
       if(pageId === 'unmarked-page') {
         let picker = document.getElementById('unmarked-month-picker');
         if (!picker.value) { let now = new Date(); picker.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0'); }
@@ -2270,6 +2347,7 @@
     function saveAchievementsToMemory() { localStorage.setItem('jess_achievements_v1', JSON.stringify(achievements)); pushToCloud(); }
     function saveMaterialPurchasesToMemory() { localStorage.setItem('jess_material_purchases_v1', JSON.stringify(materialPurchases)); pushToCloud(); }
     function saveMaterialSalesToMemory() { localStorage.setItem('jess_material_sales_v1', JSON.stringify(materialSales)); pushToCloud(); }
+    function saveExpensesToMemory() { localStorage.setItem('jess_expenses_v1', JSON.stringify(expenses)); pushToCloud(); }
 
     // ============ 教材買賣：庫存管理 ============
     function openInventoryPage() {
@@ -2814,52 +2892,266 @@
       alert('✅ 已新增臨時課！');
     }
 
-    function calculateDynamicRevenue() {
-      let monthStr = document.getElementById('salary-month-picker').value; 
-      if (!monthStr) return;
-      renderSalaryUnmarkedStatus(monthStr);
-      let teaching = 0;
+    // ============ 月結算資料（結算頁、收支總表 PDF 共用同一份，數字一定一致）============
+    // 授課收入：當月實際上了的課（出席、缺席收費、補課出席、臨時課出席），跟以前的教學收入算法完全一樣。
+    // 教材：照現金進出記——賣出記「售價」為收入，進貨在「買進那個月」記為支出；賣出時的成本只列出來參考，不再扣一次。
+    const EXPENSE_CATEGORIES = ['進貨', '租金', '水電', '交通', '耗材／維修', '雜支'];
 
+    function escHTML(str) {
+      return String(str == null ? '' : str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function buildMonthlyReport(monthStr) {
+      let inMonth = d => !!d && d.startsWith(monthStr);
+
+      // 一、授課收入
+      let teachingRows = [];
       students.forEach(s => {
         let fee = Number(s.fee) || 0;
-        let attended = s.attendedDates || [];
-        attended.forEach(d => { if (d.startsWith(monthStr)) teaching += fee; });
-        let absentCharged = s.absentChargedDates || [];
-        absentCharged.forEach(d => { if (d.startsWith(monthStr)) teaching += fee; });
+        (s.attendedDates || []).forEach(d => { if (inMonth(d)) teachingRows.push({ date: d, time: s.timeVal || '', duration: s.duration || 60, name: s.name, note: '', fee: fee }); });
+        (s.absentChargedDates || []).forEach(d => { if (inMonth(d)) teachingRows.push({ date: d, time: s.timeVal || '', duration: s.duration || 60, name: s.name, note: '缺席收費', fee: fee }); });
       });
-
       makeupBank.forEach(record => {
         let stuData = students.find(s => s.id === record.studentId) || students.find(s => s.name === record.studentName);
         let fee = stuData ? (Number(stuData.fee) || 0) : 0;
         record.schedules.forEach(sch => {
-          if (sch.attended && sch.date.startsWith(monthStr)) { teaching += (fee * sch.amount); }
+          if (sch.attended && inMonth(sch.date)) {
+            let amt = Number(sch.amount) || 0;
+            teachingRows.push({ date: sch.date, time: sch.time || '', duration: sch.duration || 60, name: record.studentName, note: '補課' + (amt !== 1 ? ' ' + amt + '堂' : ''), fee: fee * sch.amount });
+          }
         });
       });
-
       tempLessons.forEach(t => {
-        if (t.attended && t.date.startsWith(monthStr)) {
+        if (t.attended && inMonth(t.date)) {
           let amt = Number(t.amount) || 1;
-          if (t.studentId) {
-            let stuData = students.find(s => s.id === t.studentId);
-            teaching += (stuData ? (Number(stuData.fee) || 0) : 0) * amt;
-          } else {
-            teaching += (Number(t.manualFee) || 0) * amt; // 還沒轉正的臨時課，學費直接記在這筆紀錄上
-          }
+          let fee;
+          if (t.studentId) { let stuData = students.find(s => s.id === t.studentId); fee = (stuData ? (Number(stuData.fee) || 0) : 0) * amt; }
+          else { fee = (Number(t.manualFee) || 0) * amt; }
+          teachingRows.push({ date: t.date, time: t.time || '', duration: t.duration || 60, name: t.studentName, note: (t.studentId ? '臨時課' : '體驗課') + (amt !== 1 ? ' ' + amt + '堂' : ''), fee: fee });
         }
       });
+      teachingRows.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 
-      let extra = 0;
-      extraIncome.forEach(e => { if (e.date && e.date.startsWith(monthStr)) extra += (Number(e.amount) || 0); });
+      // 二、額外收入（教材銷售改用售價；原本銷售時自動產生的「利潤」那筆額外收入就不再重複算）
+      let saleIncomeIds = new Set(materialSales.map(s => s.extraIncomeId).filter(Boolean));
+      let extraRows = [];
+      extraIncome.forEach(e => {
+        if (!inMonth(e.date) || saleIncomeIds.has(e.id)) return;
+        extraRows.push({ date: e.date, item: e.note || '', who: e.studentName || '', refCost: null, amount: Number(e.amount) || 0 });
+      });
+      materialSales.forEach(s => {
+        if (!inMonth(s.date)) return;
+        let qty = Number(s.quantity) || 1;
+        extraRows.push({ date: s.date, item: s.itemName + (qty !== 1 ? ' ×' + qty : '') + (s.note ? '（' + s.note + '）' : ''), who: s.buyerName || '', refCost: Number(s.totalCost) || 0, amount: Number(s.salePrice) || 0 });
+      });
+      extraRows.sort((a, b) => a.date.localeCompare(b.date));
 
-      let bad = 0;
-      badDebt.forEach(b => { if (b.date && b.date.startsWith(monthStr)) bad += (Number(b.amount) || 0); });
+      // 三、支出：進貨（從進銷存自動帶入）＋手動記的支出＋少數「賣出時才填成本、沒有對應進貨紀錄」的情況
+      let expenseRows = [];
+      materialPurchases.forEach(p => {
+        if (!inMonth(p.date)) return;
+        let qty = Number(p.quantity) || 0, cpu = Number(p.costPerUnit) || 0;
+        expenseRows.push({ date: p.date, category: '進貨', item: p.itemName + ' ×' + qty + '（每件 ' + cpu + ' 元）', note: p.note || '', amount: qty * cpu, auto: true });
+      });
+      materialSales.forEach(s => {
+        if (!inMonth(s.date)) return;
+        let cost = Number(s.totalCost) || 0;
+        if (cost <= 0) return;
+        if (s.fromInventory === false) {
+          expenseRows.push({ date: s.date, category: '其他成本', item: s.itemName + '（銷售時填的成本）', note: '', amount: cost, auto: true });
+        } else if (!s.drawnFrom || s.drawnFrom.length === 0) {
+          expenseRows.push({ date: s.date, category: '進貨', item: s.itemName + '（賣出時手動填的成本，沒有對應的進貨紀錄）', note: '', amount: cost, auto: true });
+        }
+      });
+      expenses.forEach(e => {
+        if (!inMonth(e.date)) return;
+        expenseRows.push({ id: e.id, date: e.date, category: e.category || '雜支', item: e.item || '', note: e.note || '', amount: Number(e.amount) || 0, auto: false });
+      });
+      expenseRows.sort((a, b) => a.date.localeCompare(b.date));
+      let catTotals = {};
+      expenseRows.forEach(r => { catTotals[r.category] = (catTotals[r.category] || 0) + r.amount; });
+      let catOrder = EXPENSE_CATEGORIES.filter(c => catTotals[c] !== undefined).concat(Object.keys(catTotals).filter(c => !EXPENSE_CATEGORIES.includes(c)));
+      let expenseByCategory = catOrder.map(c => ({ category: c, amount: catTotals[c] }));
 
-      let total = teaching + extra - bad;
-      document.getElementById('revenue-teaching').innerText = 'NT$ ' + teaching.toLocaleString();
-      document.getElementById('revenue-extra').innerText = 'NT$ ' + extra.toLocaleString();
-      document.getElementById('revenue-baddebt').innerText = '−NT$ ' + bad.toLocaleString();
-      document.getElementById('dynamic-total-revenue').innerText = 'NT$ ' + total.toLocaleString();
+      // 四、呆帳
+      let badDebtRows = badDebt.filter(b => inMonth(b.date)).map(b => ({ date: b.date, who: b.studentName || '', note: b.note || '', amount: Number(b.amount) || 0 })).sort((a, b) => a.date.localeCompare(b.date));
+
+      let sum = (rows, key) => Number(rows.reduce((s, r) => s + (Number(r[key]) || 0), 0).toFixed(2));
+      let teachingTotal = sum(teachingRows, 'fee');
+      let extraTotal = sum(extraRows, 'amount');
+      let expenseTotal = sum(expenseRows, 'amount');
+      let badDebtTotal = sum(badDebtRows, 'amount');
+      let incomeTotal = Number((teachingTotal + extraTotal).toFixed(2));
+      let net = Number((incomeTotal - expenseTotal - badDebtTotal).toFixed(2));
+      return { monthStr, teachingRows, extraRows, expenseRows, expenseByCategory, badDebtRows, teachingTotal, extraTotal, incomeTotal, expenseTotal, badDebtTotal, net };
     }
+
+    function calculateDynamicRevenue() {
+      let monthStr = document.getElementById('salary-month-picker').value; 
+      if (!monthStr) return;
+      renderSalaryUnmarkedStatus(monthStr);
+      let r = buildMonthlyReport(monthStr);
+      document.getElementById('revenue-teaching').innerText = 'NT$ ' + r.teachingTotal.toLocaleString();
+      document.getElementById('revenue-extra').innerText = 'NT$ ' + r.extraTotal.toLocaleString();
+      document.getElementById('revenue-expense').innerText = '−NT$ ' + r.expenseTotal.toLocaleString();
+      document.getElementById('revenue-baddebt').innerText = '−NT$ ' + r.badDebtTotal.toLocaleString();
+      document.getElementById('dynamic-total-revenue').innerText = (r.net < 0 ? '−NT$ ' : 'NT$ ') + Math.abs(r.net).toLocaleString();
+    }
+
+    // ============ 支出紀錄頁面 ============
+    function openExpensePage(monthStr) {
+      document.getElementById('expense-month-picker').value = monthStr || getCurrentMonthStr();
+      showPage('expense-page');
+    }
+
+    function checkExpenseCategory() {
+      let isCustom = document.getElementById('expense-category').value === '__custom';
+      document.getElementById('expense-category-custom').style.display = isCustom ? 'block' : 'none';
+    }
+
+    function submitExpense() {
+      let date = document.getElementById('expense-date').value;
+      if (!date) { alert('請選擇日期！'); return; }
+      let category = document.getElementById('expense-category').value;
+      if (category === '__custom') {
+        category = document.getElementById('expense-category-custom').value.trim();
+        if (!category) { alert('請輸入類別名稱！'); return; }
+      }
+      let item = document.getElementById('expense-item').value.trim();
+      if (!item) { alert('請輸入項目！'); return; }
+      let amountRaw = document.getElementById('expense-amount').value;
+      let amount = Number(amountRaw);
+      if (amountRaw === '' || isNaN(amount) || amount < 0) { alert('請輸入金額！'); return; }
+      let note = document.getElementById('expense-note').value.trim();
+      expenses.push({ id: generateId(), date: date, category: category, item: item, amount: amount, note: note, createdAt: new Date().toISOString() });
+      saveExpensesToMemory();
+      document.getElementById('expense-item').value = '';
+      document.getElementById('expense-amount').value = '';
+      document.getElementById('expense-note').value = '';
+      document.getElementById('expense-month-picker').value = date.slice(0, 7); // 跳到剛剛記的那個月，馬上看得到
+      renderExpensePage();
+      alert('✅ 已新增支出！');
+    }
+
+    function deleteExpense(id) {
+      if (!confirm('確定要刪除這筆支出嗎？')) return;
+      expenses = expenses.filter(e => e.id !== id);
+      saveExpensesToMemory();
+      renderExpensePage();
+    }
+
+    function renderExpensePage() {
+      let monthStr = document.getElementById('expense-month-picker').value;
+      if (!monthStr) return;
+      let r = buildMonthlyReport(monthStr);
+      let summary = document.getElementById('expense-summary');
+      if (r.expenseRows.length === 0) {
+        summary.innerHTML = '';
+        document.getElementById('expense-list').innerHTML = '<p style="color:#aaa; font-size:13px;">這個月還沒有支出紀錄。</p>';
+        return;
+      }
+      summary.innerHTML = '<div class="card" style="width:100%; box-sizing:border-box; margin:0 0 12px 0;">' +
+        r.expenseByCategory.map(c => '<div class="pay-history-row"><span>' + escHTML(c.category) + '</span><span>NT$ ' + c.amount.toLocaleString() + '</span></div>').join('') +
+        '<div class="pay-history-row" style="border-bottom:none; font-weight:bold; color:#333;"><span>支出合計</span><span>NT$ ' + r.expenseTotal.toLocaleString() + '</span></div></div>';
+      let rows = r.expenseRows.slice().reverse().map(e => {
+        let action = e.auto
+          ? '<span style="font-size:11px; color:#aaa;">自動帶入</span>'
+          : '<button class="small-btn del-btn" style="padding:2px 8px; font-size:11px;" onclick="deleteExpense(\'' + e.id + '\')">刪除</button>';
+        return '<div class="pay-history-row" style="align-items:flex-start; padding:8px 0;">' +
+          '<div style="flex:1; text-align:left;"><div style="font-size:11px; color:#888;">' + e.date + '・' + escHTML(e.category) + '</div>' +
+          '<div style="color:#333; font-size:13px;">' + escHTML(e.item) + (e.note ? '<span style="color:#888;">（' + escHTML(e.note) + '）</span>' : '') + '</div></div>' +
+          '<div style="text-align:right; margin-left:8px;"><div style="font-weight:bold; color:#333;">NT$ ' + e.amount.toLocaleString() + '</div>' + action + '</div></div>';
+      }).join('');
+      document.getElementById('expense-list').innerHTML = '<p style="font-size:12px; color:#888; margin:0 0 4px 0;">標「自動帶入」的是進銷存管理裡的進貨，要修改請到進銷存管理。</p>' + rows;
+    }
+    // ============ 支出紀錄頁面結束 ============
+
+    // ============ 收支總表 PDF：組好一份列印專用的版面，交給瀏覽器「列印 → 存成 PDF」，文字可以選取、複製 ============
+    function formatReportMoney(n) { return 'NT$ ' + Number(Number(n).toFixed(2)).toLocaleString(); }
+
+    function formatReportDate(dateStr) {
+      let d = new Date(dateStr + 'T00:00:00');
+      return dateStr.slice(5).replace('-', '/') + '（' + getDayName(d.getDay().toString()).replace('週', '') + '）';
+    }
+
+    function buildReportHTML(r) {
+      let parts = r.monthStr.split('-');
+      let title = parts[0] + '年' + parts[1] + '月份 收支總表';
+      let money = formatReportMoney;
+      let emptyRow = (cols, text) => '<tr><td colspan="' + cols + '" class="empty">' + text + '</td></tr>';
+      let h = '';
+      h += '<div class="pr-top"><span>Jess Music Studio</span><span>製表日期：' + formatDate(new Date()) + '</span></div>';
+      h += '<h1>' + title + '</h1>';
+
+      // 一、授課收入
+      h += '<h2>一、授課收入</h2><table><thead><tr><th>日期（星期）</th><th>時間</th><th>學生</th><th>備註</th><th class="num">費用</th></tr></thead><tbody>';
+      if (r.teachingRows.length === 0) h += emptyRow(5, '本月沒有授課收入');
+      r.teachingRows.forEach(row => {
+        let timeStr = row.time ? row.time + '–' + computeEndTime(row.time, Number(row.duration) || 60) : '—';
+        h += '<tr><td class="nowrap">' + formatReportDate(row.date) + '</td><td class="nowrap">' + timeStr + '</td><td>' + escHTML(row.name) + '</td><td>' + escHTML(row.note) + '</td><td class="num">' + money(row.fee) + '</td></tr>';
+      });
+      h += '<tr class="total"><td colspan="4">授課收入合計（' + r.teachingRows.length + ' 堂）</td><td class="num">' + money(r.teachingTotal) + '</td></tr></tbody></table>';
+
+      // 二、額外收入
+      let hasSale = r.extraRows.some(x => x.refCost !== null);
+      h += '<h2>二、額外收入</h2><table><thead><tr><th>日期</th><th>項目</th><th>對象</th><th class="num">進貨成本（參考）</th><th class="num">金額</th></tr></thead><tbody>';
+      if (r.extraRows.length === 0) h += emptyRow(5, '本月沒有額外收入');
+      r.extraRows.forEach(row => {
+        h += '<tr><td class="nowrap">' + formatReportDate(row.date) + '</td><td>' + escHTML(row.item) + '</td><td>' + escHTML(row.who) + '</td><td class="num">' + (row.refCost === null ? '—' : money(row.refCost)) + '</td><td class="num">' + money(row.amount) + '</td></tr>';
+      });
+      h += '<tr class="total"><td colspan="4">額外收入合計</td><td class="num">' + money(r.extraTotal) + '</td></tr></tbody></table>';
+      if (hasSale) h += '<p class="foot-note">※ 教材銷售以售價計入收入；「進貨成本」僅供對照，已在進貨當月計入支出，不會重複扣除。</p>';
+
+      // 三、支出
+      h += '<h2>三、支出</h2><table><thead><tr><th>日期</th><th>類別</th><th>項目</th><th>備註</th><th class="num">金額</th></tr></thead><tbody>';
+      if (r.expenseRows.length === 0) h += emptyRow(5, '本月沒有支出紀錄');
+      r.expenseRows.forEach(row => {
+        h += '<tr><td class="nowrap">' + formatReportDate(row.date) + '</td><td class="nowrap">' + escHTML(row.category) + '</td><td>' + escHTML(row.item) + '</td><td>' + escHTML(row.note) + '</td><td class="num">' + money(row.amount) + '</td></tr>';
+      });
+      r.expenseByCategory.forEach(c => {
+        h += '<tr class="sub"><td colspan="4">小計：' + escHTML(c.category) + '</td><td class="num">' + money(c.amount) + '</td></tr>';
+      });
+      h += '<tr class="total"><td colspan="4">支出合計</td><td class="num">' + money(r.expenseTotal) + '</td></tr></tbody></table>';
+
+      // 四、呆帳
+      h += '<h2>四、呆帳</h2><table><thead><tr><th>日期</th><th>學生</th><th>說明</th><th class="num">金額</th></tr></thead><tbody>';
+      if (r.badDebtRows.length === 0) h += emptyRow(4, '本月沒有呆帳');
+      r.badDebtRows.forEach(row => {
+        h += '<tr><td class="nowrap">' + formatReportDate(row.date) + '</td><td>' + escHTML(row.who) + '</td><td>' + escHTML(row.note) + '</td><td class="num">' + money(row.amount) + '</td></tr>';
+      });
+      h += '<tr class="total"><td colspan="3">呆帳合計</td><td class="num">' + money(r.badDebtTotal) + '</td></tr></tbody></table>';
+
+      // 五、本月結算
+      h += '<h2>五、本月結算</h2><table class="summary"><tbody>';
+      h += '<tr><td>授課收入</td><td class="num">' + money(r.teachingTotal) + '</td></tr>';
+      h += '<tr><td>額外收入</td><td class="num">' + money(r.extraTotal) + '</td></tr>';
+      h += '<tr class="sub"><td>收入合計</td><td class="num">' + money(r.incomeTotal) + '</td></tr>';
+      h += '<tr><td>減：支出</td><td class="num">−' + money(r.expenseTotal) + '</td></tr>';
+      h += '<tr><td>減：呆帳</td><td class="num">−' + money(r.badDebtTotal) + '</td></tr>';
+      h += '<tr class="total net"><td>本月淨收入</td><td class="num">' + (r.net < 0 ? '−' + money(-r.net) : money(r.net)) + '</td></tr>';
+      h += '</tbody></table>';
+      return { title: title, html: h };
+    }
+
+    function generateMonthlyReportPDF() {
+      let monthStr = document.getElementById('salary-month-picker').value;
+      if (!monthStr) { alert('請先選擇結算月份！'); return; }
+      if (monthStr <= getCurrentMonthStr()) {
+        let unmarked = getUnmarkedLessons(monthStr);
+        if (unmarked.length > 0) {
+          let missing = Math.round(unmarked.reduce((s, it) => s + it.fee, 0));
+          if (!confirm('⚠️ ' + monthStr + ' 還有 ' + unmarked.length + ' 堂課沒處理（約 NT$ ' + missing.toLocaleString() + ' 還沒計入），總表金額可能偏低，確定要產出嗎？\n\n按「取消」可以先到「未點名檢查」處理。')) return;
+        }
+      }
+      let r = buildMonthlyReport(monthStr);
+      let report = buildReportHTML(r);
+      document.getElementById('print-report').innerHTML = report.html;
+      let oldTitle = document.title;
+      document.title = report.title; // 存成 PDF 時的預設檔名
+      window.onafterprint = function () { document.title = oldTitle; window.onafterprint = null; };
+      window.print();
+    }
+    // ============ 收支總表 PDF 結束 ============
 
     // 依搜尋關鍵字重新產生下拉選單的學生選項；query 空白就顯示全部（已退班學生視 excludeWithdrawn 決定要不要排除）。
     // 篩選後如果原本選到的人還在篩選結果裡，會盡量保留住那個選取狀態，不會因為打字而跳掉。
@@ -4840,7 +5132,8 @@
         progressNotes: progressNotes,
         achievements: achievements,
         materialPurchases: materialPurchases,
-        materialSales: materialSales
+        materialSales: materialSales,
+        expenses: expenses
       };
       let blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
       let url = URL.createObjectURL(blob);
@@ -4887,6 +5180,7 @@
         achievements = Array.isArray(data.achievements) ? data.achievements : [];
         materialPurchases = Array.isArray(data.materialPurchases) ? data.materialPurchases : [];
         materialSales = Array.isArray(data.materialSales) ? data.materialSales : [];
+        expenses = Array.isArray(data.expenses) ? data.expenses : [];
         saveToMemory();
         saveMakeupToMemory();
         savePaymentToMemory();
@@ -4899,6 +5193,7 @@
         saveAchievementsToMemory();
         saveMaterialPurchasesToMemory();
         saveMaterialSalesToMemory();
+        saveExpensesToMemory();
         renderManageList();
         if (calendar) calendar.refetchEvents();
         updateMainMenuBadge();
