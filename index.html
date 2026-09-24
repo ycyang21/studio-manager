@@ -1664,9 +1664,10 @@
         }
 
         if (getStudentBalance(s.id) > 0) { displayTitle = '💰 ' + displayTitle; }
+        let shortTitle = displayTitle + (s.location ? '・' + (s.locationAbbr || s.location) : ''); // 月曆下方詳細行程用縮寫，沒填縮寫就退回全名
         if (s.location) { displayTitle += '・' + s.location; }
 
-        items.push({ title: displayTitle, className: eventClass, time: s.timeVal, allDay: !s.timeVal, name: s.name, locationAbbr: s.locationAbbr || '', props: { type: 'normal', stuIdx: stuIdx, dateStr: dateStr } });
+        items.push({ title: displayTitle, shortTitle: shortTitle, className: eventClass, time: s.timeVal, allDay: !s.timeVal, name: s.name, locationAbbr: s.locationAbbr || '', props: { type: 'normal', stuIdx: stuIdx, dateStr: dateStr } });
       });
 
       // 不管這筆補課存摺紀錄是「還有欠」還是「已經結清（history）」，只要底下有排定日期，都要看得到那一天——
@@ -1679,8 +1680,9 @@
           if (sch.attended) { displayTitle = '✅ [補] ' + record.studentName; eventClass = 'event-attended'; }
           if (getStudentBalance(record.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
           let makeupStu = students.find(x => x.id === record.studentId);
+          let shortTitle = displayTitle + ((makeupStu && makeupStu.location) ? '・' + (makeupStu.locationAbbr || makeupStu.location) : '');
           if (makeupStu && makeupStu.location) { displayTitle += '・' + makeupStu.location; }
-          items.push({ title: displayTitle, className: eventClass, time: sch.time, allDay: !sch.time, name: record.studentName, locationAbbr: (makeupStu && makeupStu.locationAbbr) || '', props: { type: 'makeup', recordId: record.id, schIdx: schIdx, dateStr: dateStr } });
+          items.push({ title: displayTitle, shortTitle: shortTitle, className: eventClass, time: sch.time, allDay: !sch.time, name: record.studentName, locationAbbr: (makeupStu && makeupStu.locationAbbr) || '', props: { type: 'makeup', recordId: record.id, schIdx: schIdx, dateStr: dateStr } });
         });
       });
 
@@ -1693,8 +1695,9 @@
         if (t.amount !== undefined && t.amount !== 1) { displayTitle += ' (' + t.amount + '堂)'; }
         if (getStudentBalance(t.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
         let tempStu = t.studentId ? students.find(x => x.id === t.studentId) : null;
+        let shortTitle = displayTitle + ((tempStu && tempStu.location) ? '・' + (tempStu.locationAbbr || tempStu.location) : '');
         if (tempStu && tempStu.location) { displayTitle += '・' + tempStu.location; }
-        items.push({ title: displayTitle, className: eventClass, time: t.time, allDay: !t.time, name: t.studentName, locationAbbr: (tempStu && tempStu.locationAbbr) || '', props: { type: 'temp', tempId: t.id, dateStr: dateStr } });
+        items.push({ title: displayTitle, shortTitle: shortTitle, className: eventClass, time: t.time, allDay: !t.time, name: t.studentName, locationAbbr: (tempStu && tempStu.locationAbbr) || '', props: { type: 'temp', tempId: t.id, dateStr: dateStr } });
       });
 
       items.forEach(it => { it.endTime = it.allDay ? '' : computeEndTime(it.time, getDurationForProps(it.props)); });
@@ -1794,7 +1797,7 @@
       } else {
         list.innerHTML = items.map((it, idx) => {
           let timeCol = it.allDay ? '' : `<div class="day-panel-time"><div>${it.time}</div><div class="day-panel-time-end">${it.endTime}</div></div>`;
-          return `<div class="day-panel-item ${it.className}" onclick="openDayPanelItem(${idx})">${timeCol}<div class="day-panel-title">${it.title}</div></div>`;
+          return `<div class="day-panel-item ${it.className}" onclick="openDayPanelItem(${idx})">${timeCol}<div class="day-panel-title">${it.shortTitle || it.title}</div></div>`;
         }).join('');
       }
       document.getElementById('calendar-day-panel').style.display = 'block';
