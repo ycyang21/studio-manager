@@ -59,8 +59,9 @@
     .event-canceled { background-color: #f0f0f0 !important; color: #aaa !important; text-decoration: line-through !important; opacity: 0.6; }
     .event-makeup-conv { background-color: #FFF9F5 !important; color: #E08E79 !important; border: 1px dashed #E08E79 !important; opacity: 0.8; }
     .event-temp { background-color: #7C93B3 !important; color: white !important; }
+    .event-reschedule-lesson { background-color: #8F7FB8 !important; color: white !important; } /* 調課（調過去的新時段）：跟臨時課分開，用紫色 */
     .event-absent-charged { background-color: #C1666B !important; color: white !important; }
-    .event-rescheduled { background-color: #EEF1F5 !important; color: #7C93B3 !important; border: 1px dashed #7C93B3 !important; opacity: 0.8; }
+    .event-rescheduled { background-color: #F3F0F8 !important; color: #8F7FB8 !important; border: 1px dashed #8F7FB8 !important; opacity: 0.8; } /* 調課（原本空出來的時段）：跟新時段同色系的虛線 */
 
     /* 手機版精簡月曆：只在偵測到窄螢幕時，由 JS 加上 calendar-compact 這個 class 才會生效，桌面版完全不受影響 */
     #calendar.calendar-compact .fc-daygrid-event-harness { margin-bottom: 2px !important; }
@@ -70,7 +71,7 @@
     #calendar.calendar-compact .fc-event.event-canceled,
     #calendar.calendar-compact .fc-event.event-makeup-conv,
     #calendar.calendar-compact .fc-event.event-rescheduled { height: 6px !important; min-height: 6px !important; }
-    /* 其他（出席、缺席收費、待上課、補課、臨時課…）都算「確定排定」，用這個小標籤顯示學生姓名 */
+    /* 其他（出席、缺席收費、待上課、補課、調課、臨時課…）都算「確定排定」，用這個小標籤顯示學生姓名 */
     #calendar.calendar-compact .fc-compact-name { padding: 1px 3px; color: white; line-height: 1.15; }
     #calendar.calendar-compact .fc-compact-loc { font-size: 7px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #calendar.calendar-compact .fc-compact-namepart { font-size: 9px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -514,7 +515,7 @@
     <div class="modal-content" style="text-align: left;">
       <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">🔀 課堂調課</h3>
       <p id="reschedule-student-name" style="font-size:15px; font-weight:bold; color:#333; margin-bottom:10px;"></p>
-      <p style="font-size:12px; color:#888; line-height:1.5;">原本的時段會標記為「已調課」保留紀錄，新時段會另外新增一堂臨時課。</p>
+      <p style="font-size:12px; color:#888; line-height:1.5;">原本的時段會標記為「已調課」保留紀錄，新時段會新增一堂 🔀 調課（跟臨時課分開顯示）。之後如果要反悔，點新的那堂按「↩️ 取消調課」，原本那堂就會恢復。</p>
       <div class="form-group"><label>新的日期</label><input type="date" id="reschedule-new-date" class="form-control"></div>
       <div class="form-group">
         <label>新的時間 (24小時制)</label>
@@ -529,14 +530,18 @@
       <div class="form-group">
         <label>上課時長（分鐘）</label>
         <div style="display:flex; gap:6px; margin-bottom:6px;">
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('reschedule-duration').value=30">30</button>
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('reschedule-duration').value=50">50</button>
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('reschedule-duration').value=60">60</button>
-          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('reschedule-duration').value=90">90</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('reschedule-duration').value=30; syncRescheduleAmountDuration('duration')">30</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('reschedule-duration').value=50; syncRescheduleAmountDuration('duration')">50</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('reschedule-duration').value=60; syncRescheduleAmountDuration('duration')">60</button>
+          <button type="button" class="small-btn" style="flex:1; background-color:#E2E8DF; color:#333;" onclick="document.getElementById('reschedule-duration').value=90; syncRescheduleAmountDuration('duration')">90</button>
         </div>
-        <input type="number" id="reschedule-duration" class="form-control" value="60" min="1" step="1" placeholder="分鐘">
+        <input type="number" id="reschedule-duration" class="form-control" value="60" min="1" step="1" placeholder="分鐘" oninput="syncRescheduleAmountDuration('duration')">
       </div>
-      <button class="button" style="width:100%; margin:10px 0 0 0; background-color:#7C93B3;" onclick="submitReschedule()">✅ 確認調課</button>
+      <div class="form-group">
+        <label>這堂算幾堂（跟上面的時長會自動互相換算）</label>
+        <input type="number" id="reschedule-amount" class="form-control" value="1" min="0.05" step="0.05" oninput="syncRescheduleAmountDuration('amount')">
+      </div>
+      <button class="button" style="width:100%; margin:10px 0 0 0; background-color:#8F7FB8;" onclick="submitReschedule()">✅ 確認調課</button>
       <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeRescheduleModal()">取消</button>
     </div>
   </div>
@@ -545,6 +550,7 @@
     <div class="modal-content">
       <h3 id="modal-title" style="margin-top: 0; font-size: 20px; color: #333;">學生姓名</h3>
       <p id="modal-date" style="color: #666; font-size: 14px; margin-bottom: 20px;">2026-09-11 18:00</p>
+      <p id="modal-kind-note" style="display:none; font-size:13px; font-weight:bold; margin:-12px 0 18px 0;"></p>
       <div id="modal-balance-info" style="display:none; font-size:13px; margin: -10px 0 16px 0; padding:8px 10px; border-radius:6px; text-align:left; line-height:1.4;"></div>
       <div style="text-align:left; margin-bottom:16px;">
         <h4 style="margin:0; font-size:14px; color:#666; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="toggleModalNotesSection()">📝 待辦 / 課堂記錄 / 銷售 <span id="modal-notes-toggle-arrow" style="font-size:12px; color:#8C9C8A;">▸ 展開</span></h4>
@@ -613,7 +619,7 @@
           <button class="modal-btn" style="background-color: #E2E8DF; color: #333;" onclick="markStatus('canceled')">❌ 延期 (不收費/留存紀錄)</button>
           <button class="modal-btn" style="background-color: #C1666B;" onclick="markStatus('absent_charged')">💸 缺席收費 (人沒來但仍計費)</button>
           <button class="modal-btn" style="background-color: #E08E79;" onclick="markStatus('makeup')">🔄 轉為補課 (存入存摺)</button>
-          <button class="modal-btn" style="background-color: #7C93B3;" onclick="openRescheduleModalFromEvent()">🔀 調課</button>
+          <button class="modal-btn" style="background-color: #8F7FB8;" onclick="openRescheduleModalFromEvent()">🔀 調課</button>
           <button class="modal-btn" style="background-color: #fff; color: #888; border: 1px solid #ddd;" onclick="markStatus('reset')">↩️ 恢復為「未點名」</button>
         </div>
 
@@ -650,11 +656,12 @@
           <input type="checkbox" id="modal-temp-mark-paid" onchange="checkPaidCheckboxWarning(this)"> 出席的同時，登記已收費
         </label>
         <button class="modal-btn" style="background-color: #8C9C8A;" onclick="markTempStatus('attended')">✅ 出席 (紀錄學費)</button>
-        <button class="modal-btn" style="background-color: #E2E8DF; color: #333;" onclick="markTempStatus('canceled')">❌ 取消 (不收費/留存紀錄)</button>
-        <button class="modal-btn" style="background-color: #7C93B3;" onclick="openEditTempLessonModalFromEvent()">✏️ 編輯這筆臨時課</button>
+        <button class="modal-btn" id="modal-temp-cancel-btn" style="background-color: #E2E8DF; color: #333;" onclick="markTempStatus('canceled')">❌ 取消 (不收費/留存紀錄)</button>
+        <button class="modal-btn" id="modal-temp-edit-btn" style="background-color: #7C93B3;" onclick="openEditTempLessonModalFromEvent()">✏️ 編輯這筆臨時課</button>
         <button class="modal-btn" style="background-color: #fff; color: #888; border: 1px solid #ddd;" onclick="markTempStatus('reset')">↩️ 恢復為「未點名」</button>
         <button class="modal-btn" id="modal-temp-convert-btn" style="background-color: #7C93B3; display:none;" onclick="openConvertModalFromTemp()">🎓 轉為正式學生</button>
-        <button class="modal-btn" style="background-color: #FFB6B9;" onclick="deleteTempLesson()">🗑️ 刪除這筆臨時課</button>
+        <button class="modal-btn" id="modal-temp-delete-btn" style="background-color: #FFB6B9;" onclick="deleteTempLesson()">🗑️ 刪除這筆臨時課</button>
+        <button class="modal-btn" id="modal-temp-undo-reschedule-btn" style="background-color: #FFB6B9; display:none;" onclick="cancelReschedule()">↩️ 取消調課，恢復原本那堂</button>
       </div>
       <button class="button btn-secondary" style="margin-top: 25px; padding: 10px;" onclick="closeModal()">取消關閉</button>
     </div>
@@ -909,6 +916,7 @@
         <input type="month" id="salary-month-picker" class="form-control" onchange="calculateDynamicRevenue()">
       </div>
       <div id="salary-unmarked-status" style="display:none; font-size:13px; line-height:1.5; padding:8px 10px; border-radius:6px; text-align:left;"></div>
+      <div id="salary-legacy-reschedule-status" style="display:none; font-size:13px; line-height:1.5; padding:8px 10px; border-radius:6px; text-align:left; margin-top:6px; background-color:#EEF2F8; color:#4A5F80; cursor:pointer;" onclick="openLegacyRescheduleModal()"></div>
       <div class="card" style="margin-top: 20px;">
         <div class="pay-history-row"><span>教學收入</span><span id="revenue-teaching">NT$ 0</span></div>
         <div class="pay-history-row"><span>額外收入</span><span id="revenue-extra">NT$ 0</span></div>
@@ -1112,6 +1120,16 @@
     </div>
   </div>
 
+  <div id="legacy-reschedule-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="modal-content" style="text-align: left; max-height: 85vh; overflow-y: auto;">
+      <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">🔀 確認以前的調課</h3>
+      <p style="font-size:13px; color:#666; line-height:1.6; margin-top:0;">這些課是在「調課會自動標記」之前調的，所以目前在月曆和收支總表上都還被當成臨時課（📌）。系統依照「同一位學生、有一堂標成已調課、日期相近」找出下面的配對。打勾的會標記為調課；如果某一堂其實是真正的臨時課，請把勾勾取消。</p>
+      <div id="legacy-reschedule-list"></div>
+      <button class="button" style="width:100%; margin:14px 0 0 0;" onclick="submitLegacyReschedule()">✅ 把打勾的標記為調課</button>
+      <button class="button btn-secondary" style="width:100%; margin:10px 0 0 0;" onclick="closeLegacyRescheduleModal()">取消</button>
+    </div>
+  </div>
+
   <div id="edit-expense-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
     <div class="modal-content" style="text-align: left; max-height: 85vh; overflow-y: auto;">
       <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">✏️ 編輯支出</h3>
@@ -1168,13 +1186,13 @@
 
   <div id="edit-temp-lesson-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
     <div class="modal-content" style="text-align: left;">
-      <h3 style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">✏️ 編輯臨時課</h3>
+      <h3 id="edit-temp-title" style="margin-top: 0; font-size: 18px; color: #333; text-align:center;">✏️ 編輯臨時課</h3>
       <p id="edit-temp-student-name" style="font-size:15px; font-weight:bold; color:#333; margin-bottom:10px;"></p>
       <div class="form-group" id="edit-temp-kind-group"><label>這堂課是</label><div class="radio-group">
         <label><input type="radio" name="edit-temp-kind" value="temp"> 臨時課</label>
         <label><input type="radio" name="edit-temp-kind" value="reschedule"> 調課</label>
       </div></div>
-      <p id="edit-temp-labelonly-note" style="display:none; font-size:12px; color:#B5651D; margin:-6px 0 10px 0; line-height:1.5;">這堂已經出席，只能修改類型（只影響收支總表的備註，不影響學費）。要改時間或堂數，請先「恢復為未點名」。</p>
+      <p id="edit-temp-labelonly-note" style="display:none; font-size:12px; color:#B5651D; margin:-6px 0 10px 0; line-height:1.5;">這堂已經出席，只能修改類型（只影響月曆上的標示跟收支總表的備註，不影響學費）。要改時間或堂數，請先「恢復為未點名」。</p>
       <div class="form-group"><label>日期</label><input type="date" id="edit-temp-date" class="form-control"></div>
       <div class="form-group">
         <label>時間 (24小時制)</label>
@@ -1242,6 +1260,95 @@
 
     // 這堂臨時課是不是調課產生的（上一版曾經用 'makeup' 存，一併視為調課）
     function isRescheduleTemp(t) { return !!t && (t.kind === 'reschedule' || t.kind === 'makeup'); }
+
+    // 從「調過去的那堂」找回「原本那堂」是哪位學生的：先找同一個 id，找不到再用姓名
+    // （課程方案異動後，調過去的那堂會跟著轉到新方案的學生資料底下，但原本那堂還留在舊方案）
+    function findRescheduleOriginStudent(t) {
+      if (!t || !t.rescheduledFrom) return null;
+      let has = s => (s.rescheduledDates || []).includes(t.rescheduledFrom);
+      return students.find(s => s.id === t.studentId && has(s)) || students.find(s => s.name === t.studentName && has(s)) || null;
+    }
+
+    // 反過來：從「原本那堂」找出調過去的是哪一堂（正常情況只會有一堂）
+    function getLinkedRescheduleLessons(s, dateStr) {
+      let mine = tempLessons.filter(t => isRescheduleTemp(t) && t.rescheduledFrom === dateStr);
+      let byId = mine.filter(t => t.studentId === s.id);
+      if (byId.length > 0) return byId;
+      // 同名但其實是別位學生自己調的課，不能算進來
+      return mine.filter(t => t.studentName === s.name && !students.some(x => x.id === t.studentId && x.id !== s.id && (x.rescheduledDates || []).includes(dateStr)));
+    }
+
+    // 找出「以前調的課」：在調課會自動標記之前，調課產生的新課跟臨時課存得一模一樣。
+    // 配對規則：同一位學生，一個「已調課」的原日期，配上一堂還沒標記過的臨時課，日期相差 31 天以內，距離最近的優先。
+    // 只是建議，一定要讓使用者確認後才會標記。
+    function findLegacyRescheduleCandidates() {
+      let pairs = [];
+      students.forEach(s => {
+        let mine = tempLessons.filter(t => t.studentId === s.id && !t.canceled);
+        let claimed = new Set(mine.filter(t => isRescheduleTemp(t) && t.rescheduledFrom).map(t => t.rescheduledFrom));
+        let origDates = (s.rescheduledDates || []).filter(d => !claimed.has(d));
+        // 已經手動標成調課、但不知道原日期的那幾堂，也要先佔掉一個原日期，避免被拿去配給別的課
+        let pool = mine.filter(t => !t.kind || (isRescheduleTemp(t) && !t.rescheduledFrom));
+        let options = [];
+        origDates.forEach(d0 => pool.forEach(t => {
+          let diff = Math.abs((new Date(t.date + 'T00:00:00') - new Date(d0 + 'T00:00:00')) / 86400000);
+          if (diff <= 31) options.push({ d0: d0, t: t, diff: diff });
+        }));
+        options.sort((a, b) => a.diff - b.diff || a.t.date.localeCompare(b.t.date));
+        let usedDates = new Set(), usedTemps = new Set();
+        options.forEach(o => {
+          if (usedDates.has(o.d0) || usedTemps.has(o.t.id)) return;
+          usedDates.add(o.d0); usedTemps.add(o.t.id);
+          if (!o.t.kind) pairs.push({ temp: o.t, originalDate: o.d0, studentName: s.name });
+        });
+      });
+      pairs.sort((a, b) => (a.temp.date + a.temp.time).localeCompare(b.temp.date + b.temp.time));
+      return pairs;
+    }
+
+    let currentLegacyPairs = [];
+
+    function openLegacyRescheduleModal() {
+      currentLegacyPairs = findLegacyRescheduleCandidates();
+      let list = document.getElementById('legacy-reschedule-list');
+      if (currentLegacyPairs.length === 0) {
+        list.innerHTML = '<p style="color:#888; font-size:13px;">目前沒有找到需要確認的調課。</p>';
+      } else {
+        list.innerHTML = currentLegacyPairs.map((p, i) =>
+          '<label style="display:flex; align-items:flex-start; gap:8px; padding:8px 0; border-bottom:1px solid #eee; font-weight:normal; cursor:pointer;">' +
+          '<input type="checkbox" class="legacy-resch-cb" data-idx="' + i + '" checked style="width:18px; height:18px; margin-top:2px; flex-shrink:0;">' +
+          '<span style="font-size:14px; color:#333;"><b>' + escHTML(p.studentName) + '</b>　' + formatReportDate(p.temp.date) + ' ' + (p.temp.time || '') +
+          '<br><span style="font-size:12px; color:#888;">原本 ' + formatReportDate(p.originalDate) + ' 的課調過來</span></span></label>'
+        ).join('');
+      }
+      document.getElementById('legacy-reschedule-modal').style.display = 'flex';
+    }
+
+    function closeLegacyRescheduleModal() { document.getElementById('legacy-reschedule-modal').style.display = 'none'; }
+
+    function submitLegacyReschedule() {
+      let count = 0;
+      document.querySelectorAll('.legacy-resch-cb').forEach(cb => {
+        if (!cb.checked) return;
+        let p = currentLegacyPairs[Number(cb.dataset.idx)];
+        if (!p) return;
+        p.temp.kind = 'reschedule';
+        p.temp.rescheduledFrom = p.originalDate;
+        count++;
+      });
+      if (count > 0) { saveTempToMemory(); if (calendar) calendar.refetchEvents(); }
+      closeLegacyRescheduleModal();
+      if (document.getElementById('salary-page').style.display === 'block') calculateDynamicRevenue();
+      alert(count > 0 ? '✅ 已把 ' + count + ' 堂標記為調課！' : '沒有勾選任何一堂，所以沒有變更。');
+    }
+
+    function renderSalaryLegacyRescheduleStatus() {
+      let el = document.getElementById('salary-legacy-reschedule-status');
+      let n = findLegacyRescheduleCandidates().length;
+      if (n === 0) { el.style.display = 'none'; return; }
+      el.innerHTML = '🔀 找到 ' + n + ' 堂以前調過的課，目前在月曆和收支總表都還算成「臨時課」。<b>點這裡確認 ›</b>';
+      el.style.display = 'block';
+    }
     let cloudDb = null, cloudAuth = null, cloudFns = null, unsubscribeCloud = null; // Firebase 雲端同步用
 
     // 資料遷移：確保每位學生都有唯一 id，補課存摺改用 id 對應學生（避免同名學生互相干擾、改名後也不會對不到人）
@@ -1819,10 +1926,13 @@
 
       tempLessons.forEach(t => {
         if (t.date !== dateStr) return;
-        let displayTitle = '📌 ' + t.studentName;
-        let eventClass = 'event-temp';
-        if (t.attended) { displayTitle = '✅ ' + t.studentName; eventClass = 'event-attended'; }
-        else if (t.canceled) { displayTitle = '❌ ' + t.studentName + ' (取消)'; eventClass = 'event-canceled'; }
+        // 調課跟臨時課存在同一份清單裡，但畫面上分開顯示：調課用 🔀＋紫色，名字後面標出原本是哪一天的課
+        let isResch = isRescheduleTemp(t);
+        let baseName = isResch ? ('🔀 ' + t.studentName + (t.rescheduledFrom ? '（原' + t.rescheduledFrom.slice(5).replace('-', '/') + '）' : '')) : t.studentName;
+        let displayTitle = isResch ? baseName : '📌 ' + t.studentName;
+        let eventClass = isResch ? 'event-reschedule-lesson' : 'event-temp';
+        if (t.attended) { displayTitle = '✅ ' + baseName; eventClass = 'event-attended'; }
+        else if (t.canceled) { displayTitle = '❌ ' + baseName + (isResch ? ' (延期)' : ' (取消)'); eventClass = 'event-canceled'; }
         if (t.amount !== undefined && t.amount !== 1) { displayTitle += ' (' + t.amount + '堂)'; }
         if (getStudentBalance(t.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
         let tempStu = t.studentId ? students.find(x => x.id === t.studentId) : null;
@@ -1966,7 +2076,7 @@
     function openModalForCalendarEvent(props, title, dateStr, timeStr, allDay) {
       currentModalEvent = props;
 
-      let cleanTitle = title.replace(/💰 |✅ |❌ |🔄 |📌 |💸 |🔀 |\[補課\] |\[補\] /g, '').replace(/\s*\(延期\)|\s*\(轉補\)|\s*\(取消\)|\s*\(缺席收費\)|\s*\(已調課\)|\s*\([\d.]+堂\)/g, '').replace(/・.*$/, '');
+      let cleanTitle = title.replace(/💰 |✅ |❌ |🔄 |📌 |💸 |🔀 |\[補課\] |\[補\] /g, '').replace(/\s*\(延期\)|\s*\(轉補\)|\s*\(取消\)|\s*\(缺席收費\)|\s*\(已調課\)|\s*\([\d.]+堂\)/g, '').replace(/・.*$/, '').replace(/（原[\d/]+）/g, '');
       document.getElementById('modal-title').innerText = cleanTitle;
 
       // 依事件類型找出這堂課的時長，用來算結束時間（跟月曆下方清單、首頁共用同一份邏輯）
@@ -1980,10 +2090,18 @@
       document.getElementById('modal-todo-wrap').style.display = 'block';
 
       let balanceStudentId = null;
+      // 標題下面那一行小字：說明這堂是調課／臨時課，或原本這堂已經調到哪一天
+      let kindNote = '', kindColor = '#8F7FB8';
 
       if (props.type === 'normal') {
         let s = students[props.stuIdx];
         balanceStudentId = s.id;
+        if ((s.rescheduledDates || []).includes(props.dateStr)) {
+          let linked = getLinkedRescheduleLessons(s, props.dateStr);
+          kindNote = linked.length > 0
+            ? '🔀 這堂已調到 ' + linked.map(t => formatReportDate(t.date) + (t.time ? ' ' + t.time : '')).join('、')
+            : '🔀 這堂已調課';
+        }
         let isConverted = (s.makeupConvertedDates || []).includes(props.dateStr);
         if (isConverted) {
           document.getElementById('modal-convert-actions').style.display = 'block';
@@ -2009,7 +2127,24 @@
         let t = tempLessons.find(x => x.id === props.tempId);
         balanceStudentId = t ? t.studentId : null;
         document.getElementById('modal-temp-convert-btn').style.display = (t && !t.studentId) ? 'block' : 'none';
+        let isResch = isRescheduleTemp(t);
+        if (isResch) {
+          kindNote = '🔀 調課・' + (t.rescheduledFrom ? '原本 ' + formatReportDate(t.rescheduledFrom) + '的課' : '沒有記錄原本是哪一天');
+        } else {
+          kindNote = '📌 臨時課'; kindColor = '#7C93B3';
+        }
+        // 調課沒上成，跟一般課一樣叫「延期」，避免跟下面的「取消調課」兩個「取消」搞混
+        document.getElementById('modal-temp-cancel-btn').innerText = isResch ? '❌ 延期 (不收費/留存紀錄)' : '❌ 取消 (不收費/留存紀錄)';
+        document.getElementById('modal-temp-edit-btn').innerText = isResch ? '✏️ 編輯這堂調課' : '✏️ 編輯這筆臨時課';
+        document.getElementById('modal-temp-edit-btn').style.backgroundColor = isResch ? '#8F7FB8' : '#7C93B3';
+        document.getElementById('modal-temp-delete-btn').style.display = isResch ? 'none' : 'block';
+        document.getElementById('modal-temp-undo-reschedule-btn').style.display = isResch ? 'block' : 'none';
       }
+
+      let kindNoteEl = document.getElementById('modal-kind-note');
+      kindNoteEl.innerText = kindNote;
+      kindNoteEl.style.color = kindColor;
+      kindNoteEl.style.display = kindNote ? 'block' : 'none';
 
       showBalanceInfo(balanceStudentId);
 
@@ -2136,6 +2271,24 @@
       if ((status === 'attended' || status === 'absent_charged') && dateStr > formatDate(new Date())) {
         if (!confirm('⚠️ ' + dateStr + ' 這天還沒到，出席狀況應該還未確定，確定要現在標記嗎？')) return;
       }
+
+      // 這堂原本已經調到別天：改成其他狀態（出席、延期、恢復未點名…）的話，調過去的那堂也要一起處理，
+      // 不然同一堂課會變成兩堂。調過去的那堂已經出席的話就先擋下來，避免動到已經算學費的紀錄。
+      if (status !== 'rescheduled' && (s.rescheduledDates || []).includes(dateStr)) {
+        let linked = getLinkedRescheduleLessons(s, dateStr);
+        let attendedOne = linked.find(t => t.attended);
+        if (attendedOne) {
+          alert('這堂已經調到 ' + formatReportDate(attendedOne.date) + '，而且那堂已經點名出席了，所以這裡先不能改。\n\n如果真的要改回來，請先到 ' + formatReportDate(attendedOne.date) + '那堂按「恢復為未點名」，再按「↩️ 取消調課，恢復原本那堂」。');
+          return;
+        }
+        if (linked.length > 0) {
+          let where = linked.map(t => formatReportDate(t.date) + (t.time ? ' ' + t.time : '')).join('、');
+          if (!confirm('這堂已經調到 ' + where + '。\n\n改成別的狀態的話，會一併刪除調過去的那堂調課，確定嗎？')) return;
+          let linkedIds = linked.map(t => t.id);
+          tempLessons = tempLessons.filter(t => !linkedIds.includes(t.id));
+          saveTempToMemory();
+        }
+      }
       
       if(!s.attendedDates) s.attendedDates = [];
       if(!s.canceledDates) s.canceledDates = [];
@@ -2252,7 +2405,7 @@
       let paymentChanged = false;
       if (t.studentId) {
         let beforeLen3 = paymentRecords.length;
-        paymentRecords = paymentRecords.filter(p => !(p.studentId === t.studentId && p.date === t.date && p.note === '臨時課點名時登記'));
+        paymentRecords = paymentRecords.filter(p => !(p.studentId === t.studentId && p.date === t.date && (p.note === '臨時課點名時登記' || p.note === '調課點名時登記')));
         if (paymentRecords.length !== beforeLen3) paymentChanged = true;
       }
 
@@ -2263,7 +2416,7 @@
         let isChecked = !!(payCheckbox && payCheckbox.checked);
         if (t.studentId) {
           if (isChecked) {
-            paymentRecords.push({ id: generateId(), studentId: t.studentId, studentName: t.studentName, date: t.date, lessons: (Number(t.amount) || 1), note: '臨時課點名時登記' });
+            paymentRecords.push({ id: generateId(), studentId: t.studentId, studentName: t.studentName, date: t.date, lessons: (Number(t.amount) || 1), note: isRescheduleTemp(t) ? '調課點名時登記' : '臨時課點名時登記' });
             paymentChanged = true;
           }
         } else {
@@ -2291,6 +2444,35 @@
       closeModal();
     }
 
+    // 取消調課：刪掉調過去的這堂，原本那堂恢復成「未點名」，等於這次調課沒發生過。
+    // 已經出席的不能直接取消，要先恢復未點名（那時候才會把「點名時登記」的繳費一起清掉，不會留下多的繳費紀錄）。
+    function cancelReschedule() {
+      let t = tempLessons.find(x => x.id === currentModalEvent.tempId);
+      if (!t) { closeModal(); return; }
+      if (t.attended) {
+        alert('這堂調課已經點名出席了。\n\n如果要取消調課，請先按「↩️ 恢復為未點名」，再按「取消調課」。');
+        return;
+      }
+      let origin = findRescheduleOriginStudent(t);
+      let msg;
+      if (origin) {
+        msg = '確定要取消這次調課嗎？\n\n• 這堂 ' + formatReportDate(t.date) + '的調課會刪除\n• 原本 ' + formatReportDate(t.rescheduledFrom) + '那堂會恢復成「未點名」';
+      } else if (t.rescheduledFrom) {
+        msg = '原本 ' + formatReportDate(t.rescheduledFrom) + '那堂已經不是「已調課」的狀態了（可能已經改過）。\n\n按「確定」只會刪除這堂調課，原本那天維持現在的狀態。';
+      } else {
+        msg = '這堂是以前調的課，沒有記錄原本是哪一天，所以只能刪除這堂。\n\n刪除後，請到月曆找到原本標著「🔀 已調課」的那天，按「↩️ 恢復為未點名」。\n\n確定要刪除這堂調課嗎？';
+      }
+      if (!confirm(msg)) return;
+      tempLessons = tempLessons.filter(x => x.id !== t.id);
+      saveTempToMemory();
+      if (origin) {
+        origin.rescheduledDates = origin.rescheduledDates.filter(d => d !== t.rescheduledFrom);
+        saveToMemory();
+      }
+      if (calendar) calendar.refetchEvents();
+      closeModal();
+    }
+
     // ============ 編輯臨時課 ============
     // 已經出席的不能編輯，要先在月曆上恢復為未點名，才能改時間或堂數——理由跟編輯補課時間一樣，
     // 避免悄悄動到已經算進某個月份結算的紀錄。
@@ -2310,6 +2492,7 @@
       document.getElementById('edit-temp-labelonly-note').style.display = editingTempLabelOnly ? 'block' : 'none';
       document.getElementById('edit-temp-kind-group').style.display = t.studentId ? 'block' : 'none'; // 體驗生沒有「調課」這回事
       document.querySelector('input[name="edit-temp-kind"][value="' + (isRescheduleTemp(t) ? 'reschedule' : 'temp') + '"]').checked = true;
+      document.getElementById('edit-temp-title').innerText = isRescheduleTemp(t) ? '✏️ 編輯調課' : '✏️ 編輯臨時課';
       document.getElementById('edit-temp-student-name').innerText = t.studentName;
       document.getElementById('edit-temp-date').value = t.date;
       setTimeValue('edit-temp-time', t.time || '00:00');
@@ -2328,6 +2511,7 @@
     function closeEditTempLessonModal() {
       document.getElementById('edit-temp-lesson-modal').style.display = 'none';
       editingTempLessonId = null;
+      refreshDayPanelIfNeeded(); // 手機版下方清單／首頁跟著更新（例如把臨時課改成調課，標示要馬上換）
     }
 
     // 這個彈窗的時長跟堂數互相換算，基準是原本那筆臨時課自己已經定案的時長（不用重新去查學生資料）
@@ -2386,7 +2570,7 @@
       saveTempToMemory();
       closeEditTempLessonModal();
       if (calendar) calendar.refetchEvents();
-      alert('✅ 已更新臨時課！');
+      alert(newKind === 'reschedule' ? '✅ 已更新調課！' : '✅ 已更新臨時課！');
     }
     // ============ 編輯臨時課結束 ============
 
@@ -2969,7 +3153,10 @@
         record.schedules.forEach(sch => {
           if (sch.attended && inMonth(sch.date)) {
             let amt = Number(sch.amount) || 0;
-            teachingRows.push({ date: sch.date, time: sch.time || '', duration: sch.duration || 60, name: record.studentName, note: '補課' + (amt !== 1 ? ' ' + amt + '堂' : ''), fee: fee * sch.amount });
+            // 轉為補課產生的紀錄，dateGen 就是原本那堂課的日期（學生的轉補紀錄裡查得到）；手動新增的補課紀錄沒有對應的課，只寫「補課」
+            let originDate = getMakeupRecordOrigin(record);
+            let origin = originDate ? '（原' + originDate.slice(5).replace('-', '/') + '）' : '';
+            teachingRows.push({ date: sch.date, time: sch.time || '', duration: sch.duration || 60, name: record.studentName, note: '補課' + origin + (amt !== 1 ? ' ' + amt + '堂' : ''), fee: fee * sch.amount });
           }
         });
       });
@@ -3046,6 +3233,7 @@
       let monthStr = document.getElementById('salary-month-picker').value; 
       if (!monthStr) return;
       renderSalaryUnmarkedStatus(monthStr);
+      renderSalaryLegacyRescheduleStatus();
       let r = buildMonthlyReport(monthStr);
       document.getElementById('revenue-teaching').innerText = 'NT$ ' + r.teachingTotal.toLocaleString();
       document.getElementById('revenue-extra').innerText = 'NT$ ' + r.extraTotal.toLocaleString();
@@ -3254,6 +3442,14 @@
           if (!confirm('⚠️ ' + monthStr + ' 還有 ' + unmarked.length + ' 堂課沒處理（約 NT$ ' + missing.toLocaleString() + ' 還沒計入），總表金額可能偏低，確定要產出嗎？\n\n按「取消」可以先到「未點名檢查」處理。')) return;
         }
       }
+      // 只算已經出席、會出現在總表上的那幾堂
+      let legacyThisMonth = findLegacyRescheduleCandidates().filter(p => p.temp.date.startsWith(monthStr) && p.temp.attended);
+      if (legacyThisMonth.length > 0) {
+        if (confirm('🔀 這個月有 ' + legacyThisMonth.length + ' 堂課看起來是以前調過的課，目前總表還會寫成「臨時課」。\n\n按「確定」先去確認（建議）；按「取消」直接產出總表。')) {
+          openLegacyRescheduleModal();
+          return;
+        }
+      }
       let r = buildMonthlyReport(monthStr);
       let report = buildReportHTML(r);
       document.getElementById('print-report').innerHTML = report.html;
@@ -3311,7 +3507,14 @@
 
     // 補課存摺單一筆紀錄的「尚欠堂數 + 已排定列表 + 排課表單」，月曆上點「已轉補課」的那堂課、跟學生詳細頁的補課分頁共用同一份邏輯。
     // idPrefix 用來區分不同處的 input id（例如 'cal_'／'detail_'），避免同時渲染在畫面上時 id 互相打架。
-    function buildMakeupScheduleHTML(record, idPrefix) {
+    // 這筆補課紀錄是補哪一天的課：只有「轉為補課」產生的紀錄才有（dateGen 就是原本那堂課的日期，學生的轉補紀錄查得到）；
+    // 手動新增的紀錄沒有對應的課，回傳 null。收支總表的備註、學生詳細頁的補課卡片共用這個判斷。
+    function getMakeupRecordOrigin(record) {
+      let stu = students.find(s => s.id === record.studentId) || students.find(s => s.name === record.studentName);
+      return (stu && (stu.makeupConvertedDates || []).includes(record.dateGen)) ? record.dateGen : null;
+    }
+
+    function buildMakeupScheduleHTML(record, idPrefix, hideForm) {
       let schList = record.schedules.map((sch, idx) => {
         let statusIcon = sch.attended ? '✅已上' : '⏳待上';
         let editBtn = sch.attended ? '' : ` <button class="small-btn" style="padding:1px 6px; font-size:10px; background-color:#E2E8DF; color:#333;" onclick="openEditMakeupScheduleModal('${record.id}', ${idx})">✏️編輯</button>`;
@@ -3319,8 +3522,8 @@
       }).join('');
 
       let formHTML = '';
-      if (record.remaining > 0) {
-        let submitFn = idPrefix === 'detail_' ? `scheduleMakeupFromDetail('${record.id}')` : `scheduleMakeupFromCalendar('${record.id}')`;
+      if (record.remaining > 0 && !hideForm) {
+        let submitFn = `scheduleMakeupFromCalendar('${record.id}')`;
         let stuForDuration = students.find(s => s.id === record.studentId);
         let defaultDuration = (stuForDuration && stuForDuration.duration) ? stuForDuration.duration : 60;
         formHTML = `
@@ -3390,14 +3593,39 @@
     }
 
     // 從學生詳細頁的補課分頁排課：讀取 detail_ 開頭的欄位，排定成功後刷新詳細頁本身
-    function scheduleMakeupFromDetail(recordId) {
-      let amt = Number(document.getElementById('detail_amt_' + recordId).value);
-      let date = document.getElementById('detail_date_' + recordId).value;
-      let timeInput = getTimeValue('detail_time_' + recordId);
-      let duration = Number(document.getElementById('detail_duration_' + recordId).value) || 60;
-      if (!doScheduleMakeup(recordId, amt, date, timeInput, duration)) return;
+    // 學生詳細頁的補課分頁：只有一個排課表單，一律先扣最舊的一筆（跟月曆上的「🔄 新增補課」同一套規則，先有的先清掉）
+    function scheduleMakeupFromDetailFIFO() {
+      let s = students.find(x => x.id === currentDetailStudentId);
+      if (!s) return;
+      let total = getStudentRemainingMakeup(s.id);
+      let amt = Number(document.getElementById('detail-fifo-amt').value);
+      let date = document.getElementById('detail-fifo-date').value;
+      let timeInput = getTimeValue('detail-fifo-time');
+      let duration = Number(document.getElementById('detail-fifo-duration').value) || 60;
+      if (!amt || amt <= 0 || amt > total) { alert(`❌ 輸入錯誤！最多只能補 ${total} 堂`); return; }
+      if (!date || !timeInput) { alert('❌ 請完整選擇補課的日期與時間！'); return; }
+      let conflictName = findScheduleConflict(date, timeInput, duration);
+      if (conflictName) {
+        let ok = confirm('⚠️ 這個時段（' + date + ' ' + timeInput + '）已經有 ' + conflictName + ' 排課了，確定還要排在這裡嗎？');
+        if (!ok) return;
+      }
+      scheduleAgainstActiveMakeupRecords(s.id, amt, date, timeInput, duration);
       renderStudentDetailMakeup();
+      if (calendar) calendar.refetchEvents();
       alert('✅ 排定成功！');
+    }
+
+    // 排課表單的「補幾堂」跟「時長」互相換算，以這位學生自己的一堂課時長為基準
+    function syncDetailFifoAmountDuration(source) {
+      let s = students.find(x => x.id === currentDetailStudentId);
+      let base = (s && s.duration) || 60;
+      let amtEl = document.getElementById('detail-fifo-amt');
+      let durEl = document.getElementById('detail-fifo-duration');
+      if (source === 'duration') {
+        amtEl.value = Number(((Number(durEl.value) || 0) / base).toFixed(2));
+      } else {
+        durEl.value = Math.round((Number(amtEl.value) || 0) * base);
+      }
     }
 
     function cancelMakeupRecord(recordId) {
@@ -4425,19 +4653,41 @@
     // ============ 課程方案異動結束 ============
 
     // ============ 調課 ============
-    // 僅調動「這一堂」：原本的時段標記為延期（複用「延期」按鈕的邏輯），新時段用臨時課的方式新增一筆，
+    // 僅調動「這一堂」：原本的時段標記為「已調課」，新時段新增一堂調課（資料跟臨時課放在同一份清單，用 kind: 'reschedule' 區分，畫面上分開顯示），
     // 兩個動作合併成一次操作，不會產生補課存摺那種需要另外追蹤的欠課關係。
 
     function openRescheduleModalFromEvent() {
       if (!currentModalEvent || currentModalEvent.type !== 'normal') return;
       let s = students[currentModalEvent.stuIdx];
       if (!s) return;
+      // 已經調過的這堂又按一次調課，會多出第二堂調課；改成引導去編輯原本調過去的那堂
+      if ((s.rescheduledDates || []).includes(currentModalEvent.dateStr)) {
+        let linked = getLinkedRescheduleLessons(s, currentModalEvent.dateStr);
+        if (linked.length > 0) {
+          alert('這堂已經調到 ' + linked.map(t => formatReportDate(t.date) + (t.time ? ' ' + t.time : '')).join('、') + ' 了。\n\n要改時間的話，請直接點那堂調課，按「✏️ 編輯這堂調課」。');
+          return;
+        }
+      }
       closeModal();
       document.getElementById('reschedule-student-name').innerText = s.name;
       document.getElementById('reschedule-new-date').value = currentModalEvent.dateStr || '';
       document.getElementById('reschedule-duration').value = s.duration || 60;
+      document.getElementById('reschedule-amount').value = 1;
       resetTimeValue('reschedule-new-time');
       document.getElementById('reschedule-modal').style.display = 'flex';
+    }
+
+    // 調課的「堂數」跟「時長」互相換算：以這位學生自己的一堂課時長為基準，例如 60 分鐘的學生調成 45 分鐘 = 0.75 堂
+    function syncRescheduleAmountDuration(source) {
+      let s = currentModalEvent && currentModalEvent.type === 'normal' ? students[currentModalEvent.stuIdx] : null;
+      let base = (s && s.duration) || 60;
+      let amtEl = document.getElementById('reschedule-amount');
+      let durEl = document.getElementById('reschedule-duration');
+      if (source === 'duration') {
+        amtEl.value = Number(((Number(durEl.value) || 0) / base).toFixed(2));
+      } else {
+        durEl.value = Math.round((Number(amtEl.value) || 0) * base);
+      }
     }
 
     function closeRescheduleModal() { document.getElementById('reschedule-modal').style.display = 'none'; refreshDayPanelIfNeeded(); }
@@ -4450,7 +4700,9 @@
       let newDate = document.getElementById('reschedule-new-date').value;
       let newTime = getTimeValue('reschedule-new-time');
       let duration = Number(document.getElementById('reschedule-duration').value) || 60;
+      let amount = Number(document.getElementById('reschedule-amount').value);
       if (!newDate || !newTime) { alert('請完整選擇新的日期與時間！'); return; }
+      if (!amount || amount <= 0) { alert('請輸入這堂算幾堂！'); return; }
 
       let conflictName = findScheduleConflict(newDate, newTime, duration, null, null, { studentId: s.id, date: currentModalEvent.dateStr });
       if (conflictName) {
@@ -4458,13 +4710,14 @@
         if (!ok) return;
       }
 
-      if (!confirm('確定要把「' + s.name + '」這堂課調到 ' + newDate + ' ' + newTime + ' 嗎？原本的時段會標記為調課。')) return;
+      let amountNote = amount !== 1 ? '（' + duration + ' 分鐘，算 ' + amount + ' 堂）' : '';
+      if (!confirm('確定要把「' + s.name + '」這堂課調到 ' + newDate + ' ' + newTime + amountNote + ' 嗎？原本的時段會標記為調課。')) return;
 
       let originalDate = currentModalEvent.dateStr;
       markStatus('rescheduled'); // 原本那堂標記為「已調課」（不是延期），跟延期用不同的樣式跟紀錄區分開來
 
       // kind: 'reschedule' 讓收支總表的備註寫「調課（原 MM/DD）」，而不是「臨時課」；只是標籤，不影響學費計算
-      tempLessons.push({ id: generateId(), studentId: s.id, studentName: s.name, date: newDate, time: newTime, duration: duration, amount: 1, attended: false, canceled: false, kind: 'reschedule', rescheduledFrom: originalDate });
+      tempLessons.push({ id: generateId(), studentId: s.id, studentName: s.name, date: newDate, time: newTime, duration: duration, amount: amount, attended: false, canceled: false, kind: 'reschedule', rescheduledFrom: originalDate });
       saveTempToMemory();
 
       closeRescheduleModal();
@@ -4755,17 +5008,46 @@
       let records = [...makeupBank.filter(r => r.studentId === s.id)].reverse();
       let activeHTML = ''; let historyHTML = ''; let activeCount = 0; let historyCount = 0;
 
-      records.forEach(record => {
-        if (record.status === 'active') {
-          activeCount++;
-          activeHTML += `<div class="card makeup-card"><div style="font-size:12px; color:#888;">產生於: ${record.dateGen}</div>${buildMakeupScheduleHTML(record, 'detail_')}<button class="small-btn" style="margin-top:10px; color:#888; background:transparent; text-decoration:underline;" onclick="cancelMakeupRecord('${record.id}')">取消這筆紀錄</button></div>`;
-        } else {
-          historyCount++;
-          historyHTML += `<div class="card history-card"><div style="font-size:12px; color:#aaa;">已結清</div><div class="student-detail" style="margin-bottom:0;">總補課: ${record.totalOwed} 堂 (產生於 ${record.dateGen})</div></div>`;
-        }
+      // 還欠的紀錄照「先有的先清掉」的順序排：最上面那筆會最先被扣
+      let activeOrdered = records.filter(r => r.status === 'active').sort((a, b) => a.dateGen.localeCompare(b.dateGen));
+      let totalRemaining = getStudentRemainingMakeup(s.id);
+      let formHTML = '';
+      if (totalRemaining > 0) {
+        let base = s.duration || 60;
+        let defaultAmt = Math.min(1, totalRemaining);
+        formHTML = `<div class="card" style="background-color:#FFF9F5; border:1px solid #E08E79; text-align:left;">
+          <div style="font-size:14px; font-weight:bold; color:#E08E79; margin-bottom:4px;">📅 排補課（還剩 ${totalRemaining} 堂）</div>
+          <div style="font-size:12px; color:#888; margin-bottom:8px;">會先從最舊的一筆扣，也就是下面最上面那筆。</div>
+          <div style="display:flex; gap:10px; margin-bottom:5px;">
+            <input type="number" id="detail-fifo-amt" class="form-control" style="padding:5px; width:40%;" placeholder="補幾堂" step="0.05" min="0.05" max="${totalRemaining}" value="${defaultAmt}" oninput="syncDetailFifoAmountDuration('amount')">
+            <input type="date" id="detail-fifo-date" class="form-control" style="padding:5px; width:60%;">
+          </div>
+          <div style="display:flex; gap:5px; align-items:center; background:white; border:1px solid #ccc; border-radius:5px; padding:3px 8px; margin-top:5px;">
+            <div class="time24" id="detail-fifo-time" style="flex:1;">
+              <input class="time24-seg" data-unit="hour" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" placeholder="--" aria-label="時">
+              <span class="time24-colon">:</span>
+              <input class="time24-seg" data-unit="minute" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" placeholder="--" aria-label="分">
+            </div>
+            <input type="number" id="detail-fifo-duration" value="${Math.round(defaultAmt * base)}" min="1" step="1" style="width:50px; border:none; text-align:center; font-size:14px;" title="上課時長（分鐘）" oninput="syncDetailFifoAmountDuration('duration')">
+            <span style="font-size:11px; color:#888;">分</span>
+            <button class="small-btn" style="padding: 6px 12px; background-color:#8C9C8A; color:white;" onclick="scheduleMakeupFromDetailFIFO()">確定排課</button>
+          </div>
+        </div>`;
+      }
+      activeOrdered.forEach(record => {
+        activeCount++;
+        let originDate = getMakeupRecordOrigin(record);
+        let originLabel = originDate ? `原本 ${formatReportDate(originDate)} 的課` : `手動新增於 ${record.dateGen}`;
+        activeHTML += `<div class="card makeup-card"><div style="font-size:12px; color:#888;">${originLabel}</div>${buildMakeupScheduleHTML(record, 'detail_', true)}<button class="small-btn" style="margin-top:10px; color:#888; background:transparent; text-decoration:underline;" onclick="cancelMakeupRecord('${record.id}')">取消這筆紀錄</button></div>`;
       });
 
-      let html = activeCount === 0 ? '<p style="color:#888; font-size:13px;">目前沒有需要補課的紀錄。</p>' : activeHTML;
+      records.forEach(record => {
+        if (record.status === 'active') return; // 上面已經照「先有的先清掉」的順序畫好了
+        historyCount++;
+        historyHTML += `<div class="card history-card"><div style="font-size:12px; color:#aaa;">已結清</div><div class="student-detail" style="margin-bottom:0;">總補課: ${record.totalOwed} 堂 (產生於 ${record.dateGen})</div></div>`;
+      });
+
+      let html = formHTML + (activeCount === 0 ? '<p style="color:#888; font-size:13px;">目前沒有需要補課的紀錄。</p>' : activeHTML);
       if (historyCount > 0) { html += `<h3 style="font-size:14px; color:#888; text-align:left; margin:18px 0 8px 0;">已結清（${historyCount}）</h3>${historyHTML}`; }
       document.getElementById('student-detail-makeup-list').innerHTML = html;
     }
