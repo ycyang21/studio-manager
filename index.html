@@ -31,7 +31,10 @@
     
     .form-group { margin-bottom: 15px; text-align: left; }
     .form-group label { display: block; font-size: 14px; margin-bottom: 5px; font-weight: bold; }
-    .form-control, .form-select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box; background-color: white;} 
+    .form-control, .form-select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box; background-color: white;}
+    /* iPhone 的日期欄位有自己的最小寬度，會撐出視窗外面；空白時高度也會跑掉，這裡統一修正 */
+    input[type="date"].form-control { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; display: block; min-height: 42px; text-align: left; }
+    input[type="date"].form-control::-webkit-date-and-time-value { text-align: left; } 
     .radio-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; align-items: center; }
     
     /* 讓星期與時間完美並排在同一個整合式 Bar 內 */
@@ -159,6 +162,8 @@
     
     #attendance-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; }
     .modal-content { background: white; width: 85%; max-width: 350px; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    /* 所有彈出視窗：內容比螢幕高時，在視窗裡面上下滑動（背景被鎖住不能滑，所以視窗本身一定要能滑） */
+    .modal-content { max-height: 85vh; max-height: 85dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; box-sizing: border-box; }
     .modal-btn { display: block; width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 8px; font-size: 16px; color: white; cursor: pointer; }
 
     #login-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #FDFBF7; z-index: 10000; align-items: center; justify-content: center; }
