@@ -306,6 +306,19 @@
         <label>單堂學費 (元)</label>
         <input type="number" id="temp-manual-fee" class="form-control" placeholder="例如：1000">
       </div>
+      <div class="form-group" id="temp-location-group">
+        <label>上課地點（選了學生會先帶入他平常的地點，這堂不一樣可以直接改）</label>
+        <div class="radio-group">
+          <label><input type="radio" name="temp-location-preset" value="西屯工作室" onclick="checkLocationPreset('temp')"> 西屯工作室</label>
+          <label><input type="radio" name="temp-location-preset" value="大雅工作室" onclick="checkLocationPreset('temp')"> 大雅工作室</label>
+          <label><input type="radio" name="temp-location-preset" value="清水工作室" onclick="checkLocationPreset('temp')"> 清水工作室</label>
+          <label><input type="radio" name="temp-location-preset" value="其他" onclick="checkLocationPreset('temp')" checked> 其他</label>
+        </div>
+        <div style="margin-top:6px;">
+          <input type="text" id="temp-location" class="form-control" style="margin-bottom:6px;" placeholder="例如：學生家、北車教室（可以不填）">
+          <input type="text" id="temp-location-abbr" class="form-control" maxlength="2" placeholder="簡稱（最多2字，月曆顯示用）">
+        </div>
+      </div>
       <div class="form-group">
         <label>日期</label>
         <input type="date" id="temp-date" class="form-control">
@@ -1228,6 +1241,19 @@
         <label>這堂算幾堂（跟上面的時長會自動互相換算）</label>
         <input type="number" id="edit-temp-amount" class="form-control" min="0.05" step="0.05" oninput="syncEditTempAmountDuration('amount')">
       </div>
+      <div class="form-group" id="edit-temp-location-group">
+        <label>上課地點</label>
+        <div class="radio-group">
+          <label><input type="radio" name="edit-temp-location-preset" value="西屯工作室" onclick="checkLocationPreset('edit-temp')"> 西屯工作室</label>
+          <label><input type="radio" name="edit-temp-location-preset" value="大雅工作室" onclick="checkLocationPreset('edit-temp')"> 大雅工作室</label>
+          <label><input type="radio" name="edit-temp-location-preset" value="清水工作室" onclick="checkLocationPreset('edit-temp')"> 清水工作室</label>
+          <label><input type="radio" name="edit-temp-location-preset" value="其他" onclick="checkLocationPreset('edit-temp')" checked> 其他</label>
+        </div>
+        <div style="margin-top:6px;">
+          <input type="text" id="edit-temp-location" class="form-control" style="margin-bottom:6px;" placeholder="例如：學生家、北車教室（可以不填）">
+          <input type="text" id="edit-temp-location-abbr" class="form-control" maxlength="2" placeholder="簡稱（最多2字，月曆顯示用）">
+        </div>
+      </div>
       <div class="form-group" id="edit-temp-fee-group" style="display:none;">
         <label>單堂學費 (元)</label>
         <input type="number" id="edit-temp-fee" class="form-control">
@@ -1270,6 +1296,13 @@
 
     // 這堂臨時課是不是調課產生的（上一版曾經用 'makeup' 存，一併視為調課）
     function isRescheduleTemp(t) { return !!t && (t.kind === 'reschedule' || t.kind === 'makeup'); }
+
+    // 臨時課的地點：這堂自己有填就用這堂的，沒填就用學生平常的地點（調課、以前新增的臨時課都是這種）
+    function getTempLessonLocation(t) {
+      if (t && t.location) return { location: t.location, locationAbbr: t.locationAbbr || '' };
+      let stu = (t && t.studentId) ? students.find(x => x.id === t.studentId) : null;
+      return { location: (stu && stu.location) || '', locationAbbr: (stu && stu.locationAbbr) || '' };
+    }
 
     // 從「調過去的那堂」找回「原本那堂」是哪位學生的：先找同一個 id，找不到再用姓名
     // （課程方案異動後，調過去的那堂會跟著轉到新方案的學生資料底下，但原本那堂還留在舊方案）
@@ -1952,10 +1985,10 @@
         else if (t.canceled) { displayTitle = '❌ ' + baseName + (isResch ? ' (延期)' : ' (取消)'); eventClass = 'event-canceled'; }
         if (t.amount !== undefined && t.amount !== 1) { displayTitle += ' (' + t.amount + '堂)'; }
         if (getStudentBalance(t.studentId) > 0) { displayTitle = '💰 ' + displayTitle; }
-        let tempStu = t.studentId ? students.find(x => x.id === t.studentId) : null;
-        let shortTitle = displayTitle + ((tempStu && tempStu.location) ? '・' + (tempStu.locationAbbr || tempStu.location) : '');
-        if (tempStu && tempStu.location) { displayTitle += '・' + tempStu.location; }
-        items.push({ title: displayTitle, shortTitle: shortTitle, className: eventClass, time: t.time, allDay: !t.time, name: t.studentName, locationAbbr: (tempStu && tempStu.locationAbbr) || '', props: { type: 'temp', tempId: t.id, dateStr: dateStr } });
+        let tempLoc = getTempLessonLocation(t);
+        let shortTitle = displayTitle + (tempLoc.location ? '・' + (tempLoc.locationAbbr || tempLoc.location) : '');
+        if (tempLoc.location) { displayTitle += '・' + tempLoc.location; }
+        items.push({ title: displayTitle, shortTitle: shortTitle, className: eventClass, time: t.time, allDay: !t.time, name: t.studentName, locationAbbr: tempLoc.locationAbbr || '', props: { type: 'temp', tempId: t.id, dateStr: dateStr } });
       });
 
       items.forEach(it => { it.endTime = it.allDay ? '' : computeEndTime(it.time, getDurationForProps(it.props)); });
@@ -2696,6 +2729,9 @@
       document.getElementById('edit-temp-labelonly-note').style.display = editingTempLabelOnly ? 'block' : 'none';
       document.getElementById('edit-temp-kind-group').style.display = t.studentId ? 'block' : 'none'; // 體驗生沒有「調課」這回事
       document.querySelector('input[name="edit-temp-kind"][value="' + (isRescheduleTemp(t) ? 'reschedule' : 'temp') + '"]').checked = true;
+      let curLoc = getTempLessonLocation(t);
+      setLocationFormFromStudent('edit-temp', curLoc.location, curLoc.locationAbbr);
+      document.getElementById('edit-temp-location-group').style.display = editingTempLabelOnly ? 'none' : '';
       document.getElementById('edit-temp-title').innerText = isRescheduleTemp(t) ? '✏️ 編輯調課' : '✏️ 編輯臨時課';
       document.getElementById('edit-temp-student-name').innerText = t.studentName;
       document.getElementById('edit-temp-date').value = t.date;
@@ -2770,6 +2806,12 @@
       t.duration = newDuration;
       t.amount = newAmount;
       t.kind = newKind;
+      // 地點跟學生平常的一樣就不另外存，之後學生改地點時這堂會跟著變；不一樣才記在這堂自己身上
+      let newLoc = document.getElementById('edit-temp-location').value.trim();
+      let newLocAbbr = document.getElementById('edit-temp-location-abbr').value.trim();
+      let stuForLoc = t.studentId ? students.find(x => x.id === t.studentId) : null;
+      if (stuForLoc && newLoc === (stuForLoc.location || '') && newLocAbbr === (stuForLoc.locationAbbr || '')) { delete t.location; delete t.locationAbbr; }
+      else { t.location = newLoc; t.locationAbbr = newLocAbbr; }
 
       saveTempToMemory();
       closeEditTempLessonModal();
@@ -3145,6 +3187,7 @@
       document.getElementById('temp-amount').value = 1;
       resetTimeValue('temp-time');
       document.querySelector('input[name="temp-mode"][value="existing"]').checked = true;
+      setLocationFormFromStudent('temp', '', '');
       checkTempMode();
       document.getElementById('temp-lesson-modal').style.display = 'flex';
     }
@@ -3305,6 +3348,8 @@
       let amount = Number(document.getElementById('temp-amount').value) || 1;
       if (!dateStr || !timeStr) { alert('請完整選擇日期與時間！'); return; }
       if (amount <= 0) { alert('堂數請輸入大於 0 的數字！'); return; }
+      let location = document.getElementById('temp-location').value.trim();
+      let locationAbbr = document.getElementById('temp-location-abbr').value.trim();
 
       let conflictName = findScheduleConflict(dateStr, timeStr, duration);
       if (conflictName) {
@@ -3317,13 +3362,16 @@
         if (!studentId) { alert('請先選擇學生！'); return; }
         let stu = students.find(s => s.id === studentId);
         if (!stu) { alert('找不到這位學生，請重新整理頁面再試一次！'); return; }
-        tempLessons.push({ id: generateId(), studentId: stu.id, studentName: stu.name, date: dateStr, time: timeStr, duration: duration, amount: amount, attended: false, canceled: false });
+        let newTemp = { id: generateId(), studentId: stu.id, studentName: stu.name, date: dateStr, time: timeStr, duration: duration, amount: amount, attended: false, canceled: false };
+        // 跟學生平常的地點一樣就不另外存（之後學生改地點會跟著變）；不一樣才記在這堂身上
+        if (location !== (stu.location || '') || locationAbbr !== (stu.locationAbbr || '')) { newTemp.location = location; newTemp.locationAbbr = locationAbbr; }
+        tempLessons.push(newTemp);
       } else {
         let manualName = document.getElementById('temp-manual-name').value.trim();
         let manualFee = document.getElementById('temp-manual-fee').value.trim();
         if (manualName === '') { alert('請輸入姓名！'); return; }
         if (manualFee === '' || isNaN(Number(manualFee)) || Number(manualFee) <= 0) { alert('請填入大於 0 的單堂學費！'); return; }
-        tempLessons.push({ id: generateId(), studentId: null, studentName: manualName, manualFee: Number(manualFee), date: dateStr, time: timeStr, duration: duration, amount: amount, attended: false, canceled: false, paid: false });
+        tempLessons.push({ id: generateId(), studentId: null, studentName: manualName, manualFee: Number(manualFee), date: dateStr, time: timeStr, duration: duration, amount: amount, attended: false, canceled: false, paid: false, location: location, locationAbbr: locationAbbr });
       }
 
       saveTempToMemory();
@@ -3690,6 +3738,7 @@
       if (prefix === 'temp-student') {
         document.getElementById('temp-duration').value = s.duration || 60; // 選了既有學生，時長直接帶入他自己設定的長度
         syncTempAmountDuration('duration'); // 順便把堂數換算成對應這位學生的比例
+        setLocationFormFromStudent('temp', s.location || '', s.locationAbbr || ''); // 先帶入他平常的上課地點，這堂不一樣再改
       }
     }
 
@@ -4511,6 +4560,7 @@
       document.getElementById('convert-start-date').value = t.date; // 預設用那堂體驗課的日期，因為那就是他真正的第一堂課
       document.getElementById('convert-single-pay').checked = true; // 體驗課大多是現場單堂繳費，先預設勾選，不符合的話可以自己取消
       document.getElementById('convert-duration').value = t.duration || 60;
+      setLocationFormFromStudent('convert', t.location || '', t.locationAbbr || ''); // 體驗課當天填的地點，直接當成他之後的上課地點
 
       convertingTempId = t.id;
       document.getElementById('convert-modal').style.display = 'flex';
